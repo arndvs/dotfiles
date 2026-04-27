@@ -362,10 +362,57 @@
             }
         }
 
+        /* INTERACTIVE HERO TERMINAL */
+        .hero-prompt {
+            display: flex;
+            align-items: center;
+            line-height: 1;
+        }
+
+        .hero-prompt-user {
+            color: var(--accent);
+        }
+
+        .hero-prompt-sep {
+            color: var(--text-dimmer);
+        }
+
+        .hero-prompt-path {
+            color: var(--accent);
+        }
+
+        .hero-prompt-dollar {
+            color: var(--text);
+        }
+
+        .hero-terminal-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            font-family: var(--mono);
+            font-size: 1.2rem;
+            color: var(--text);
+            caret-color: var(--accent);
+            padding: 0;
+            line-height: 1.9;
+        }
+
+        .hero-terminal-output {
+            color: var(--text-dim);
+            font-size: 1.2rem;
+            line-height: 1.9;
+        }
+
+        .hero-terminal-output.t-red {
+            color: var(--red);
+        }
+
         /* SECTIONS */
         .section {
             padding: 10rem 0;
             border-top: 1px solid var(--border);
+            scroll-margin-top: 6rem;
         }
 
         .section-num {
@@ -929,11 +976,19 @@
             cursor: pointer;
             color: var(--text-dimmer);
             opacity: 0;
-            transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+            transition: opacity 0.15s, color 0.15s, border-color 0.15s, outline-color 0.15s;
         }
 
-        .cli-ref-row:hover .cli-ref-copy {
+        .cli-ref-row:hover .cli-ref-copy,
+        .cli-ref-copy:focus,
+        .cli-ref-copy:focus-visible {
             opacity: 1;
+        }
+
+        .cli-ref-copy:focus,
+        .cli-ref-copy:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
         }
 
         .cli-ref-copy:hover {
@@ -2021,7 +2076,7 @@
                 <li><a href="#hud">hud</a></li>
                 <li><a href="#shft">shft</a></li>
                 <li><a href="#faq">faq</a></li>
-                <li><a href="#contributors-grid">contributors</a></li>
+                <li><a href="#contributors">contributors</a></li>
                 <li><a href="#install">install</a></li>
                 <li><a href="https://github.com/arndvs/ctrlshft" class="nav-cta sheen-cta">GitHub</a></li>
             </ul>
@@ -2041,7 +2096,7 @@
             <li><a href="#hud">hud</a></li>
             <li><a href="#shft">shft</a></li>
             <li><a href="#faq">faq</a></li>
-            <li><a href="#contributors-grid">contributors</a></li>
+            <li><a href="#contributors">contributors</a></li>
             <li><a href="#install">install</a></li>
             <li><a href="https://github.com/arndvs/ctrlshft" class="nav-cta sheen-cta">GitHub</a></li>
         </ul>
@@ -2106,7 +2161,11 @@
                             <div class="t-green">✓ Python .venv deps installed (incl. PyJWT)</div>
                             <div class="t-green">✓ supply chain hardened</div>
                             <div>&nbsp;</div>
-                            <div class="t-dim"># you're ready <span class="cursor"></span></div>
+                            <div class="t-green" style="font-weight:500;">ctrl+shft ready — type <span style="color:var(--accent);">ctrl help</span> to explore</div>
+                            <div>&nbsp;</div>
+                            <div class="hero-prompt">
+                                <span class="hero-prompt-user">ctrlshft</span><span class="hero-prompt-sep">:</span><span class="hero-prompt-path">~</span><span class="hero-prompt-dollar">$&nbsp;</span><input id="hero-terminal-input" class="hero-terminal-input" type="text" spellcheck="false" autocomplete="off" aria-label="Interactive terminal — type ctrl help">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3063,8 +3122,9 @@
                     <div class="faq-answer">
                         <p>Depends where it lives. A <code>CLAUDE.md</code> in a project repo is untouched —
                             project-level config always takes precedence over global. If you already have
-                            <code>~/.claude/CLAUDE.md</code>, bootstrap will warn you before replacing it. Back it up
-                            first and fold your content into <code>CLAUDE.base.md</code>.
+                            <code>~/.claude/CLAUDE.md</code>, bootstrap replaces it with a symlink (printing a
+                            message). Back it up first and fold your content into <code>CLAUDE.base.md</code>.
+                            Use <code>--adopt</code> to merge your existing config.
                         </p>
                     </div>
                 </div>
@@ -3078,14 +3138,23 @@
                         <div class="faq-code-block">
                             <span class="cm"># symlinks</span><br>
                             <span class="str">~/.claude/CLAUDE.md</span><br>
-                            <span class="str">~/.claude/skills &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><br>
-                            <span class="str">~/.claude/agents &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><br>
-                            <span class="str">~/.claude/rules &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><br>
+                            <span class="str">~/.claude/skills/</span><br>
+                            <span class="str">~/.claude/agents/</span><br>
+                            <span class="str">~/.claude/rules/</span><br>
+                            <span class="str">~/.claude/commands/</span><br>
+                            <span class="str">~/.claude/hooks/</span><br>
+                            <span class="str">~/.copilot/skills/</span><br>
+                            <span class="str">~/.agents/skills/</span><br>
                             <br>
-                            <span class="cm"># files created</span><br>
-                            <span class="str">~/dotfiles/secrets/.env.agent &nbsp;&nbsp;</span><br>
+                            <span class="cm"># files created / merged</span><br>
+                            <span class="str">~/.claude/settings.json</span><br>
+                            <span class="str">~/dotfiles/secrets/.env.agent</span><br>
                             <span class="str">~/dotfiles/secrets/.env.secrets</span><br>
-                            <span class="str">~/dotfiles/secrets/.venv &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><br>
+                            <span class="str">~/dotfiles/secrets/.venv</span><br>
+                            <br>
+                            <span class="cm"># CLIs installed to ~/.local/bin/</span><br>
+                            <span class="str">ctrl</span><br>
+                            <span class="str">shft</span><br>
                             <br>
                             <span class="cm"># shell appends (~/.bashrc and ~/.zshrc)</span><br>
                             <span class="str">load-secrets snippet</span><br>
@@ -3155,8 +3224,9 @@
                     <div class="faq-question">How do I audit what rules and skills are loaded at any given time?</div>
                     <div class="faq-answer">
                         <p>Run <code>ctrl context</code> in any directory — it prints the active contexts
-                            and which rule files are loaded. Skills are only invoked explicitly; nothing loads silently
-                            in the background.</p>
+                            and which rule files are loaded. Narrow-scope skills are invoked explicitly.
+                            Skills marked ⚡ auto-invoke (like systematic-debugging and compliance-audit)
+                            are loaded automatically when the agent detects a matching pattern.</p>
                         <div class="faq-code-block">
                             <span class="kw">ctrl</span> context<br>
                             <span class="cm"># → ACTIVE_CONTEXTS=general,nextjs,node,ts</span><br>
@@ -3310,7 +3380,7 @@
                                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                             </svg>
                         </span>
-                        <span class="step-label">Clone the repository</span>
+                        <span class="step-label">Fork &amp; clone</span>
                         <span class="step-chevron">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -3321,9 +3391,10 @@
                     <div class="step-body">
                         <div class="step-body-inner">
                             <div class="step-code-wrap">
-                                <pre class="step-code">git clone https://github.com/arndvs/ctrlshft.git ~/dotfiles</pre>
+                                <pre class="step-code"># Fork at github.com/arndvs/ctrlshft/fork, then:
+git clone https://github.com/YOUR_USERNAME/ctrlshft.git ~/dotfiles</pre>
                                 <button class="copy-btn"
-                                    data-copy="git clone https://github.com/arndvs/ctrlshft.git ~/dotfiles"
+                                    data-copy="git clone https://github.com/YOUR_USERNAME/ctrlshft.git ~/dotfiles"
                                     aria-label="Copy command">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
@@ -3332,7 +3403,7 @@
                                     <span>Copy</span>
                                 </button>
                             </div>
-                            <div class="step-note">Always clone to ~/dotfiles — hardcoded across 40+ references.</div>
+                            <div class="step-note">Fork first so you can push your own customizations. Always clone to ~/dotfiles — hardcoded across 40+ references.</div>
                         </div>
                     </div>
                 </div>
@@ -3359,9 +3430,9 @@
                     <div class="step-body">
                         <div class="step-body-inner">
                             <div class="step-code-wrap">
-                                <pre class="step-code">ctrl bootstrap
-# or: bash ~/dotfiles/bin/bootstrap.sh</pre>
-                                <button class="copy-btn" data-copy="ctrl bootstrap" aria-label="Copy command">
+                                <pre class="step-code">bash ~/dotfiles/bin/bootstrap.sh
+# after install: ctrl bootstrap</pre>
+                                <button class="copy-btn" data-copy="bash ~/dotfiles/bin/bootstrap.sh" aria-label="Copy command">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
                                         <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
@@ -3494,7 +3565,7 @@ ctrl verify-token</pre>
                                     Store, AFK scripts use <code>secrets/.venv</code> Python first. Re-run bootstrap.sh
                                     if venv is missing.</div>
                                 <div class="step-note">If token minting reports missing <code>PyJWT</code> or
-                                    <code>requests</code>, re-run <code>ctrl bootstrap</code>.
+                                    <code>requests</code>, re-run <code>bash ~/dotfiles/bin/bootstrap.sh</code>.
                                 </div>
                                 <div class="step-note">If minting fails with status=404, recheck installation ID, app
                                     install target, and key/app pairing.</div>
@@ -3532,8 +3603,9 @@ ctrl verify-token</pre>
                     <div class="step-body">
                         <div class="step-body-inner">
                             <div class="step-code-wrap">
-                                <pre class="step-code">ctrl sync-settings</pre>
-                                <button class="copy-btn" data-copy="ctrl sync-settings" aria-label="Copy command">
+                                <pre class="step-code">bash ~/dotfiles/bin/sync-settings.sh
+# after shell reload: ctrl sync-settings</pre>
+                                <button class="copy-btn" data-copy="bash ~/dotfiles/bin/sync-settings.sh" aria-label="Copy command">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
                                         <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
@@ -3646,6 +3718,22 @@ source ~/.zshrc    # zsh</pre>
         }, { threshold: 0.08 });
 
         document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+        // Global anchor scroll — offset for fixed nav + force fade-in visible before measuring
+        document.addEventListener('click', function (e) {
+            const link = e.target.closest('a[href^="#"]');
+            if (!link) return;
+            const id = link.getAttribute('href').slice(1);
+            if (!id) return;
+            const target = document.getElementById(id);
+            if (!target) return;
+            e.preventDefault();
+            // Reveal ALL fade-in sections so layout is fully settled before measuring
+            document.querySelectorAll('.fade-in').forEach(el => el.classList.add('visible'));
+            const navHeight = document.querySelector('nav')?.offsetHeight || 0;
+            const y = target.getBoundingClientRect().top + window.scrollY - navHeight - 24;
+            window.scrollTo({ top: y, behavior: 'auto' });
+        });
 
         document.querySelectorAll('.copy-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -3954,6 +4042,83 @@ source ~/.zshrc    # zsh</pre>
         }
 
         loadContributorsWhenVisible();
+
+        // Hero interactive terminal
+        (function () {
+            const input = document.getElementById('hero-terminal-input');
+            if (!input) return;
+
+            const body = input.closest('.terminal-body');
+            const promptLine = input.closest('.hero-prompt');
+
+            const COMMANDS = {
+                'ctrl help': () => {
+                    addOutput('Opening CLI reference…', 'hero-terminal-output t-green');
+                    setTimeout(() => {
+                        const target = document.getElementById('cli-reference');
+                        if (!target) return;
+                        document.querySelectorAll('.fade-in').forEach(el => el.classList.add('visible'));
+                        const navHeight = document.querySelector('nav')?.offsetHeight || 0;
+                        const y = target.getBoundingClientRect().top + window.scrollY - navHeight - 24;
+                        window.scrollTo({ top: y, behavior: 'auto' });
+                    }, 400);
+                },
+                'help': () => {
+                    addOutput('Available commands:', 'hero-terminal-output');
+                    addOutput('  ctrl help    — jump to CLI reference', 'hero-terminal-output');
+                    addOutput('  clear        — clear terminal', 'hero-terminal-output');
+                },
+                'clear': () => {
+                    body.querySelectorAll('.hero-terminal-output, .hero-history-line').forEach(el => el.remove());
+                }
+            };
+
+            function addOutput(text, className) {
+                const div = document.createElement('div');
+                div.className = className || 'hero-terminal-output';
+                div.textContent = text;
+                body.insertBefore(div, promptLine);
+            }
+
+            function addHistoryLine(cmd) {
+                const div = document.createElement('div');
+                div.className = 'hero-history-line';
+                const userSpan = document.createElement('span');
+                userSpan.className = 'hero-prompt-user';
+                userSpan.textContent = 'ctrlshft';
+                const sepSpan = document.createElement('span');
+                sepSpan.className = 'hero-prompt-sep';
+                sepSpan.textContent = ':';
+                const pathSpan = document.createElement('span');
+                pathSpan.className = 'hero-prompt-path';
+                pathSpan.textContent = '~';
+                const dollarSpan = document.createElement('span');
+                dollarSpan.className = 'hero-prompt-dollar';
+                dollarSpan.textContent = '$ ';
+                div.appendChild(userSpan);
+                div.appendChild(sepSpan);
+                div.appendChild(pathSpan);
+                div.appendChild(dollarSpan);
+                div.appendChild(document.createTextNode(cmd));
+                body.insertBefore(div, promptLine);
+            }
+
+            input.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter') return;
+                const cmd = input.value.trim().toLowerCase();
+                if (!cmd) return;
+
+                addHistoryLine(input.value.trim());
+                input.value = '';
+
+                const handler = COMMANDS[cmd];
+                if (handler) {
+                    handler();
+                } else {
+                    addOutput('command not found: ' + cmd + ' — try "ctrl help"', 'hero-terminal-output t-red');
+                }
+            });
+        })();
     </script>
 
     <script>

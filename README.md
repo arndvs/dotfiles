@@ -18,7 +18,8 @@ ctrl+shft fixes all four. Clone it once, `bootstrap.sh` symlinks your instructio
 **Source of truth:** `~/dotfiles/` is canonical. `~/.claude/`, `~/.copilot/`, and `~/.agents/` are consumer targets populated from dotfiles (symlinked where possible, Windows fallback copy when needed). Make all edits in `~/dotfiles/` only.
 
 ```bash
-git clone https://github.com/arndvs/ctrlshft.git ~/dotfiles
+# Fork at github.com/arndvs/ctrlshft/fork, then:
+git clone https://github.com/YOUR_USERNAME/ctrlshft.git ~/dotfiles
 bash ~/dotfiles/bin/bootstrap.sh   # or after install: ctrl bootstrap
 ```
 
@@ -387,13 +388,16 @@ AFK mode: Claude picks a task, implements it, commits, closes the issue, picks t
 `--dangerously-skip-permissions` needs a cage. Docker isolates Claude in a micro-VM. It can run commands, write files, use git — but it can't reach your host filesystem.
 
 ```bash
-docker sandbox run claude .
+# srt (Anthropic Sandbox Runtime) manages Docker containers
+srt claude .
 ```
 
 ### Activation checklist
 
 - [ ] Claude Max subscription
 - [ ] Docker Desktop installed
+- [ ] `jq` installed
+- [ ] `srt` (Anthropic Sandbox Runtime) installed
 - [ ] `shft/once.sh`, `shft/afk.sh`, `shft/prompt.md` in place
 - [ ] GitHub App credentials configured in `secrets/.env.secrets` (`GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY_B64`)
 - [ ] Deny rules validated in sandbox
@@ -665,7 +669,8 @@ shft help     # autonomous execution commands
 <summary>Quick setup (recommended)</summary>
 
 ```bash
-git clone https://github.com/arndvs/ctrlshft.git ~/dotfiles
+# Fork at github.com/arndvs/ctrlshft/fork, then:
+git clone https://github.com/YOUR_USERNAME/ctrlshft.git ~/dotfiles
 bash ~/dotfiles/bin/bootstrap.sh
 ```
 
@@ -685,8 +690,8 @@ After bootstrap:
 ```bash
 $EDITOR ~/dotfiles/secrets/.env.agent       # non-sensitive config
 $EDITOR ~/dotfiles/secrets/.env.secrets     # API keys and tokens
+source ~/.bashrc                            # adds ctrl/shft to PATH
 ctrl sync-settings                          # merge VS Code settings
-source ~/.bashrc
 ```
 
 > **Windows:** file symlinks require admin. Bootstrap falls back to copying `CLAUDE.md` and prints upgrade instructions. Directory symlinks work via Developer Mode.
@@ -699,7 +704,8 @@ source ~/.bashrc
 Same as local — skip `sync-settings.sh` (VS Code Remote SSH forwards your settings).
 
 ```bash
-git clone https://github.com/arndvs/ctrlshft.git ~/dotfiles
+# Fork at github.com/arndvs/ctrlshft/fork, then:
+git clone https://github.com/YOUR_USERNAME/ctrlshft.git ~/dotfiles
 bash ~/dotfiles/bin/bootstrap.sh
 $EDITOR ~/dotfiles/secrets/.env.agent
 $EDITOR ~/dotfiles/secrets/.env.secrets
@@ -712,8 +718,8 @@ source ~/.bashrc
 <summary>Manual setup</summary>
 
 ```bash
-# 1. Clone
-git clone https://github.com/arndvs/ctrlshft.git ~/dotfiles
+# 1. Fork at github.com/arndvs/ctrlshft/fork, then clone
+git clone https://github.com/YOUR_USERNAME/ctrlshft.git ~/dotfiles
 
 # 2. Generate CLAUDE.md and symlink
 bash ~/dotfiles/bin/bootstrap.sh   # or manually:
@@ -760,6 +766,12 @@ ctrl sync-settings
 | `secrets/.env.agent`     | Created from `.env.agent.example` if missing                                        |
 | `secrets/.env.secrets`   | Created from `.env.secrets.example` if missing                                      |
 | `secrets/.venv/`         | Python venv created for local skill packages                                        |
+| `~/.claude/commands/`    | Linked to `~/dotfiles/commands/`                                                    |
+| `~/.claude/hooks/`       | Linked to `~/dotfiles/hooks/`                                                       |
+| `~/.claude/settings.json`| Hook config merged into existing settings                                           |
+| `~/.local/bin/ctrl`      | CLI installed (symlink or copy)                                                     |
+| `~/.local/bin/shft`      | CLI installed (symlink or copy)                                                     |
+| `working/active-client.md`| Created from template if missing                                                   |
 
 **Not run by bootstrap:** `sync-settings.sh` (VS Code settings merge) is manual. Run with `--dry-run` first.
 
@@ -967,7 +979,7 @@ It runs inside a Docker sandbox with minimum GitHub App permissions: Contents, I
 
 **How do I audit what rules and skills are loaded at any given time?**
 
-Run `ctrl context` (or `bash ~/dotfiles/bin/detect-context.sh`) in any directory — it prints active contexts and loaded rule files. Skills are only invoked explicitly; nothing loads silently.
+Run `ctrl context` (or `bash ~/dotfiles/bin/detect-context.sh`) in any directory — it prints active contexts and loaded rule files. Narrow-scope skills are invoked explicitly. Skills marked ⚡ auto-invoke (like systematic-debugging and compliance-audit) are loaded automatically when the agent detects a matching pattern.
 
 </details>
 

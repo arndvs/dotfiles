@@ -578,5 +578,7 @@ fi
 echo "  $_step. Verify:          echo \$GITHUB_USERNAME"
 ((_step++))
 echo "  $_step. Try:             ctrl help, shft help"
+echo ""
+printf '\033[32mctrl+shft ready — type \033[33mctrl help\033[32m to explore\033[0m\n'
 
 exit $_fail
