@@ -32,7 +32,7 @@ for arg in "$@"; do
     esac
 done
 
-check_link_or_windows_copy() {
+check_link_or_windows_copy() { 
     local source="$1"
     local target="$2"
     local label="$3"
