@@ -50,6 +50,10 @@ dotfiles.code-workspace
 global.instructions.md.bak
 *.bak
 
+# Skill/doc reference materials (large, not needed in repo)
+**/references/
+**/reference/
+
 # Client scope (keep templates/docs tracked, ignore real client data)
 clients/*
 !clients/README.md

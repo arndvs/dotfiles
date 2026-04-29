@@ -417,41 +417,41 @@ shft help     # autonomous execution commands
 
 ### ctrl — infrastructure management
 
-| Command                 | What it does                                      |
-| ----------------------- | ------------------------------------------------- |
-| `ctrl check`            | Validate symlinks + environment                   |
-| `ctrl check --afk`      | AFK mode validation (jq, srt, GitHub App creds)   |
-| `ctrl bootstrap [opts]` | Run bootstrap (`--adopt`, `--minimal`)            |
-| `ctrl sync`             | `git pull` + bootstrap + reload shell             |
+| Command                 | What it does                                             |
+| ----------------------- | -------------------------------------------------------- |
+| `ctrl check`            | Validate symlinks + environment                          |
+| `ctrl check --afk`      | AFK mode validation (jq, srt, GitHub App creds)          |
+| `ctrl bootstrap [opts]` | Run bootstrap (`--adopt`, `--minimal`)                   |
+| `ctrl sync`             | `git pull` + bootstrap + reload shell                    |
 | `ctrl sync-settings`    | Merge managed VS Code settings (`--dry-run`, `--stable`) |
-| `ctrl status`           | Show contexts, client, symlinks, HUD status       |
-| `ctrl context`          | Detect and display active contexts                |
+| `ctrl status`           | Show contexts, client, symlinks, HUD status              |
+| `ctrl context`          | Detect and display active contexts                       |
 
 #### ctrl hud
 
-| Command                 | What it does                           |
-| --------------------------- | -------------------------------------- |
-| `ctrl hud`              | Start the compliance HUD               |
-| `ctrl hud stop`         | Stop the HUD daemon                    |
-| `ctrl hud status`       | Check if running                       |
-| `ctrl hud restart`      | Stop + start                           |
-| `ctrl hud logs [-f]`    | Show daemon log (add `-f` to follow)   |
-| `ctrl hud events`       | Show recent events for current project |
-| `ctrl hud violations`   | Show violations for current project    |
-| `ctrl hud state`        | Full debug state dump (JSON)           |
-| `ctrl hud clear`        | Clear events for a project             |
-| `ctrl hud open`         | Open HUD in browser                    |
-| `ctrl hud url`          | Print the HUD URL                      |
-| `ctrl hud --fg`         | Run HUD in foreground (debug mode)     |
+| Command               | What it does                           |
+| --------------------- | -------------------------------------- |
+| `ctrl hud`            | Start the compliance HUD               |
+| `ctrl hud stop`       | Stop the HUD daemon                    |
+| `ctrl hud status`     | Check if running                       |
+| `ctrl hud restart`    | Stop + start                           |
+| `ctrl hud logs [-f]`  | Show daemon log (add `-f` to follow)   |
+| `ctrl hud events`     | Show recent events for current project |
+| `ctrl hud violations` | Show violations for current project    |
+| `ctrl hud state`      | Full debug state dump (JSON)           |
+| `ctrl hud clear`      | Clear events for a project             |
+| `ctrl hud open`       | Open HUD in browser                    |
+| `ctrl hud url`        | Print the HUD URL                      |
+| `ctrl hud --fg`       | Run HUD in foreground (debug mode)     |
 
 #### ctrl client management & credentials
 
-| Command              | What it does                                             |
-| -------------------- | -------------------------------------------------------- |
-| `ctrl new-client`    | Onboard a new client                                     |
-| `ctrl migrate`       | Read-only diagnostic for existing setups                 |
-| `ctrl uninstall`     | Safely remove all ctrl+shft symlinks + shell integration |
-| `ctrl verify-token`  | Test-mint a GitHub App token                             |
+| Command             | What it does                                             |
+| ------------------- | -------------------------------------------------------- |
+| `ctrl new-client`   | Onboard a new client                                     |
+| `ctrl migrate`      | Read-only diagnostic for existing setups                 |
+| `ctrl uninstall`    | Safely remove all ctrl+shft symlinks + shell integration |
+| `ctrl verify-token` | Test-mint a GitHub App token                             |
 
 #### ctrl session analysis (requires [sheal](https://github.com/liwala/sheal))
 
@@ -752,26 +752,26 @@ ctrl sync-settings
 
 > Bootstrap is mostly idempotent. Here's everything it modifies:
 
-| File                     | Change                                                                              |
-| ------------------------ | ----------------------------------------------------------------------------------- |
-| `~/.claude/CLAUDE.md`    | Symlinked → `~/dotfiles/CLAUDE.md` (or copied on Windows without admin)             |
-| `~/.claude/skills/`      | Linked to `~/dotfiles/skills/` (or replaced with verified fallback copy on Windows) |
-| `~/.claude/agents/`      | Linked to `~/dotfiles/agents/` (or replaced with verified fallback copy on Windows) |
-| `~/.claude/rules/`       | Linked to `~/dotfiles/rules/` (or replaced with verified fallback copy on Windows)  |
-| `~/.copilot/skills/`     | Linked to `~/dotfiles/skills/` (or replaced with verified fallback copy on Windows) |
-| `~/.agents/skills/`      | Linked to `~/dotfiles/skills/` (or replaced with verified fallback copy on Windows) |
-| `~/.bashrc` / `~/.zshrc` | Appends `load-secrets.sh` + `detect-context.sh` integration (idempotent)            |
-| `~/.npmrc`               | Appends `min-release-age=7` (supply chain protection)                               |
-| `~/.config/uv/uv.toml`   | Adds `exclude-newer` date (supply chain protection)                                 |
-| `secrets/.env.agent`     | Created from `.env.agent.example` if missing                                        |
-| `secrets/.env.secrets`   | Created from `.env.secrets.example` if missing                                      |
-| `secrets/.venv/`         | Python venv created for local skill packages                                        |
-| `~/.claude/commands/`    | Linked to `~/dotfiles/commands/`                                                    |
-| `~/.claude/hooks/`       | Linked to `~/dotfiles/hooks/`                                                       |
-| `~/.claude/settings.json`| Hook config merged into existing settings                                           |
-| `~/.local/bin/ctrl`      | CLI installed (symlink or copy)                                                     |
-| `~/.local/bin/shft`      | CLI installed (symlink or copy)                                                     |
-| `working/active-client.md`| Created from template if missing                                                   |
+| File                       | Change                                                                              |
+| -------------------------- | ----------------------------------------------------------------------------------- |
+| `~/.claude/CLAUDE.md`      | Symlinked → `~/dotfiles/CLAUDE.md` (or copied on Windows without admin)             |
+| `~/.claude/skills/`        | Linked to `~/dotfiles/skills/` (or replaced with verified fallback copy on Windows) |
+| `~/.claude/agents/`        | Linked to `~/dotfiles/agents/` (or replaced with verified fallback copy on Windows) |
+| `~/.claude/rules/`         | Linked to `~/dotfiles/rules/` (or replaced with verified fallback copy on Windows)  |
+| `~/.copilot/skills/`       | Linked to `~/dotfiles/skills/` (or replaced with verified fallback copy on Windows) |
+| `~/.agents/skills/`        | Linked to `~/dotfiles/skills/` (or replaced with verified fallback copy on Windows) |
+| `~/.bashrc` / `~/.zshrc`   | Appends `load-secrets.sh` + `detect-context.sh` integration (idempotent)            |
+| `~/.npmrc`                 | Appends `min-release-age=7` (supply chain protection)                               |
+| `~/.config/uv/uv.toml`     | Adds `exclude-newer` date (supply chain protection)                                 |
+| `secrets/.env.agent`       | Created from `.env.agent.example` if missing                                        |
+| `secrets/.env.secrets`     | Created from `.env.secrets.example` if missing                                      |
+| `secrets/.venv/`           | Python venv created for local skill packages                                        |
+| `~/.claude/commands/`      | Linked to `~/dotfiles/commands/`                                                    |
+| `~/.claude/hooks/`         | Linked to `~/dotfiles/hooks/`                                                       |
+| `~/.claude/settings.json`  | Hook config merged into existing settings                                           |
+| `~/.local/bin/ctrl`        | CLI installed (symlink or copy)                                                     |
+| `~/.local/bin/shft`        | CLI installed (symlink or copy)                                                     |
+| `working/active-client.md` | Created from template if missing                                                    |
 
 **Not run by bootstrap:** `sync-settings.sh` (VS Code settings merge) is manual. Run with `--dry-run` first.
 
@@ -883,12 +883,12 @@ Cross-project tracking works automatically. When the agent reads files outside `
 
 ### Lifecycle commands
 
-| Command                | What it does              |
-| ------------------------ | ------------------------- |
-| `ctrl hud`             | Start daemon (background) |
-| `ctrl hud stop`        | Stop daemon               |
-| `ctrl hud status`      | Check if running          |
-| `ctrl hud restart`     | Stop + start              |
+| Command            | What it does              |
+| ------------------ | ------------------------- |
+| `ctrl hud`         | Start daemon (background) |
+| `ctrl hud stop`    | Stop daemon               |
+| `ctrl hud status`  | Check if running          |
+| `ctrl hud restart` | Stop + start              |
 
 Port defaults to `7823`. Override with `HUD_PORT=8080`.
 
