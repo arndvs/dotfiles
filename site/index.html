@@ -3722,19 +3722,26 @@ source ~/.zshrc    # zsh</pre>
         document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 
         // Global anchor scroll — offset for fixed nav + force fade-in visible before measuring
+        function scrollToAnchor(id) {
+            const target = document.getElementById(id);
+            if (!target) return;
+            document.querySelectorAll('.fade-in').forEach(el => el.classList.add('visible'));
+            const navHeight = document.querySelector('nav')?.offsetHeight || 0;
+            const y = target.getBoundingClientRect().top + window.scrollY - navHeight - 24;
+            window.scrollTo({ top: y, behavior: 'instant' });
+            const hash = '#' + id;
+            if (window.location.hash !== hash) {
+                history.pushState(null, '', hash);
+            }
+        }
+
         document.addEventListener('click', function (e) {
             const link = e.target.closest('a[href^="#"]');
             if (!link) return;
             const id = link.getAttribute('href').slice(1);
             if (!id) return;
-            const target = document.getElementById(id);
-            if (!target) return;
             e.preventDefault();
-            // Reveal ALL fade-in sections so layout is fully settled before measuring
-            document.querySelectorAll('.fade-in').forEach(el => el.classList.add('visible'));
-            const navHeight = document.querySelector('nav')?.offsetHeight || 0;
-            const y = target.getBoundingClientRect().top + window.scrollY - navHeight - 24;
-            window.scrollTo({ top: y, behavior: 'instant' });
+            scrollToAnchor(id);
         });
 
         document.querySelectorAll('.copy-btn').forEach(btn => {
@@ -4057,12 +4064,7 @@ source ~/.zshrc    # zsh</pre>
                 'ctrl help': () => {
                     addOutput('Opening CLI reference…', 'hero-terminal-output t-green');
                     setTimeout(() => {
-                        const target = document.getElementById('cli-reference');
-                        if (!target) return;
-                        document.querySelectorAll('.fade-in').forEach(el => el.classList.add('visible'));
-                        const navHeight = document.querySelector('nav')?.offsetHeight || 0;
-                        const y = target.getBoundingClientRect().top + window.scrollY - navHeight - 24;
-                        window.scrollTo({ top: y, behavior: 'instant' });
+                        scrollToAnchor('cli-reference');
                     }, 400);
                 },
                 'help': () => {
