@@ -15,3 +15,5 @@ paths:
   // GOOD
   const addUserToPost = (opts: { userId: string; postId: string }) => {};
   ```
+
+- No `||` or `??` fallbacks for required values. Throw an explicit error instead — fallbacks hide missing data and produce silent misbehavior. Exception: optional values where the fallback is the documented default.
