@@ -1,6 +1,6 @@
 ---
 name: sanity-best-practices
-description: Sanity development best practices for schema design, GROQ queries, TypeGen, Visual Editing, images, Portable Text, Studio structure, localization, migrations, Sanity Functions, Blueprints, and framework integrations such as Next.js, Nuxt, Astro, Remix, SvelteKit, Angular, Hydrogen, and the App SDK. Use this skill whenever working with Sanity schemas, defineType or defineField, GROQ or defineQuery, content modeling, Presentation or preview setups, Sanity-powered frontend integrations, Sanity Functions, documentEventHandler, defineDocumentFunction, defineMediaLibraryAssetFunction, @sanity/functions, @sanity/blueprints, sanity.blueprint.ts, event-driven content automation, or when reviewing and fixing a Sanity codebase.
+description: "Sanity development best practices — schemas, GROQ, TypeGen, Visual Editing, Functions, Blueprints, and framework integrations. Use when working with Sanity content, schemas, queries, or Studio."
 ---
 
 # Sanity Best Practices
@@ -11,7 +11,7 @@ Comprehensive best practices and integration guides for Sanity development, main
 
 ## When to Apply
 
-Reference these guidelines when:
+Reference these guidelines when working with: schema design, GROQ queries, TypeGen, Visual Editing, images, Portable Text, Studio structure, localization, migrations, Sanity Functions, Blueprints, or framework integrations (Next.js, Nuxt, Astro, Remix, SvelteKit, Angular, Hydrogen, App SDK). Triggered by: `defineType`, `defineField`, `defineQuery`, content modeling, Presentation/preview setups, `documentEventHandler`, `defineDocumentFunction`, `defineMediaLibraryAssetFunction`, `@sanity/functions`, `@sanity/blueprints`, `sanity.blueprint.ts`, event-driven content automation, or reviewing a Sanity codebase. More specifically, reference these guidelines when:
 - Setting up a new Sanity project or onboarding
 - Integrating Sanity with a frontend framework (Next.js, Nuxt, Astro, Remix, SvelteKit, Hydrogen)
 - Writing GROQ queries or optimizing performance

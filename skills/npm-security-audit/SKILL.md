@@ -1,6 +1,6 @@
 ---
 name: npm-security-audit
-description: "Runs a comprehensive security check on a locally checked-out npm/Node.js project before installation or execution. Use this skill whenever a user wants to audit a cloned GitHub repo, an npm package on disk, or a local project before running npm install, npm start, npx, or any other npm command. Triggers on phrases like 'check this repo before I run it', 'is this package safe', 'audit this project', 'scan this before installing', 'should I trust this repo', or any time a user has just cloned an unknown repo and is about to run it. If the user has only a GitHub URL, ask them to clone it first — this skill operates on files on disk. Works on monorepos, workspaces, and single-package repos equally."
+description: "Layered security audit on npm/pnpm/yarn projects before installing or running. Use to vet a GitHub repo, npm package, or local project before npm install/start/npx."
 ---
 
 # npm Security Audit Skill
@@ -13,8 +13,8 @@ any code is executed. Works on monorepos (multiple package.json files) and singl
 
 ## When to use
 - User wants to audit a local cloned repo before running it
-- User pastes a package.json and wants it checked
-- User asks "is this safe to run?"
+- Trigger phrases: 'check this repo before I run it', 'is this package safe', 'audit this project', 'scan this before installing', 'should I trust this repo'
+- Trigger proactively if the user mentions cloning a random GitHub repo and running it
 - User has only a GitHub URL: ask them to clone it first — this skill operates on files on disk
 
 ## Step 0 — Detect repo structure (monorepo vs single package)

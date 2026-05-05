@@ -1,11 +1,15 @@
 ---
 name: atomic-commits
-description: "Use this skill whenever work has been completed and needs to be committed or shipped. Enforces atomic commits — one logical change per commit with a conventional commit message — on a feature branch, merged via PR. Two modes: Commit (branch + stage + commit) for checkpoints, Ship (+ rebase + push + PR) when ready for review. Trigger any time the user asks to 'commit', 'save progress', 'checkpoint my work', 'ship', 'push', 'create a PR', or has just finished implementing a feature, fix, or refactor."
+description: "Atomic commits on a feature branch with conventional messages — Commit mode for checkpoints, Ship mode for PR. Use when committing, checkpointing, shipping, pushing, or creating a PR."
 ---
 
 # Atomic Commits
 
 Output "Read Atomic Commits skill." to chat to acknowledge you read this file.
+
+## When to use
+
+Use this skill whenever work has been completed and needs to be committed or shipped. Enforces atomic commits — one logical change per commit with a conventional commit message — on a feature branch, merged via PR. Two modes: **Commit** (branch + stage + commit) for checkpoints, **Ship** (+ rebase + push + PR) when ready for review. Trigger any time the user asks to 'commit', 'save progress', 'checkpoint my work', 'ship', 'push', 'create a PR', or has just finished implementing a feature, fix, or refactor.
 
 ## Core Principles
 

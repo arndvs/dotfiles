@@ -1,6 +1,6 @@
 ---
 name: document
-description: "Write, update, or audit documentation. Use when asked to 'document this', 'write docs', 'update the README', 'add JSDoc', 'write a changelog', 'create an ADR', or when documentation is missing or out of date. Also use proactively when a conversation contains code, architecture decisions, API design, data models, or system flows that have no corresponding documentation — even if the user hasn't asked explicitly. When in doubt, scan the conversation and propose a documentation plan."
+description: "Write, update, or audit documentation. Use when asked to 'document this', 'write docs', 'update the README', 'add JSDoc', 'write a changelog', or 'create an ADR'."
 ---
 
 # Document
@@ -8,6 +8,10 @@ description: "Write, update, or audit documentation. Use when asked to 'document
 Output "Read Document skill." to chat to acknowledge you read this file.
 
 Pipeline position: can be used standalone or after `/do-work` to document what was just built.
+
+## Proactive use
+
+Also use proactively when a conversation contains code, architecture decisions, API design, data models, or system flows that have no corresponding documentation — even if the user hasn't asked explicitly. When in doubt, scan the conversation and propose a documentation plan.
 
 ## Role
 
