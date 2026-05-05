@@ -19,42 +19,42 @@ A 7-phase framework for designing user-centered digital products — from goal d
 
 ## The 7 Phases
 
-Run each phase sequentially. Do not skip phases — outputs of phase N are required inputs for phase N+1.
+Run each phase sequentially. Do not skip phases — outputs of phase N are required inputs for phase N+1. Each phase has a detailed reference document under [references/](references/). Read the phase reference before running the phase, then read each step reference as you work through it.
 
 ### Phase 1 — User Stories
 
-Invoke `/ux-user-stories`. Produces: `user-stories.md`
-Steps: Identify Goals → Write User Story → Highlight Key Terms & Verbs
+Reference: [references/phase-1-user-stories.md](references/phase-1-user-stories.md). Produces: `user-stories.md`
+Steps: [Identify Goals](references/phase-1-user-stories/identify-goals.md) → [Write User Story](references/phase-1-user-stories/write-user-story.md) → [Highlight Key Terms & Verbs](references/phase-1-user-stories/highlight-key-terms.md)
 
 ### Phase 2 — System Map
 
-Invoke `/ux-system-map`. Produces: `system-map.md` (with Mermaid ERD)
-Steps: Create System Map → Draw Relationships
+Reference: [references/phase-2-system-map.md](references/phase-2-system-map.md). Produces: `system-map.md` (with Mermaid ERD)
+Steps: [Create System Map](references/phase-2-system-map/create-system-map.md) → [Draw Relationships](references/phase-2-system-map/draw-relationships.md)
 
 ### Phase 3 — Flow Diagram
 
-Invoke `/ux-flow-diagram`. Produces: `flow-diagram.md` (with Mermaid flowchart)
-Steps: List Screens → Create Flow Diagram → Validate with User Stories
+Reference: [references/phase-3-flow-diagram.md](references/phase-3-flow-diagram.md). Produces: `flow-diagram.md` (with Mermaid flowchart)
+Steps: [List Screens](references/phase-3-flow-diagram/list-screens.md) → [Create Flow Diagram](references/phase-3-flow-diagram/create-flow-diagram.md) → [Validate with User Stories](references/phase-3-flow-diagram/validate-flow.md)
 
 ### Phase 4 — Model Attributes
 
-Invoke `/ux-model-attributes`. Produces: `attributes.md`
-Steps: List Attributes for each system map element
+Reference: [references/phase-4-model-attributes.md](references/phase-4-model-attributes.md). Produces: `attributes.md`
+Steps: [List Attributes](references/phase-4-model-attributes/list-attributes.md) for each system map element
 
 ### Phase 5 — Screen Requirements
 
-Invoke `/ux-screen-requirements`. Produces: `screen-requirements.md`
-Steps: Create Goals → Apply Inform/Engage/Invite → List Screen Attributes (ABC)
+Reference: [references/phase-5-screen-requirements.md](references/phase-5-screen-requirements.md). Produces: `screen-requirements.md`
+Steps: [Create Screen Goals](references/phase-5-screen-requirements/create-screen-goals.md) → [Inform / Engage / Invite](references/phase-5-screen-requirements/inform-engage-invite.md) → [List Screen Attributes (ABC)](references/phase-5-screen-requirements/list-screen-attributes.md)
 
 ### Phase 6 — Interface Design
 
-Invoke `/ux-interface-design`. Produces: `interface-design.md` (specs + wireframes)
-Steps: Get Inspired → High-Level Sketches → Detailed Sketches
+Reference: [references/phase-6-interface-design.md](references/phase-6-interface-design.md). Produces: `interface-design.md` (specs + wireframes)
+Steps: [Get Inspired](references/phase-6-interface-design/get-inspired.md) → [High-Level Sketches](references/phase-6-interface-design/high-level-sketches.md) → [Detailed Sketches](references/phase-6-interface-design/detailed-sketches.md)
 
 ### Phase 7 — Test Driven Design
 
-Invoke `/ux-test-driven-design`. Produces: `test-plan.md`
-Steps: User Testing → Six Mistakes Review
+Reference: [references/phase-7-test-driven-design.md](references/phase-7-test-driven-design.md). Produces: `test-plan.md`
+Steps: [User Testing](references/phase-7-test-driven-design/user-testing.md) → [Six Mistakes Review](references/phase-7-test-driven-design/six-mistakes.md)
 
 ## Data Flow
 
