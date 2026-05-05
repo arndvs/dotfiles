@@ -123,14 +123,36 @@ All agents use read-only tools (Read, Grep, Glob, Bash) and `memory: user` for p
 
 `rules/` contains convention-enforcement files that load only when the agent touches matching files. Each rule uses `paths:` YAML frontmatter to scope itself.
 
-| Rule                   | Scoped to                                       |
-| ---------------------- | ----------------------------------------------- |
-| `test-conventions`     | `**/*.test.*`, `**/*.spec.*`, `**/__tests__/**` |
-| `migration-safety`     | `**/migrations/**`, `**/prisma/migrations/**`   |
-| `env-security`         | `**/.env*`, `**/secrets/**`, `**/credentials*`  |
-| `terminal-workarounds` | Terminal sessions                               |
+| Rule                          | Scoped to                                       |
+| ----------------------------- | ----------------------------------------------- |
+| `test-conventions`            | `**/*.test.*`, `**/*.spec.*`, `**/__tests__/**` |
+| `migration-safety`            | `**/migrations/**`, `**/prisma/migrations/**`   |
+| `env-security`                | `**/.env*`, `**/secrets/**`, `**/credentials*`  |
+| `terminal-workarounds`        | Terminal sessions                               |
+| `git-conventions`             | `**/*` (committing or reviewing changes)        |
+| `typescript-conventions`      | `**/*.{ts,tsx}`                                 |
+| `javascript-modern`           | `**/*.{ts,tsx,js,jsx,mjs,cjs}`                  |
+| `frontend-conventions`        | `**/*.{ts,tsx,js,jsx,css,scss,html,svelte,vue}` |
+| `dark-mode`                   | `**/*.{tsx,jsx,css,scss}`                       |
+| `tailwind-shadcn`             | `**/*.{tsx,jsx}`                                |
+| `framer-motion`               | `**/*.{tsx,jsx}`                                |
+| `server-vs-client-components` | `**/app/**/*.{tsx,jsx}`, `**/components/**/*.{tsx,jsx}` |
 
 Rules without `paths:` load every session. Add your own: `rules/your-rule.md` — auto-discovered.
+
+### Four-tier disclosure model
+
+Instructions are organized so the always-on payload stays small and conditional knowledge only loads when needed:
+
+| Tier | Loaded when | Where |
+| ---- | ----------- | ----- |
+| **T1 always-on** | every session | `global.instructions.md`, `instructions/handoff.instructions.md` |
+| **T2 context-gated** | `ACTIVE_CONTEXTS` matches | `instructions/{nextjs,sanity,php,...}.instructions.md` |
+| **T2 service/task-triggered** | task or service mentioned | `instructions/{css,sentry,google-docs,hud,...}.instructions.md` |
+| **T3 path-gated** | edited file matches `paths:` glob | `rules/*.md` |
+| **T4 skill-triggered** | task description matches | `skills/*/SKILL.md` |
+
+Re-shelve aggressively: if a rule applies only to `.tsx` files, it belongs in `rules/`, not `global.instructions.md`.
 
 ### Hardened secrets
 

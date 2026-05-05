@@ -78,6 +78,22 @@ For skills that are specific to your client, codebase, or company — proprietar
 
 ---
 
+### Picking a tier (instructions vs rules)
+
+Before adding agent guidance, pick the lowest tier that triggers correctly:
+
+| Tier | Where to put it | When to use |
+| ---- | --------------- | ----------- |
+| **T1 always-on** | `global.instructions.md` | Universal philosophy and safety rules — applies to *every* task |
+| **T2 context-gated** | `instructions/<stack>.instructions.md` | Stack-specific (Next.js, Sanity, PHP) — loads via `ACTIVE_CONTEXTS` |
+| **T2 task-triggered** | `instructions/<service>.instructions.md` | Service or task mentioned in CLAUDE.base.md (CSS, Sentry, HUD) |
+| **T3 path-gated** | `rules/<topic>.md` with `paths:` | Loads only when the agent edits a matching file |
+| **T4 skill-triggered** | `skills/<skill>/SKILL.md` | Multi-step workflows the agent invokes on demand |
+
+Re-shelve aggressively. If a rule applies only to `.tsx` files, it belongs in `rules/` with `paths: ["**/*.{tsx,jsx}"]` — not in `global.instructions.md`. The always-on payload should be lean.
+
+---
+
 ### Skills
 
 A skill is a markdown file that teaches an agent a specific method or procedure.
