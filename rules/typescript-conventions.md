@@ -41,3 +41,20 @@ paths:
 
 - Format all function or const parameters on one line: `export async function saveConversationDraft(type: 'idea' | 'builder', firstMessage: string, onSaved?: () => void): Promise<string | null> { ... }`
 - Put an empty line after a const declaration. If there are multiple consecutive constants, only put an empty line after the last one.
+
+## Props and Component Types
+
+- Define explicit TypeScript interfaces for all props:
+
+  ```tsx
+  interface ButtonProps {
+    text: string;
+    onClick: () => void;
+    variant?: "primary" | "secondary" | "tertiary";
+    isDisabled?: boolean;
+  }
+  ```
+
+- Use discriminated unions for complex props
+- Provide sensible defaults for optional props
+- Use non-nullable types where appropriate
