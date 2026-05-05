@@ -60,13 +60,6 @@ After updating, tell the user: "Updated [skill-name] skill: [one-sentence summar
 Read the relevant SKILL.md in full, find the most suitable place to integrate the information in a DRY way, and edit it inline. Only fall back to `## Lessons Learned` if no better location exists. Confirm with: "Saved to [skill-name] skill: [one-sentence summary]."
 </skill-self-learning>
 
-<git>
-- One logical change per commit. Never bundle unrelated fixes
-- Review `git diff --staged` before committing. No debug logs or dead code
-- Commit message format: `<type>(<scope>): <short description>` — types: feat, fix, refactor, chore, docs, test
-- Each commit must leave the codebase working — no broken states mid-task
-</git>
-
 <thinking>
 - You must engage in exhaustive, deep-level reasoning. Think deeply about edge cases, data integrity, and architectural consequences before writing code and after refactorings.
 - Self-check before committing: "Would a senior engineer say this is overcomplicated?" If yes, simplify. "Does every changed line trace directly to the user's request?" If not, revert the extras.
