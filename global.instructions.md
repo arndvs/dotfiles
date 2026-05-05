@@ -26,7 +26,6 @@ Output "Read global instructions." to chat to acknowledge you read this file.
 - Don't touch code outside the task. If you notice dead code or problems, mention them — don't fix them. Only remove imports/variables your changes made unused
 - Never change my AI model, its context window, settings, URL or API keys unless explicitly told to do so
 - If anything is unclear, ambiguous, or has a simpler alternative, stop and ask before implementing. List options when multiple valid interpretations exist
-- Use modern APIs and patterns over legacy approaches. Baseline browser support is February 2026
 - NEVER print credentials: Not in logs, not in error messages, not in agent outputs
 - If I tell you to "report" or ask "how feasible", enter discuss mode and DO NOT EDIT CODE UNTIL I EXPLICITLY TELL YOU TO DO SO. Simply report, discuss, get skeptical, double check and plan all changes in a lean, DRY way
 - When an API call fails (expired token, auth error, missing permissions), STOP IMMEDIATELY. Do not continue the task, do not speculate. Tell me the exact error, which token/key needs updating and in which file, then wait for me to fix it
