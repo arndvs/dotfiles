@@ -9,6 +9,50 @@ Output "Read Sanity instructions." to chat to acknowledge you read this file.
 - Node.js 20+ is required (introduced as a requirement in the v4 generation and still applies).
 - Studio APIs are stable across v3 → v4 → v5 for most common integrations, so migration is usually dependency and tooling focused rather than API-breakage focused.
 
+## Sanity + Next.js Live Content API
+
+- Use `defineLive` from `next-sanity/live` (not `next-sanity`).
+- Use `sanityFetch` for Server Component data fetching instead of calling `client.fetch()` directly in pages/routes.
+- Render `<SanityLive />` in the root layout so live updates and presentation tooling can stream updates.
+- For `generateMetadata` and `generateStaticParams`, set `stega: false`.
+- In `generateStaticParams`, use `perspective: 'published'` to avoid draft-aware behavior during static path generation.
+- For optimized live editing in app code, use `usePresentationQuery` from `next-sanity/hooks` where appropriate.
+
+Recommended pattern:
+
+```typescript
+// src/sanity/lib/live.ts
+import { defineLive } from "next-sanity/live";
+import { client } from "./client";
+
+export const { sanityFetch, SanityLive } = defineLive({
+  client,
+  serverToken: token,
+  browserToken: token,
+});
+
+// Usage in a page
+const { data } = await sanityFetch({ query: POST_QUERY, params });
+
+// Metadata
+export async function generateMetadata({ params }) {
+  const { data } = await sanityFetch({
+    query: SEO_QUERY,
+    params,
+    stega: false,
+  });
+}
+
+// Static params
+export async function generateStaticParams() {
+  const { data } = await sanityFetch({
+    query: SLUGS_QUERY,
+    perspective: "published",
+    stega: false,
+  });
+}
+```
+
 ## Commands
 
 ```bash
