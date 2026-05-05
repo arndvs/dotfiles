@@ -54,4 +54,4 @@ If working on CSS, styling, or frontend UI, also read:
 
 ## About Local Instructions
 
-`bootstrap.sh` auto-appends `@`-references for any `*.instructions.md` files found in `instructions/_local/`. Run `bootstrap.sh` after adding new local instruction files.
+`bootstrap.sh` auto-appends `@`-references for any `*.instructions.md` files found in `instructions/_local/`. Files with `auto-load: false` in their frontmatter are registered as task-triggered instead — read them only when the task matches their description. Run `bootstrap.sh` after adding new local instruction files.
