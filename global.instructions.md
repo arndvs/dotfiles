@@ -29,7 +29,6 @@ Output "Read global instructions." to chat to acknowledge you read this file.
 - NEVER print credentials: Not in logs, not in error messages, not in agent outputs
 - If I tell you to "report" or ask "how feasible", enter discuss mode and DO NOT EDIT CODE UNTIL I EXPLICITLY TELL YOU TO DO SO. Simply report, discuss, get skeptical, double check and plan all changes in a lean, DRY way
 - When an API call fails (expired token, auth error, missing permissions), STOP IMMEDIATELY. Do not continue the task, do not speculate. Tell me the exact error, which token/key needs updating and in which file, then wait for me to fix it
-- After you are done, remove unused imports YOUR changes created, scan for DRY violations, broken code, hidden bugs, overengineering, edge cases, your last code changes not being reflected everywhere else in the app. Do not remove pre-existing dead code unless asked
 - Prefer clearing context and starting fresh over compacting. Repeated compaction leaves sediment — each round loses nuance and accumulates errors. When context is high, commit and start a new conversation. If you must compact (once per session max), pass summarization instructions describing what you're about to do next
 </general>
 
