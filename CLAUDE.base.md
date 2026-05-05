@@ -44,6 +44,9 @@ If working with Google Docs, Sheets, or Slides, also read:
 If working with Sentry, also read:
 @~/dotfiles/instructions/sentry.instructions.md
 
+If the HUD daemon is running (check: `curl -sf http://localhost:7823/api/state > /dev/null 2>&1`), also read:
+@~/dotfiles/instructions/hud.instructions.md
+
 ## Task-Triggered Instructions
 
 If working on CSS, styling, or frontend UI, also read:
