@@ -20,7 +20,6 @@ Always read global rule instructions first and confirm that you have done so by 
 Check the $ACTIVE_CONTEXTS environment variable (set by ~/dotfiles/bin/detect-context.sh). Load instructions matching each active context:
 
 - `nextjs` → @~/dotfiles/instructions/nextjs.instructions.md
-- `nextjs` or `react` → @~/dotfiles/instructions/ux-prototyping.instructions.md
 - `php` or `laravel` → @~/dotfiles/instructions/php.instructions.md
 - `sanity` → @~/dotfiles/instructions/sanity.instructions.md
 

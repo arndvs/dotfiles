@@ -533,7 +533,6 @@ shft help     # autonomous execution commands
 │   ├── sentry.instructions.md
 │   ├── google-docs.instructions.md
 │   ├── css.instructions.md
-│   ├── ux-prototyping.instructions.md
 │   ├── handoff.instructions.md      ← cross-conversation persistence protocol
 │   └── _local/                      ← GITIGNORED — your private instructions
 ├── commands/
