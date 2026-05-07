@@ -28,12 +28,17 @@ find . -name "package.json" \
   -not -path "*/.git/*" | sort
 
 # Detect package manager and security posture
+# Note: pnpm declares workspaces in pnpm-workspace.yaml, not package.json.
+if [ -f pnpm-workspace.yaml ]; then
+  echo "Workspaces (pnpm-workspace.yaml):"
+  grep -E '^\s*-\s' pnpm-workspace.yaml | head -20
+fi
 cat package.json | python3 -c "
 import json,sys
 p=json.load(sys.stdin)
 ws=p.get('workspaces') or p.get('packages')
 pm=p.get('packageManager','')
-print(f'Workspaces: {ws}')
+print(f'Workspaces (package.json): {ws}')
 print(f'packageManager: {pm}')
 # pnpm script allowlist — security-positive signal
 built=p.get('pnpm',{}).get('onlyBuiltDependencies')
@@ -144,7 +149,7 @@ p=json.load(open('$pkg'))
 deps={**p.get('dependencies',{}),**p.get('devDependencies',{}),**p.get('peerDependencies',{})}
 popular=['react','express','lodash','axios','moment','chalk','commander','dotenv',
          'eslint','webpack','babel','typescript','jest','mocha','prettier','vite',
-         'rollup','esbuild','vitest','zod','prisma','nextjs','tailwind']
+         'rollup','esbuild','vitest','zod','prisma','next','tailwindcss']
 hits=[]
 for dep in deps:
     for pop in popular:
@@ -315,8 +320,10 @@ PYEOF
 git log --oneline --since='30 days ago' -- \
   '*.json' '*.config.*' '.eslint*' '*.rc' '*.rc.js' 2>/dev/null | head -20
 
-# Force pushes (sign of history rewrite / repo tampering)
-git reflog --date=relative 2>/dev/null | grep -i 'force\|reset' | head -10
+# Local history rewrites visible to this clone only.
+# NOTE: reflog cannot detect upstream force-pushes that happened before you cloned.
+# For that, compare against a known-good commit or check GitHub's events API.
+git reflog --date=relative 2>/dev/null | grep -Ei 'forced-update|reset|rebase' | head -10
 
 # Config files modified in the last 7 days
 git log --oneline --diff-filter=M --name-only --since='7 days ago' \
