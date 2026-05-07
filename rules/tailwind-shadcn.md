@@ -16,19 +16,11 @@ paths:
   ">
   ```
 
-- Group related Tailwind classes together:
+- Group related Tailwind classes together by category (Layout, Typography, Visual, States), in that order:
 
   ```tsx
-  <div className="
-      {/* Layout */}
-      flex flex-col gap-4 p-6
-      {/* Typography */}
-      text-foreground font-medium
-      {/* Visual */}
-      bg-background rounded-lg shadow-md
-      {/* States */}
-      hover:shadow-lg transition-shadow duration-200
-  ">
+  // Layout · Typography · Visual · States
+  <div className="flex flex-col gap-4 p-6 text-foreground font-medium bg-background rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200">
   ```
 
 - Avoid arbitrary values (`[w-327px]`) when possible; use standard Tailwind spacing

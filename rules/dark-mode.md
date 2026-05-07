@@ -50,12 +50,6 @@ paths:
    - Page background: `bg-background` → `dark:bg-surface-0` (handled globally)
    - Brand CTAs: `bg-primary/10` → `dark:bg-surface-accent`
 
-## Reference Documentation
-
-- **Complete guide:** `docs/dark-mode-design-system.md`
-- **Token reference:** `src/lib/styles/dark-mode-tokens.ts`
-- **Migration helpers:** `src/lib/utils/dark-mode-helpers.ts`
-
 ## Testing Requirements
 
 - Test all components in both light and dark modes

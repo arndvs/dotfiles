@@ -28,36 +28,45 @@ paths:
 - Keep most of the component tree as server components
 
 ```tsx
-// ✅ CORRECT - Server component with minimal client component
-// Parent (Server Component)
+// ✅ CORRECT - Server component renders a tiny client island.
+// The Client Component owns its own handler; the Server Component
+// passes only serializable data (or a Server Action) across the boundary.
+
+// interactive-button.tsx
+'use client';
+export function InteractiveButton({ label }: { label: string }) {
+  return <button onClick={() => console.log('clicked')}>{label}</button>;
+}
+
+// feature-section.tsx (Server Component)
+import { InteractiveButton } from './interactive-button';
+
 export default function FeatureSection({ data }: Props) {
   return (
     <section>
       <h2>{data.title}</h2>
       <p>{data.description}</p>
-      <InteractiveButton onClick={data.handleClick} />
+      <InteractiveButton label={data.cta} />
     </section>
   );
 }
 
-// Child (Client Component - minimal scope)
-("use client");
-function InteractiveButton({ onClick }: { onClick: () => void }) {
-  return <button onClick={onClick}>Click Me</button>;
-}
-
-// ❌ WRONG - Entire component marked as client when only button needs it
-("use client");
+// ❌ WRONG - Entire section marked client just for one button.
+'use client';
 export default function FeatureSection({ data }: Props) {
   return (
     <section>
       <h2>{data.title}</h2>
       <p>{data.description}</p>
-      <button onClick={data.handleClick}>Click Me</button>
+      <button onClick={() => console.log('clicked')}>{data.cta}</button>
     </section>
   );
 }
 ```
+
+> **Note:** functions are not serializable across the server→client boundary. To trigger server work from a Client Component, use a Server Action (a function exported from a `'use server'` module) and pass that as the prop, not an inline closure.
+>
+> The `'use client'` directive must be the first statement at the top of the file (a bare string literal). `("use client");` written as an expression statement is **not** a directive and will silently leave the file as a Server Component.
 
 ## Pattern for Data
 

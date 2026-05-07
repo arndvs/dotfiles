@@ -39,22 +39,31 @@ Our animation system prioritizes **instant content visibility** with **subtle, p
 - **CRITICAL: Use scroll-triggered animations for content sections (non-hero)**
 
   ```tsx
+  'use client';
+  import { motion } from 'framer-motion';
   import {
     useContainerVariants,
     useItemVariants,
-  } from "@/lib/hooks/use-animation-variants";
+  } from '@/lib/hooks/use-animation-variants';
 
-  const containerVars = useContainerVariants();
-  const itemVars = useItemVariants();
+  export function RevealList({ items }: { items: React.ReactNode[] }) {
+    // Hooks must be called inside a component or another custom hook.
+    const containerVars = useContainerVariants();
+    const itemVars = useItemVariants();
 
-  <motion.div
-    initial="hidden"
-    whileInView="visible"
-    viewport={{ once: true, margin: "-100px" }}
-    variants={containerVars}
-  >
-    {content}
-  </motion.div>;
+    return (
+      <motion.ul
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-100px' }}
+        variants={containerVars}
+      >
+        {items.map((item, i) => (
+          <motion.li key={i} variants={itemVars}>{item}</motion.li>
+        ))}
+      </motion.ul>
+    );
+  }
   ```
 
 - **CRITICAL: Above-fold content MUST use CLS-safe or instant variants**
