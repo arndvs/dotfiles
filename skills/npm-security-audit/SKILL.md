@@ -1,6 +1,6 @@
 ---
 name: npm-security-audit
-description: "Runs a comprehensive security check on an npm/Node.js project before installation or execution. Use this skill whenever a user wants to audit a GitHub repo, npm package, or local project before running npm install, npm start, npx, or any other npm command. Triggers on phrases like 'check this repo before I run it', 'is this package safe', 'audit this project', 'scan this before installing', 'should I trust this repo', or any time a user is about to clone and run an unknown repo. Also trigger proactively if a user mentions cloning a random GitHub repo and running it. Works on monorepos, workspaces, and single-package repos equally."
+description: "Runs a comprehensive security check on a locally checked-out npm/Node.js project before installation or execution. Use this skill whenever a user wants to audit a cloned GitHub repo, an npm package on disk, or a local project before running npm install, npm start, npx, or any other npm command. Triggers on phrases like 'check this repo before I run it', 'is this package safe', 'audit this project', 'scan this before installing', 'should I trust this repo', or any time a user has just cloned an unknown repo and is about to run it. If the user has only a GitHub URL, ask them to clone it first — this skill operates on files on disk. Works on monorepos, workspaces, and single-package repos equally."
 ---
 
 # npm Security Audit Skill
@@ -13,13 +13,13 @@ any code is executed. Works on monorepos (multiple package.json files) and singl
 
 ## When to use
 - User wants to audit a local cloned repo before running it
-- User wants to audit a GitHub repo URL before cloning
 - User pastes a package.json and wants it checked
 - User asks "is this safe to run?"
+- User has only a GitHub URL: ask them to clone it first — this skill operates on files on disk
 
 ## Step 0 — Detect repo structure (monorepo vs single package)
 
-Always run this first to know what you're dealing with:
+Always run this first to know what you're dealing with. Do NOT assume `./package.json` exists at the repo root — some repos keep the Node app in a subdirectory.
 
 ```bash
 # Find ALL package.json files, excluding node_modules
@@ -27,27 +27,33 @@ find . -name "package.json" \
   -not -path "*/node_modules/*" \
   -not -path "*/.git/*" | sort
 
-# Detect package manager and security posture
-# Note: pnpm declares workspaces in pnpm-workspace.yaml, not package.json.
+# Workspaces declared in pnpm-workspace.yaml (pnpm doesn't put them in package.json)
 if [ -f pnpm-workspace.yaml ]; then
   echo "Workspaces (pnpm-workspace.yaml):"
   grep -E '^\s*-\s' pnpm-workspace.yaml | head -20
 fi
-cat package.json | python3 -c "
-import json,sys
-p=json.load(sys.stdin)
-ws=p.get('workspaces') or p.get('packages')
-pm=p.get('packageManager','')
+
+# Detect package manager and security posture for EACH discovered package.json
+find . -name "package.json" \
+  -not -path "*/node_modules/*" \
+  -not -path "*/.git/*" -print0 | while IFS= read -r -d '' pkg; do
+  echo "--- $pkg ---"
+  python3 - "$pkg" <<'PY'
+import json, sys
+with open(sys.argv[1], 'r', encoding='utf-8') as f:
+    p = json.load(f)
+ws = p.get('workspaces') or p.get('packages')
+pm = p.get('packageManager', '')
 print(f'Workspaces (package.json): {ws}')
 print(f'packageManager: {pm}')
-# pnpm script allowlist — security-positive signal
-built=p.get('pnpm',{}).get('onlyBuiltDependencies')
+built = p.get('pnpm', {}).get('onlyBuiltDependencies')
 if built:
     print(f'GOOD: pnpm.onlyBuiltDependencies allowlist present: {built}')
     print('  (only these packages can run install scripts — all others blocked)')
 else:
     print('NOTE: No pnpm.onlyBuiltDependencies — all transitive deps can run scripts')
-"
+PY
+done
 ```
 
 **If monorepo:** run Layers 1-3 against EVERY package.json found, not just the root.
@@ -97,40 +103,60 @@ done
 
 ### Layer 2 — Lock File Integrity
 Lock files are a common tamper point — a dependency can be swapped for a malicious version
-without touching package.json.
+without touching package.json. In a monorepo, every workspace can carry its own lock file,
+so scan all of them, not just the root.
 
 ```bash
-# Check for recently modified lock files (tampering signal)
+# Check for recently modified lock files anywhere in the repo (tampering signal)
 git log --oneline --since='14 days ago' --name-only -- \
-  'package-lock.json' 'yarn.lock' 'pnpm-lock.yaml' 2>/dev/null | head -30
+  '*package-lock.json' '*yarn.lock' '*pnpm-lock.yaml' 2>/dev/null | head -30
 
-# Scan pnpm-lock.yaml for non-registry package sources
-if [ -f pnpm-lock.yaml ]; then
-  echo "=== Non-registry sources in pnpm-lock.yaml ==="
-  grep -E '^\s+(resolution|tarball):' pnpm-lock.yaml | \
+# Scan EVERY pnpm-lock.yaml for non-registry package sources
+find . -name 'pnpm-lock.yaml' -not -path '*/node_modules/*' | while read lock; do
+  echo "=== Non-registry sources in $lock ==="
+  grep -E '^\s+(resolution|tarball):' "$lock" | \
     grep -v 'registry.npmjs.org\|registry.yarnpkg.com' | head -20
-fi
+done
 
-# Scan package-lock.json for non-registry resolved URLs
-if [ -f package-lock.json ]; then
-  python3 -c "
-import json
-lock=json.load(open('package-lock.json'))
+# Scan EVERY package-lock.json for non-registry resolved URLs
+find . -name 'package-lock.json' -not -path '*/node_modules/*' | while read lock; do
+  python3 - "$lock" <<'PY'
+import json, sys
+lock=json.load(open(sys.argv[1]))
 pkgs=lock.get('packages',lock.get('dependencies',{}))
+hits=[]
 for name,info in pkgs.items():
-    resolved=info.get('resolved','')
+    resolved=info.get('resolved','') if isinstance(info,dict) else ''
     if resolved and 'registry.npmjs.org' not in resolved and resolved.startswith('http'):
-        print(f'  NON-REGISTRY: {name} -> {resolved}')
-" 2>/dev/null
-fi
+        hits.append(f'  NON-REGISTRY: {name} -> {resolved}')
+if hits:
+    print(f'=== {sys.argv[1]} ===')
+    for h in hits: print(h)
+PY
+done
+
+# Scan EVERY yarn.lock for non-registry resolved URLs
+find . -name 'yarn.lock' -not -path '*/node_modules/*' | while read lock; do
+  echo "=== Non-registry sources in $lock ==="
+  grep -E '^\s+resolved "' "$lock" | \
+    grep -v 'registry.npmjs.org\|registry.yarnpkg.com' | head -20
+done
 ```
 
 ---
 
 ### Layer 3 — Dependency Audit + Typosquatting
+Use the audit command that matches the project's package manager. All three resolve
+advisories from the same npm advisory database, but each only sees its own lock file.
+
 ```bash
-# Known vulnerability check
-npm audit --json 2>/dev/null | python3 -c "
+# Pick the audit command for the package manager in use
+if [ -f pnpm-lock.yaml ]; then
+  echo '=== pnpm audit ===';     pnpm audit --json 2>/dev/null || echo '(pnpm audit failed or pnpm not installed)'
+elif [ -f yarn.lock ]; then
+  echo '=== yarn audit ===';     yarn npm audit --json 2>/dev/null || yarn audit --json 2>/dev/null || echo '(yarn audit failed or yarn not installed)'
+elif [ -f package-lock.json ]; then
+  npm audit --json 2>/dev/null | python3 -c "
 import json,sys
 d=json.load(sys.stdin)
 vulns=d.get('vulnerabilities',{})
@@ -140,6 +166,9 @@ for name,info in list(vulns.items())[:20]:
     sev=info.get('severity','unknown')
     print(f'  [{sev.upper()}] {name}')
 " 2>/dev/null || echo "(npm audit requires node_modules — run after install)"
+else
+  echo 'No lock file found — cannot run audit'
+fi
 
 # Typosquatting check across ALL package.json files
 find . -name "package.json" -not -path "*/node_modules/*" | while read pkg; do
