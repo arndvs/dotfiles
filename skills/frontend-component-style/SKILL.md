@@ -7,7 +7,7 @@ description: "Frontend component file structure and naming. Use when CREATING a 
 
 Output "Read Frontend Component Style skill." to chat to acknowledge you read this file.
 
-This skill answers two structural questions: **where does each piece of code live**, and **what is each piece named** (including the names of related types and interfaces). Styling and runtime concerns (Tailwind tokens, dark-mode variants, server/client split, animation) are owned by the path-gated rules listed at the bottom — trust them; don't duplicate. TypeScript typing patterns themselves remain in `rules/typescript-conventions.md`.
+This skill answers two structural questions: **where does each piece of code live**, and **what is each piece named** (including the names of related types and interfaces). Styling and runtime concerns (Tailwind tokens, dark-mode variants, server/client split, animation) and accessibility requirements (ARIA semantics, keyboard navigation, focus management, reduced-motion handling, CLS-safe variants) are owned by the relevant path-gated rules listed at the bottom — trust them; don't duplicate, but do preserve those requirements when creating or refactoring components. TypeScript typing patterns themselves remain in `rules/typescript-conventions.md`.
 
 ---
 
@@ -94,7 +94,13 @@ const UserDashboardCard = () => (
 );
 
 // ===== Subcomponents =====
-const MetricRow = ({ label, value, trend }: { label: string; value: string; trend: string }) => {
+interface MetricRowProps {
+  label: string;
+  value: string;
+  trend: string;
+}
+
+const MetricRow = ({ label, value, trend }: MetricRowProps) => {
   const trendData = formatTrend(trend);
   return (
     <div>
@@ -112,7 +118,6 @@ export default UserDashboardCard;
 
 - If a prototype crosses ~250 lines or has 4+ subcomponents, mention it. Suggest promoting to production. Do not auto-promote.
 - If an external dataset is already imported in the file, use it — don't refactor the data shape just to match the inline-JSON convention.
-- Don't change website copy unless told to.
 
 ---
 
@@ -137,8 +142,8 @@ Page-level view → Composed → Primitive → Logic + Data
 
 - **Data files** import nothing local; export typed content
 - **Logic files** import nothing local; export pure functions
-- **Primitives** import only Logic + types; never other Primitives
-- **Composed** imports Primitives + types; owns no formatting
+- **Primitives** may import Logic + types and shared UI primitives (e.g. `components/ui/*`, framework helpers); never import other feature Primitives or Composed components
+- **Composed** imports feature Primitives + types (and shared UI primitives if needed); owns no formatting
 - **Page-level views** import Composed + Data; no logic, no formatting
 
 ### What it looks like
@@ -254,8 +259,8 @@ Extract when there is **a second consumer**, **non-trivial logic**, or **a real 
 - Forbidden: `Card`, `Item`, `Widget`, `Section`, `DisplayComponent`
 
 ### Functions
-- **Returns a value** → noun phrase: `formatCurrency`, `getTrendDirection`, `buildInvoiceRows`
-- **Performs an action** → verb phrase: `handlePlanUpgrade`, `submitBillingForm`, `downloadInvoicePdf`
+- **Returns, derives, formats, or builds a value** → verb-led value name: `formatCurrency`, `getTrendDirection`, `buildInvoiceRows`
+- **Performs a side effect or user/system action** → verb phrase: `handlePlanUpgrade`, `submitBillingForm`, `downloadInvoicePdf`
 - Event handlers name the action, not the event: `handlePlanUpgrade` not `handleClick`, `handleInvoiceDownload` not `handleSubmit`
 
 ### Types and interfaces
@@ -290,6 +295,12 @@ A reviewer should always know where to look for each kind of thing.
 - ❌ "Shows the metric, handles the click, and formats the trend" → split into three
 
 If you can't, split.
+
+---
+
+## Cross-cutting guardrails (both modes)
+
+- Don't change website copy unless told to. This applies in Prototype and Production alike, including refactors and file splits.
 
 ---
 
