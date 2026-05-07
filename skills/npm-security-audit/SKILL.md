@@ -71,7 +71,7 @@ These run automatically on `npm install`. Malicious actors hide code here.
 # -print0 + read -d '' handles paths with spaces; pass path as argv to Python.
 find . -name "package.json" \
   -not -path "*/node_modules/*" \
-  -not -path "*/.git/*" -print0 | sort -z | while IFS= read -r -d '' pkg; do
+  -not -path "*/.git/*" -print0 | while IFS= read -r -d '' pkg; do
   echo "=== $pkg ==="
   python3 - "$pkg" <<'PY'
 import json, sys

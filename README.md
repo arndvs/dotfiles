@@ -129,7 +129,7 @@ All agents use read-only tools (Read, Grep, Glob, Bash) and `memory: user` for p
 | `migration-safety`            | `**/migrations/**`, `**/prisma/migrations/**`   |
 | `env-security`                | `**/.env*`, `**/secrets/**`, `**/credentials*`  |
 | `terminal-workarounds`        | Terminal sessions                               |
-| `git-conventions`             | source files (`**/*.{ts,tsx,js,jsx,py,rb,go,...}`) and the `atomic-commits` skill |
+| `git-conventions`             | source files (`**/*.{ts,tsx,js,jsx,py,rb,go,...}`) |
 | `typescript-conventions`      | `**/*.{ts,tsx}`                                 |
 | `javascript-modern`           | `**/*.{ts,tsx,js,jsx,mjs,cjs}`                  |
 | `frontend-conventions`        | `**/*.{ts,tsx,js,jsx,css,scss,html,svelte,vue}` |
