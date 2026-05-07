@@ -7,7 +7,7 @@ description: "Frontend component file structure and naming. Use when CREATING a 
 
 Output "Read Frontend Component Style skill." to chat to acknowledge you read this file.
 
-This skill answers two structural questions: **where does each piece of code live**, and **what is each piece named**. Style concerns (Tailwind tokens, dark-mode variants, server/client split, animation, prop typing) are owned by the path-gated rules listed at the bottom — trust them; don't duplicate.
+This skill answers two structural questions: **where does each piece of code live**, and **what is each piece named** (including the names of related types and interfaces). Styling and runtime concerns (Tailwind tokens, dark-mode variants, server/client split, animation) are owned by the path-gated rules listed at the bottom — trust them; don't duplicate. TypeScript typing patterns themselves remain in `rules/typescript-conventions.md`.
 
 ---
 
@@ -331,6 +331,6 @@ These auto-load when you edit matching files. **Do not duplicate their content h
 | `rules/server-vs-client-components.md` | `**/app/**/*.{tsx,jsx}` — server-first, error handling |
 | `rules/framer-motion.md` | `**/*.{tsx,jsx}` — animation philosophy, reduced motion |
 | `rules/typescript-conventions.md` | `**/*.{ts,tsx}` — props/types, parameter style |
-| `rules/frontend-conventions.md` | `**/*.{ts,tsx,js,jsx,...}` — browser baseline |
+| `rules/frontend-conventions.md` | `**/*.{ts,tsx,js,jsx,mjs,cjs,css,scss,html,svelte,vue}` — browser baseline |
 
 If a question is covered by a path-gated rule (Tailwind syntax, dark-mode tokens, when to use `'use client'`), defer to the rule. This skill answers structure and naming only.
