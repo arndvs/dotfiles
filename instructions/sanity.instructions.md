@@ -25,10 +25,14 @@ Recommended pattern:
 import { defineLive } from "next-sanity/live";
 import { client } from "./client";
 
+// Server-side read token. NEVER pass this as `browserToken` — it would be
+// exposed in the client bundle. Only set `browserToken` if you have a
+// separate, tightly scoped public token that is safe to ship to the browser.
+const serverToken = process.env.SANITY_API_READ_TOKEN;
+
 export const { sanityFetch, SanityLive } = defineLive({
   client,
-  serverToken: token,
-  browserToken: token,
+  serverToken,
 });
 
 // Usage in a page

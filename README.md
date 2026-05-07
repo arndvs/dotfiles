@@ -136,7 +136,7 @@ All agents use read-only tools (Read, Grep, Glob, Bash) and `memory: user` for p
 | `dark-mode`                   | `**/*.{tsx,jsx,css,scss}`                       |
 | `tailwind-shadcn`             | `**/*.{tsx,jsx}`                                |
 | `framer-motion`               | `**/*.{tsx,jsx}`                                |
-| `server-vs-client-components` | `**/app/**/*.{tsx,jsx}`, `**/components/**/*.{tsx,jsx}` |
+| `server-vs-client-components` | `**/app/**/*.{tsx,jsx}`                         |
 
 Rules without `paths:` load every session. Add your own: `rules/your-rule.md` — auto-discovered.
 

@@ -30,7 +30,7 @@ find . -name "package.json" \
 # Workspaces declared in pnpm-workspace.yaml (pnpm doesn't put them in package.json)
 if [ -f pnpm-workspace.yaml ]; then
   echo "Workspaces (pnpm-workspace.yaml):"
-  grep -E '^\s*-\s' pnpm-workspace.yaml | head -20
+  grep -E '^[[:space:]]*-[[:space:]]' pnpm-workspace.yaml | head -20
 fi
 
 # Detect package manager and security posture for EACH discovered package.json
@@ -67,24 +67,25 @@ A malicious hook in `packages/utils/package.json` is just as dangerous as one in
 These run automatically on `npm install`. Malicious actors hide code here.
 
 ```bash
-# Scan ALL package.json files in the repo for lifecycle hooks
+# Scan ALL package.json files in the repo for lifecycle hooks.
+# -print0 + read -d '' handles paths with spaces; pass path as argv to Python.
 find . -name "package.json" \
   -not -path "*/node_modules/*" \
-  -not -path "*/.git/*" | sort | while read pkg; do
+  -not -path "*/.git/*" -print0 | sort -z | while IFS= read -r -d '' pkg; do
   echo "=== $pkg ==="
-  python3 -c "
-import json,sys
-p=json.load(open('$pkg'))
-scripts=p.get('scripts',{})
-danger=['preinstall','postinstall','install','prepare','prepack','prepublish']
-found=False
+  python3 - "$pkg" <<'PY'
+import json, sys
+p = json.load(open(sys.argv[1]))
+scripts = p.get('scripts', {})
+danger = ['preinstall','postinstall','install','prepare','prepack','prepublish']
+found = False
 for k in danger:
     if k in scripts:
         print(f'  WARNING [{k}]: {scripts[k]}')
-        found=True
+        found = True
 if not found:
     print('  OK: No lifecycle hooks')
-"
+PY
 done
 ```
 
@@ -112,14 +113,14 @@ git log --oneline --since='14 days ago' --name-only -- \
   '*package-lock.json' '*yarn.lock' '*pnpm-lock.yaml' 2>/dev/null | head -30
 
 # Scan EVERY pnpm-lock.yaml for non-registry package sources
-find . -name 'pnpm-lock.yaml' -not -path '*/node_modules/*' | while read lock; do
+find . -name 'pnpm-lock.yaml' -not -path '*/node_modules/*' -print0 | while IFS= read -r -d '' lock; do
   echo "=== Non-registry sources in $lock ==="
-  grep -E '^\s+(resolution|tarball):' "$lock" | \
+  grep -E '^[[:space:]]+(resolution|tarball):' "$lock" | \
     grep -v 'registry.npmjs.org\|registry.yarnpkg.com' | head -20
 done
 
 # Scan EVERY package-lock.json for non-registry resolved URLs
-find . -name 'package-lock.json' -not -path '*/node_modules/*' | while read lock; do
+find . -name 'package-lock.json' -not -path '*/node_modules/*' -print0 | while IFS= read -r -d '' lock; do
   python3 - "$lock" <<'PY'
 import json, sys
 lock=json.load(open(sys.argv[1]))
@@ -136,9 +137,9 @@ PY
 done
 
 # Scan EVERY yarn.lock for non-registry resolved URLs
-find . -name 'yarn.lock' -not -path '*/node_modules/*' | while read lock; do
+find . -name 'yarn.lock' -not -path '*/node_modules/*' -print0 | while IFS= read -r -d '' lock; do
   echo "=== Non-registry sources in $lock ==="
-  grep -E '^\s+resolved "' "$lock" | \
+  grep -E '^[[:space:]]+resolved "' "$lock" | \
     grep -v 'registry.npmjs.org\|registry.yarnpkg.com' | head -20
 done
 ```
@@ -170,25 +171,28 @@ else
   echo 'No lock file found — cannot run audit'
 fi
 
-# Typosquatting check across ALL package.json files
-find . -name "package.json" -not -path "*/node_modules/*" | while read pkg; do
-  python3 -c "
-import json
-p=json.load(open('$pkg'))
-deps={**p.get('dependencies',{}),**p.get('devDependencies',{}),**p.get('peerDependencies',{})}
-popular=['react','express','lodash','axios','moment','chalk','commander','dotenv',
-         'eslint','webpack','babel','typescript','jest','mocha','prettier','vite',
-         'rollup','esbuild','vitest','zod','prisma','next','tailwindcss']
-hits=[]
+# Typosquatting check across ALL package.json files.
+# -print0 + argv passing avoids quoting issues on paths with spaces.
+find . -name "package.json" -not -path "*/node_modules/*" -print0 | while IFS= read -r -d '' pkg; do
+  python3 - "$pkg" <<'PY'
+import json, sys
+path = sys.argv[1]
+p = json.load(open(path))
+deps = {**p.get('dependencies', {}), **p.get('devDependencies', {}), **p.get('peerDependencies', {})}
+popular = ['react','express','lodash','axios','moment','chalk','commander','dotenv',
+           'eslint','webpack','babel','typescript','jest','mocha','prettier','vite',
+           'rollup','esbuild','vitest','zod','prisma','next','tailwindcss']
+hits = []
 for dep in deps:
     for pop in popular:
-        if dep!=pop and (dep.startswith(pop[:4]) or pop.startswith(dep[:4])):
-            if abs(len(dep)-len(pop))<=3:
-                hits.append(f'  WARN: \"{dep}\" resembles \"{pop}\"')
+        if dep != pop and (dep.startswith(pop[:4]) or pop.startswith(dep[:4])):
+            if abs(len(dep) - len(pop)) <= 3:
+                hits.append(f'  WARN: "{dep}" resembles "{pop}"')
 if hits:
-    print('$pkg:')
-    for h in hits: print(h)
-"
+    print(f'{path}:')
+    for h in hits:
+        print(h)
+PY
 done
 ```
 

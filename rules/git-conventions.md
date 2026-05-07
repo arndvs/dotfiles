@@ -6,7 +6,7 @@ paths:
 
 # Git Conventions
 
-Auto-loads when editing common source files (the file types that typically get committed). Also loaded explicitly by the `atomic-commits` skill.
+Auto-loads when editing common source files (the file types that typically get committed).
 
 - One logical change per commit. Never bundle unrelated fixes
 - Review `git diff --staged` before committing. No debug logs or dead code
