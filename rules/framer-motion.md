@@ -24,7 +24,7 @@ Our animation system prioritizes **instant content visibility** with **subtle, p
 - ❌ Hero sections (must be server components, instant render)
 - ❌ Above-fold content (use CLS-safe or instant variants)
 
-- Use the existing `@animations.ts` variations rather than creating new animations from scratch
+- Use the existing variants from `@/lib/hooks/use-animation-variants` rather than creating new animations from scratch
 - Import and use Framer Motion as the primary animation library:
 
   ```tsx

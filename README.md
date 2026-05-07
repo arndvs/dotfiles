@@ -125,11 +125,11 @@ All agents use read-only tools (Read, Grep, Glob, Bash) and `memory: user` for p
 
 | Rule                          | Scoped to                                       |
 | ----------------------------- | ----------------------------------------------- |
-| `test-conventions`            | `**/*.test.*`, `**/*.spec.*`, `**/__tests__/**` |
+| `test-conventions`            | `**/*.test.*`, `**/*.spec.*`, `**/__tests__/**`, `**/*Service.{ts,tsx}`, `**/services/**/*.{ts,tsx}` |
 | `migration-safety`            | `**/migrations/**`, `**/prisma/migrations/**`   |
 | `env-security`                | `**/.env*`, `**/secrets/**`, `**/credentials*`  |
 | `terminal-workarounds`        | Terminal sessions                               |
-| `git-conventions`             | `**/*` (committing or reviewing changes)        |
+| `git-conventions`             | source files (`**/*.{ts,tsx,js,jsx,py,rb,go,...}`) and the `atomic-commits` skill |
 | `typescript-conventions`      | `**/*.{ts,tsx}`                                 |
 | `javascript-modern`           | `**/*.{ts,tsx,js,jsx,mjs,cjs}`                  |
 | `frontend-conventions`        | `**/*.{ts,tsx,js,jsx,css,scss,html,svelte,vue}` |
@@ -553,7 +553,7 @@ shft help     # autonomous execution commands
 │   ├── researcher-haiku.md          subagent: fast bulk scanning (haiku)
 │   └── security-auditor.md          subagent: OWASP, secrets, config (sonnet)
 ├── rules/
-│   ├── test-conventions.md          scoped to **/*.test.*, **/*.spec.*
+│   ├── test-conventions.md          scoped to tests and service code
 │   ├── migration-safety.md          scoped to **/migrations/**
 │   ├── env-security.md              scoped to **/.env*, **/secrets/**
 │   └── terminal-workarounds.md      scoped to terminal sessions

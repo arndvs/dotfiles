@@ -16,7 +16,7 @@ Output "Read Sanity instructions." to chat to acknowledge you read this file.
 - Render `<SanityLive />` in the root layout so live updates and presentation tooling can stream updates.
 - For `generateMetadata` and `generateStaticParams`, set `stega: false`.
 - In `generateStaticParams`, use `perspective: 'published'` to avoid draft-aware behavior during static path generation.
-- For optimized live editing in app code, use `usePresentationQuery` from `next-sanity/hooks` where appropriate.
+- Keep data fetching in Server Components with `sanityFetch`. If a Client Component needs the data, pass the server-fetched result in as props — do not fetch with a client-side hook. (`usePresentationQuery` from `next-sanity/hooks` is reserved for Studio Presentation tooling, not general app rendering.)
 
 Recommended pattern:
 

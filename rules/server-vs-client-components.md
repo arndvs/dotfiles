@@ -2,7 +2,6 @@
 description: "Next.js App Router — default to Server Components; scope Client Components minimally; error handling patterns."
 paths:
   - "**/app/**/*.{tsx,jsx}"
-  - "**/components/**/*.{tsx,jsx}"
 ---
 
 # Server Components vs Client Components
@@ -75,14 +74,20 @@ export default function FeatureSection({ data }: Props) {
 - Never fetch data in client components
 
 ```tsx
-// ✅ CORRECT - Server component fetches, client component receives
+// ✅ CORRECT - Server component fetches, Client Component receives via props
+// page.tsx (Server Component)
+import { InteractiveComponent } from './interactive-component';
+
 export default async function Page() {
   const data = await fetchData();
   return <InteractiveComponent data={data} />;
 }
 
-("use client");
-function InteractiveComponent({ data }: { data: Data }) {
+// interactive-component.tsx (Client Component)
+'use client';
+import { useState } from 'react';
+
+export function InteractiveComponent({ data }: { data: Data }) {
   const [state, setState] = useState();
   return <div>{/* Use data and state */}</div>;
 }

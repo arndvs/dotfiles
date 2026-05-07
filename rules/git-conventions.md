@@ -1,12 +1,12 @@
 ---
 description: "Git conventions — atomic commits, conventional messages, working-tree hygiene."
 paths:
-  - "**/*"
+  - "**/*.{ts,tsx,js,jsx,mjs,cjs,py,rb,go,rs,java,php,sh,bash,md,yml,yaml,json}"
 ---
 
 # Git Conventions
 
-Loaded when committing or reviewing changes. The `atomic-commits` skill is the workflow companion to this rule file.
+Auto-loads when editing common source files (the file types that typically get committed). Also loaded explicitly by the `atomic-commits` skill.
 
 - One logical change per commit. Never bundle unrelated fixes
 - Review `git diff --staged` before committing. No debug logs or dead code

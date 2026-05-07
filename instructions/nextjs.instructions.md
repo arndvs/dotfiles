@@ -7,7 +7,7 @@ Output "Read NextJS instructions." to chat to acknowledge you read this file.
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices. Next.js 16 uses proxy.ts (not middleware.ts).
 
-Companion rules (loaded automatically by `applyTo` when editing matching files):
+Companion rules (loaded automatically for matching files via `paths:` frontmatter):
 - Modern JS APIs → `rules/javascript-modern.md`
 - TypeScript conventions and modern features → `rules/typescript-conventions.md`
 - Sanity + Next.js Live Content API → `instructions/sanity.instructions.md` (loaded when sanity context is active)
