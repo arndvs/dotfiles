@@ -172,9 +172,16 @@ mkdir -p "$DOTFILES/instructions/_local"
 } > "$DOTFILES/CLAUDE.md"
 
 _local_instructions=()
+_local_conditional=()
 if [[ -d "$DOTFILES/instructions/_local" ]]; then
     for f in "$DOTFILES/instructions/_local/"*.instructions.md; do
-        [[ -f "$f" ]] && _local_instructions+=("$f")
+        [[ -f "$f" ]] || continue
+        # Files with `auto-load: false` in frontmatter are task-triggered, not auto-loaded
+        if head -20 "$f" | grep -qE '^auto-load:\s*false'; then
+            _local_conditional+=("$f")
+        else
+            _local_instructions+=("$f")
+        fi
     done
 fi
 if [[ ${#_local_instructions[@]} -gt 0 ]]; then
@@ -186,6 +193,17 @@ if [[ ${#_local_instructions[@]} -gt 0 ]]; then
     green "  Generated CLAUDE.md with ${#_local_instructions[@]} local instruction(s)"
 else
     green "  Generated CLAUDE.md (no local instructions found)"
+fi
+if [[ ${#_local_conditional[@]} -gt 0 ]]; then
+    printf '\n## Task-Triggered Local Instructions\n\n' >> "$DOTFILES/CLAUDE.md"
+    printf 'Read these only when the task matches their description:\n\n' >> "$DOTFILES/CLAUDE.md"
+    for f in "${_local_conditional[@]}"; do
+        _fname=$(basename "$f")
+        # Extract description from frontmatter
+        _desc=$(awk '/^description:/{sub(/^description:[[:space:]]*"?/,""); sub(/"?[[:space:]]*$/,""); print; exit}' "$f")
+        printf -- '- %s — @~/dotfiles/instructions/_local/%s\n' "${_desc:-no description}" "$_fname" >> "$DOTFILES/CLAUDE.md"
+    done
+    green "  Registered ${#_local_conditional[@]} task-triggered local instruction(s)"
 fi
 
 # Link or copy to ~/.claude/

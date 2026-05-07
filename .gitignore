@@ -53,6 +53,9 @@ global.instructions.md.bak
 # Skill/doc reference materials (large, not needed in repo)
 **/references/
 **/reference/
+# Exception: skill-bundled references (progressive disclosure pattern)
+!skills/*/references/
+!skills/*/references/**
 
 # Client scope (keep templates/docs tracked, ignore real client data)
 clients/*

@@ -123,14 +123,36 @@ All agents use read-only tools (Read, Grep, Glob, Bash) and `memory: user` for p
 
 `rules/` contains convention-enforcement files that load only when the agent touches matching files. Each rule uses `paths:` YAML frontmatter to scope itself.
 
-| Rule                   | Scoped to                                       |
-| ---------------------- | ----------------------------------------------- |
-| `test-conventions`     | `**/*.test.*`, `**/*.spec.*`, `**/__tests__/**` |
-| `migration-safety`     | `**/migrations/**`, `**/prisma/migrations/**`   |
-| `env-security`         | `**/.env*`, `**/secrets/**`, `**/credentials*`  |
-| `terminal-workarounds` | Terminal sessions                               |
+| Rule                          | Scoped to                                       |
+| ----------------------------- | ----------------------------------------------- |
+| `test-conventions`            | `**/*.test.*`, `**/*.spec.*`, `**/__tests__/**`, `**/*Service.{ts,tsx}`, `**/services/**/*.{ts,tsx}` |
+| `migration-safety`            | `**/migrations/**`, `**/prisma/migrations/**`   |
+| `env-security`                | `**/.env*`, `**/secrets/**`, `**/credentials*`  |
+| `terminal-workarounds`        | Terminal sessions                               |
+| `git-conventions`             | source files (`**/*.{ts,tsx,js,jsx,py,rb,go,...}`) |
+| `typescript-conventions`      | `**/*.{ts,tsx}`                                 |
+| `javascript-modern`           | `**/*.{ts,tsx,js,jsx,mjs,cjs}`                  |
+| `frontend-conventions`        | `**/*.{ts,tsx,js,jsx,css,scss,html,svelte,vue}` |
+| `dark-mode`                   | `**/*.{tsx,jsx,css,scss}`                       |
+| `tailwind-shadcn`             | `**/*.{tsx,jsx}`                                |
+| `framer-motion`               | `**/*.{tsx,jsx}`                                |
+| `server-vs-client-components` | `**/app/**/*.{tsx,jsx}`                         |
 
 Rules without `paths:` load every session. Add your own: `rules/your-rule.md` — auto-discovered.
+
+### Four-tier disclosure model
+
+Instructions are organized so the always-on payload stays small and conditional knowledge only loads when needed:
+
+| Tier | Loaded when | Where |
+| ---- | ----------- | ----- |
+| **T1 always-on** | every session | `global.instructions.md`, `instructions/handoff.instructions.md` |
+| **T2 context-gated** | `ACTIVE_CONTEXTS` matches | `instructions/{nextjs,sanity,php,...}.instructions.md` |
+| **T2 service/task-triggered** | task or service mentioned | `instructions/{css,sentry,google-docs,hud,...}.instructions.md` |
+| **T3 path-gated** | edited file matches `paths:` glob | `rules/*.md` |
+| **T4 skill-triggered** | task description matches | `skills/*/SKILL.md` |
+
+Re-shelve aggressively: if a rule applies only to `.tsx` files, it belongs in `rules/`, not `global.instructions.md`.
 
 ### Hardened secrets
 
@@ -511,7 +533,6 @@ shft help     # autonomous execution commands
 │   ├── sentry.instructions.md
 │   ├── google-docs.instructions.md
 │   ├── css.instructions.md
-│   ├── ux-prototyping.instructions.md
 │   ├── handoff.instructions.md      ← cross-conversation persistence protocol
 │   └── _local/                      ← GITIGNORED — your private instructions
 ├── commands/
@@ -531,7 +552,7 @@ shft help     # autonomous execution commands
 │   ├── researcher-haiku.md          subagent: fast bulk scanning (haiku)
 │   └── security-auditor.md          subagent: OWASP, secrets, config (sonnet)
 ├── rules/
-│   ├── test-conventions.md          scoped to **/*.test.*, **/*.spec.*
+│   ├── test-conventions.md          scoped to tests and service code
 │   ├── migration-safety.md          scoped to **/migrations/**
 │   ├── env-security.md              scoped to **/.env*, **/secrets/**
 │   └── terminal-workarounds.md      scoped to terminal sessions

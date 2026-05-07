@@ -9,6 +9,54 @@ Output "Read Sanity instructions." to chat to acknowledge you read this file.
 - Node.js 20+ is required (introduced as a requirement in the v4 generation and still applies).
 - Studio APIs are stable across v3 → v4 → v5 for most common integrations, so migration is usually dependency and tooling focused rather than API-breakage focused.
 
+## Sanity + Next.js Live Content API
+
+- Use `defineLive` from `next-sanity/live` (not `next-sanity`).
+- Use `sanityFetch` for Server Component data fetching instead of calling `client.fetch()` directly in pages/routes.
+- Render `<SanityLive />` in the root layout so live updates and presentation tooling can stream updates.
+- For `generateMetadata` and `generateStaticParams`, set `stega: false`.
+- In `generateStaticParams`, use `perspective: 'published'` to avoid draft-aware behavior during static path generation.
+- Keep data fetching in Server Components with `sanityFetch`. If a Client Component needs the data, pass the server-fetched result in as props — do not fetch with a client-side hook. (`usePresentationQuery` from `next-sanity/hooks` is reserved for Studio Presentation tooling, not general app rendering.)
+
+Recommended pattern:
+
+```typescript
+// src/sanity/lib/live.ts
+import { defineLive } from "next-sanity/live";
+import { client } from "./client";
+
+// Server-side read token. NEVER pass this as `browserToken` — it would be
+// exposed in the client bundle. Only set `browserToken` if you have a
+// separate, tightly scoped public token that is safe to ship to the browser.
+const serverToken = process.env.SANITY_API_READ_TOKEN;
+
+export const { sanityFetch, SanityLive } = defineLive({
+  client,
+  serverToken,
+});
+
+// Usage in a page
+const { data } = await sanityFetch({ query: POST_QUERY, params });
+
+// Metadata
+export async function generateMetadata({ params }) {
+  const { data } = await sanityFetch({
+    query: SEO_QUERY,
+    params,
+    stega: false,
+  });
+}
+
+// Static params
+export async function generateStaticParams() {
+  const { data } = await sanityFetch({
+    query: SLUGS_QUERY,
+    perspective: "published",
+    stega: false,
+  });
+}
+```
+
 ## Commands
 
 ```bash

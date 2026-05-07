@@ -20,17 +20,15 @@ Output "Read global instructions." to chat to acknowledge you read this file.
 - Leave NO todo's, placeholders or missing pieces
 - Keep it simple, lean, reuse what we have. Prefer early returns, removing code over adding. Think how can we REMOVE code from this repo instead of adding baggage or bloat
 - Do not add legacy or backward compatibility except for database migrations
-- Never fail silently. No sample data, placeholder text, || or ?? fallbacks, or defensive fixes — use fast, type-safe patterns that throw explicit errors with context. Exception: UI prototyping components use CMS-replaceable static data and graceful degradation per ux-prototyping instructions. If a response is unexpected, print it raw for debugging
+- Never fail silently. No sample data, placeholder text, or defensive fixes — throw explicit errors with context. If a response is unexpected, print it raw for debugging
 - Before adding or changing code, read existing examples of the same pattern. Scan all usages of shared methods before modifying. Match existing style exactly
 - Verify utilities and functions exist in the codebase before using them — search for definitions first, never assume a name exists
 - Don't touch code outside the task. If you notice dead code or problems, mention them — don't fix them. Only remove imports/variables your changes made unused
 - Never change my AI model, its context window, settings, URL or API keys unless explicitly told to do so
 - If anything is unclear, ambiguous, or has a simpler alternative, stop and ask before implementing. List options when multiple valid interpretations exist
-- Use modern APIs and patterns over legacy approaches. Baseline browser support is February 2026
 - NEVER print credentials: Not in logs, not in error messages, not in agent outputs
 - If I tell you to "report" or ask "how feasible", enter discuss mode and DO NOT EDIT CODE UNTIL I EXPLICITLY TELL YOU TO DO SO. Simply report, discuss, get skeptical, double check and plan all changes in a lean, DRY way
 - When an API call fails (expired token, auth error, missing permissions), STOP IMMEDIATELY. Do not continue the task, do not speculate. Tell me the exact error, which token/key needs updating and in which file, then wait for me to fix it
-- After you are done, remove unused imports YOUR changes created, scan for DRY violations, broken code, hidden bugs, overengineering, edge cases, your last code changes not being reflected everywhere else in the app. Do not remove pre-existing dead code unless asked
 - Prefer clearing context and starting fresh over compacting. Repeated compaction leaves sediment — each round loses nuance and accumulates errors. When context is high, commit and start a new conversation. If you must compact (once per session max), pass summarization instructions describing what you're about to do next
 </general>
 
@@ -60,38 +58,8 @@ After updating, tell the user: "Updated [skill-name] skill: [one-sentence summar
 Read the relevant SKILL.md in full, find the most suitable place to integrate the information in a DRY way, and edit it inline. Only fall back to `## Lessons Learned` if no better location exists. Confirm with: "Saved to [skill-name] skill: [one-sentence summary]."
 </skill-self-learning>
 
-<git>
-- One logical change per commit. Never bundle unrelated fixes
-- Review `git diff --staged` before committing. No debug logs or dead code
-- Commit message format: `<type>(<scope>): <short description>` — types: feat, fix, refactor, chore, docs, test
-- Each commit must leave the codebase working — no broken states mid-task
-</git>
-
 <thinking>
 - You must engage in exhaustive, deep-level reasoning. Think deeply about edge cases, data integrity, and architectural consequences before writing code and after refactorings.
 - Self-check before committing: "Would a senior engineer say this is overcomplicated?" If yes, simplify. "Does every changed line trace directly to the user's request?" If not, revert the extras.
 </thinking>
 
-<hud-events>
-When the HUD daemon is running (check: `curl -sf http://localhost:7823/api/state > /dev/null 2>&1`), emit events to give the HUD visibility into VS Code Copilot sessions that the CLI wrapper can't observe.
-
-**When to emit:**
-1. **On skill/instruction/rule load** — After reading a SKILL.md, instructions file, or rule file, emit a `read` event. Batch them into a single terminal call:
-   ```bash
-   bash ~/dotfiles/bin/write-hud-state.sh reads "global.instructions.md" "skills/codebase-audit/SKILL.md" "instructions/nextjs.instructions.md"
-   ```
-2. **On milestones** — At slice completion, commit, or audit finish, emit an `info` event:
-   ```bash
-   bash ~/dotfiles/bin/write-hud-state.sh info "Slice 3 committed"
-   ```
-3. **On compliance results** — After compliance audit, emit pass/fail/warn:
-   ```bash
-   bash ~/dotfiles/bin/write-hud-state.sh compliance <pass> <fail> <warn>
-   ```
-
-**How:** Always use `write-hud-state.sh` CLI — it handles transport fallback (pipe → HTTP → JSONL).
-
-Event types: `info` (milestone), `read` (skill/rule/instruction loaded), `pass`/`fail`/`warn` (compliance), `context` (context change).
-
-Emit reads once after loading all files for the session. Keep milestone events to 3-5 per session. This is observability, not logging.
-</hud-events>

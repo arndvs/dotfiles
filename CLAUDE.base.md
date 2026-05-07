@@ -20,7 +20,6 @@ Always read global rule instructions first and confirm that you have done so by 
 Check the $ACTIVE_CONTEXTS environment variable (set by ~/dotfiles/bin/detect-context.sh). Load instructions matching each active context:
 
 - `nextjs` → @~/dotfiles/instructions/nextjs.instructions.md
-- `nextjs` or `react` → @~/dotfiles/instructions/ux-prototyping.instructions.md
 - `php` or `laravel` → @~/dotfiles/instructions/php.instructions.md
 - `sanity` → @~/dotfiles/instructions/sanity.instructions.md
 
@@ -44,6 +43,9 @@ If working with Google Docs, Sheets, or Slides, also read:
 If working with Sentry, also read:
 @~/dotfiles/instructions/sentry.instructions.md
 
+If the HUD daemon is running (check: `curl -sf http://localhost:7823/api/state > /dev/null 2>&1`), also read:
+@~/dotfiles/instructions/hud.instructions.md
+
 ## Task-Triggered Instructions
 
 If working on CSS, styling, or frontend UI, also read:
@@ -51,4 +53,4 @@ If working on CSS, styling, or frontend UI, also read:
 
 ## About Local Instructions
 
-`bootstrap.sh` auto-appends `@`-references for any `*.instructions.md` files found in `instructions/_local/`. Run `bootstrap.sh` after adding new local instruction files.
+`bootstrap.sh` auto-appends `@`-references for any `*.instructions.md` files found in `instructions/_local/`. Files with `auto-load: false` in their frontmatter are registered as task-triggered instead — read them only when the task matches their description. Run `bootstrap.sh` after adding new local instruction files.
