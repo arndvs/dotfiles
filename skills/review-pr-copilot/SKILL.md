@@ -45,12 +45,12 @@ Score every comment 0–100 using observable signals, not vibes:
 - `+15` Copilot quoted the existing code or proposed a concrete replacement
 
 **Negative signals** (subtract):
-- `−20` Touches a shared util, type, schema, or hook used in 3+ places
-- `−25` Vague language: "consider", "might want to", "could", "perhaps", "in some cases"
-- `−15` Cross-file or cross-module change
-- `−20` Modifies test assertions or fixtures (risk: masking the bug)
-- `−15` Changes error-handling semantics (swallow ↔ throw, sync ↔ async)
-- `−10` File changed since the comment was posted (stale context)
+- `-20` Touches a shared util, type, schema, or hook used in 3+ places
+- `-25` Vague language: "consider", "might want to", "could", "perhaps", "in some cases"
+- `-15` Cross-file or cross-module change
+- `-20` Modifies test assertions or fixtures (risk: masking the bug)
+- `-15` Changes error-handling semantics (swallow ↔ throw, sync ↔ async)
+- `-10` File changed since the comment was posted (stale context)
 
 Start at 50, apply signals, clamp 0–100.
 
