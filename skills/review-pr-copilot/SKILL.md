@@ -23,6 +23,16 @@ If any of those are unavailable, fall back to the inline steps below.
 
 ## Workflow
 
+### 0. Pre-flight checks
+
+Before identifying the PR, verify the run is worth starting:
+
+- **Round counter** — track Copilot review rounds in this skill's session state. Default cap: **3 rounds per PR**. After round 3, stop and surface to the user — further rounds usually mean subjective comments that need a human to break the tie.
+- **CI status** — call `mcp_github_pull_request_read` (method `get_status_checks`) or check `currentActivePullRequest.statusCheckRollup`. If checks are failing, ask the user before proceeding — fixing review nits while CI is red wastes a re-review cycle.
+- **Pending review** — if Copilot has a review in `PENDING` state (not yet submitted), stop. Re-running this skill will produce no comments and waste a `request_copilot_review` call.
+
+If any check fails, surface the reason and ask before continuing.
+
 ### 1. Identify the PR + Copilot reviewer
 
 Use `github-pull-request_currentActivePullRequest` (PR extension, not raw MCP) to detect the active PR — **this tool returns thread node IDs in `reviewThreads[].id`** which are required for resolving threads in step 5. The raw MCP `pull_request_read` with `get_review_comments` returns comment metadata but not GraphQL thread IDs.
