@@ -25,12 +25,14 @@ If any of those are unavailable, fall back to the inline steps below.
 
 ### 1. Identify the PR + Copilot reviewer
 
-Use `github-pull-request_currentActivePullRequest` to detect the active PR. If none, ask the user for `owner/repo#number`.
+Use `github-pull-request_currentActivePullRequest` (PR extension, not raw MCP) to detect the active PR — **this tool returns thread node IDs in `reviewThreads[].id`** which are required for resolving threads in step 5. The raw MCP `pull_request_read` with `get_review_comments` returns comment metadata but not GraphQL thread IDs.
 
-Fetch reviews via `mcp_github_pull_request_read` (method `getReviews`) and isolate Copilot:
+If `currentActivePullRequest` is unavailable or returns no PR, ask the user for `owner/repo#number`, then fall back to `mcp_github_pull_request_read` (method `get_review_comments`) — but warn the user that step 5 will only post acknowledgments and cannot programmatically resolve threads in this mode.
+
+Filter reviews to Copilot:
 - `user.type == "Bot"` AND `user.login` matches `copilot-pull-request-reviewer[bot]` or contains `copilot`
 
-Fetch inline comments and filter to that user. Skip threads where `isResolved == true` or `outdated == true`.
+Skip threads where `isResolved == true` or `isOutdated == true`. **Build a map of `commentId → threadId`** from the response so step 5 can resolve the right thread per fix.
 
 ### 2. Score each comment + triage
 
