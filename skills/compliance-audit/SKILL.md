@@ -65,6 +65,36 @@ git diff --cached
 
 ---
 
+### Phase 2b — Fetch PR review threads (review-pr-copilot trigger only)
+
+The HITL-tier-classification and HITL-deferral-path checks under the `review-pr-copilot` trigger evaluate **PR thread replies**, not diffs. When auditing a `review-pr-copilot` round you must fetch those threads before scoring.
+
+**Required tools** (any may be deferred — use `tool_search` if not loaded):
+
+- `github-pull-request_currentActivePullRequest` (preferred, returns thread node IDs)
+- `gh api graphql` fallback when the PR-extension cache is stale (see `review-pr-copilot` SKILL §1)
+- `mcp_github_pull_request_read` (method `get_review_comments`) for comment bodies if the GraphQL query is unavailable
+
+**Fetch pattern:**
+
+```bash
+gh api graphql -f query='query {
+  repository(owner:"<owner>",name:"<repo>"){
+    pullRequest(number:<N>){
+      reviewThreads(first:50){
+        nodes{ id isResolved comments(first:1){ nodes{ databaseId path body author{login} } } }
+      }
+    }
+  }
+}'
+```
+
+For each thread the agent's reply touches, capture: thread ID, original Copilot comment body, the agent's reply body, and whether the thread is resolved. Pass this set to Phase 3 — the HITL checks key off reply text (presence of arithmetic, presence of effort-vs-subjectivity reasoning, presence of `Filed as #N` link or `HITL-blocking` declaration).
+
+If the PR has no Copilot review threads, the HITL checks are vacuously passed — note "no HITL replies to audit" and continue to the diff-based checks in Phase 3.
+
+---
+
 ### Phase 3 — Rule-by-rule audit
 
 For each active rule and instruction file:
