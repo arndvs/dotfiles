@@ -22,6 +22,7 @@ Auto-invoke after:
 - `systematic-debugging` produces a fix
 - `review-pr-copilot` finishes a round (catches self-initiated changes bundled into Copilot-comment commits — see PR #68 dogfood). Specifically check:
   - **HITL tier classification** — any HITL-tier reply that lacks signal arithmetic, or that uses *effort* reasoning ("this would be a lot of work", "bundling risks another round") instead of *subjectivity* reasoning ("the approach itself is ambiguous"). Flag as a tier misclassification — the comment was almost certainly Confirm-tier and got punted into HITL to dodge the work. (Failure mode: PR #50 round 5.)
+  - **HITL deferral path** — every HITL-tier reply must either (a) link a filed GitHub issue and have its thread resolved (HITL-deferrable), or (b) explicitly state "HITL-blocking" with a one-sentence reason about why the *approach* is ambiguous. Bare "flagging for review" replies with no issue link and no blocking reason are stranded threads — flag and require the agent to either file an issue or supply the blocking reason. (Failure mode: PR #50 round 5.)
 
 Can also be invoked manually: `/compliance-audit` to review the most recent commit against active context.
 
