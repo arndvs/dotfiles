@@ -33,7 +33,7 @@ Do not attempt to substitute raw `gh` CLI calls or git plumbing; the resolve-thr
 All checks below are PR-scoped, so begin step 0 by fetching the PR context: call `github-pull-request_currentActivePullRequest` (or, in degraded mode, prompt the user for `owner/repo#number` and use `mcp_github_pull_request_read`). Once you have a PR number, verify the run is worth starting:
 
 - **Round counter** — track Copilot review rounds in this skill's session state, keyed by PR number. Default cap: **3 rounds per PR**. After round 3, stop and surface to the user — further rounds usually mean subjective comments that need a human to break the tie.
-- **Round-cap override contract** — if the user explicitly authorizes continuing past the cap (e.g. "do another round", "keep going"), record the override on that round and **every subsequent round's pre-flight line must include `(cap=<cap> overridden by user on round <N>)`** (where `<cap>` is the current cap value, e.g. `3`). This makes it auditable from the PR comment thread that the cap was exceeded by consent, not by drift. PR #50 dogfooded this — round 5 posted only a bare round count with no override marker, so a reviewer landing on the PR could not tell whether the cap had been breached or whether the cap simply didn't exist.
+- **Round-cap override contract** — if the user explicitly authorizes continuing past the cap (e.g. "do another round", "keep going"), record the override on that round and **every subsequent round's pre-flight line must include `(cap=<cap> overridden by user on round <R_override>)`** (where `<cap>` is the current cap value, e.g. `3`, and `<R_override>` is the round number when the user authorized the override). This makes it auditable from the PR comment thread that the cap was exceeded by consent, not by drift. PR #50 dogfooded this — round 5 posted only a bare round count with no override marker, so a reviewer landing on the PR could not tell whether the cap had been breached or whether the cap simply didn't exist.
 - **CI status** — call `mcp_github_pull_request_read` (method `get_status_checks`) on the PR, or read `currentActivePullRequest.statusCheckRollup`. If checks are failing, ask the user before proceeding — fixing review nits while CI is red wastes a re-review cycle.
 - **Pending review** — inspect the PR's reviews; if Copilot has a review in `PENDING` state (not yet submitted), stop. Re-running this skill will produce no comments and waste a `request_copilot_review` call.
 
@@ -241,7 +241,7 @@ If you're tempted to call something HITL-deferrable just because it would be a l
    - <bullet>
    ```
 
-3. **Resolve the thread** via `mcp_github_pull_request_review_write` (method `resolve_thread`). The work is now tracked in the issue — the reviewer can either accept the deferral or comment on the issue to challenge it. **Degraded mode** — if thread IDs are not available (no PR extension, no GraphQL), skip resolution, note "thread not auto-resolved (degraded mode)" in the reply and the summary, and continue. The issue is the durable artifact; resolution is best-effort.
+3. **Resolve the thread** via `mcp_github_pull_request_review_write` (method `resolve_thread`). The work is now tracked in the issue — the reviewer can either accept the deferral or comment on the issue to challenge it. **Degraded mode** — if thread IDs are not available (e.g. the VS Code PR extension is not loaded and `gh api graphql` is not installed), skip resolution, note "thread not auto-resolved (degraded mode)" in the reply and the summary, and continue. The issue is the durable artifact; resolution is best-effort.
 
 #### HITL-blocking flow
 
@@ -276,13 +276,13 @@ Post the summary in two places: chat (for the user) **and** as a top-level PR co
 ```
 PR #<N> — Copilot review addressed (round <R>)
 
-Pre-flight: round <R>/<cap> | CI <green|red|pending> | pending review <yes|no>[ | (cap=<cap> overridden by user on round <N>)]
+Pre-flight: round <R>/<cap> | CI <green|red|pending> | pending review <yes|no>[ | (cap=<cap> overridden by user on round <R_override>)]
 Triage:            Auto <X>  |  Confirm <Y>  |  HITL-deferrable <Zd>  |  HITL-blocking <Zb>
 Comments fixed:    <X+Y> / <total>
 Issues filed:      <Zd> (HITL-deferrable)
 Threads resolved:  <X+Y+Zd>
 Threads left open: <Zb> (HITL-blocking)
-Commits:           <N>
+Commits:           <C>
 Review re-requested: yes | manual | no (cap reached)
 
 Commits:
@@ -299,7 +299,7 @@ Skipped / deferred:
 
 Skip the PR comment only if `X+Y+Zd+Zb == 0` AND no pre-flight check fired — i.e. the round was a true no-op. Otherwise post, even on rounds where you only filed issues or only triaged.
 
-The bracketed `(cap=<cap> overridden by user on round <N>)` segment in the pre-flight line is **mandatory** on every round after the user authorizes continuing past the cap (per §0). Omit the bracketed segment on rounds 1 through `<cap>`. This is the only sanctioned place to record the override — do not bury it in chat.
+The bracketed `(cap=<cap> overridden by user on round <R_override>)` segment in the pre-flight line is **mandatory** on every round after the user authorizes continuing past the cap (per §0). Omit the bracketed segment on rounds 1 through `<cap>`. This is the only sanctioned place to record the override — do not bury it in chat.
 
 **Failure mode caught in dogfooding (PR #50):** ran 5 rounds, only round 5 posted a PR-comment summary. The intermediate rounds left no paper trail — a reviewer landing on the PR mid-flow couldn't tell what had been triaged, fixed, or deferred without scrolling commit-by-commit.
 
