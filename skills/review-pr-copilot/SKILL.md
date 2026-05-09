@@ -14,7 +14,7 @@ Use whenever Copilot has left review comments on a pull request and the user wan
 This skill is a **thin orchestrator**. It does not reimplement comment fetching or commit logic — those live in:
 
 - The `atomic-commits` skill — branch hygiene, conventional commits, ship mode
-- The GitHub MCP — `mcp_github_pull_request_read`, `mcp_github_add_reply_to_pull_request_comment`, `mcp_github_add_issue_comment`, `mcp_github_pull_request_review_write` (method `resolve_thread`), `mcp_github_request_copilot_review`
+- The GitHub MCP — `mcp_github_pull_request_read`, `mcp_github_add_reply_to_pull_request_comment`, `mcp_github_add_issue_comment`, `mcp_github_pull_request_review_write` (method `resolve_thread`), `mcp_github_request_copilot_review`, `mcp_github_issue_write` (method `create_issue`, used by the HITL-deferrable flow in step 5b). Any of these may be deferred and require `tool_search` to load — see the tool-discovery contract in step 5b before calling.
 - The VS Code GitHub PR extension — `github-pull-request_currentActivePullRequest` (required for thread node IDs)
 
 These are **hard dependencies**, with one nuance:
@@ -192,7 +192,7 @@ If you're tempted to call something HITL-deferrable just because it would be a l
 
 #### HITL-deferrable flow
 
-1. **Create a GitHub issue** via `mcp_github_issue_write` (method `create_issue`):
+1. **Create a GitHub issue** via `mcp_github_issue_write` (method `create_issue`). If the tool is not loaded, run `tool_search` for "create github issue" first; if no issue-creation tool is available, **stop and surface to the user** — the HITL-deferrable flow requires a durable issue, so falling back to a bare PR-thread reply would re-introduce the PR #50 round-5 stranded-thread failure mode. Do not silently downgrade to HITL-blocking.
 
    - **Title:** `<scope>: <one-line summary> (from PR #<N> Copilot review)`
    - **Labels:** best-effort — first use `tool_search` to find an available GitHub label-lookup tool (e.g. `get_label` / `list_labels`); if one is loaded, look up `copilot-review` and `hitl-deferred` and include only labels that already exist. If no label tool is available or the labels are missing, **omit labels entirely** — do not create labels without authorization, and do not let label resolution block issue creation.
