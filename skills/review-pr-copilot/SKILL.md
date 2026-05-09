@@ -280,7 +280,8 @@ Pre-flight: round <R>/<cap> | CI <green|red|pending> | pending review <yes|no>[ 
 Triage:            Auto <X>  |  Confirm <Y>  |  HITL-deferrable <Zd>  |  HITL-blocking <Zb>
 Comments fixed:    <X+Y> / <total>
 Issues filed:      <Zd> (HITL-deferrable)
-Threads resolved:  <X+Y+Zd>
+Threads resolved:  <X+Y+Zd_resolved>
+Threads not auto-resolved: <Zd_degraded> (HITL-deferrable, degraded mode — issue filed but thread ID unavailable)
 Threads left open: <Zb> (HITL-blocking)
 Commits:           <C>
 Review re-requested: yes | manual | no (cap reached)
@@ -296,6 +297,8 @@ Awaiting human (HITL):
 Skipped / deferred:
   - <comment summary> — <reason>
 ```
+
+Omit the `Threads not auto-resolved` line entirely when `Zd_degraded == 0` (i.e. all HITL-deferrable threads were resolved normally). Only include it when degraded mode prevented thread resolution.
 
 Skip the PR comment only if `X+Y+Zd+Zb == 0` AND no pre-flight check fired — i.e. the round was a true no-op. Otherwise post, even on rounds where you only filed issues or only triaged.
 
