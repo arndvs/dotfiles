@@ -259,17 +259,19 @@ Then call `mcp_github_request_copilot_review` on the PR. If it fails, surface th
 
 ### 7. Summary report
 
-Post the summary in two places: chat (for the user) **and** as a top-level PR comment via `mcp_github_add_issue_comment` (for the next reviewer — human or bot — who lacks chat history). Use the same block in both:
+Post the summary in two places: chat (for the user) **and** as a top-level PR comment via `mcp_github_add_issue_comment` (for the next reviewer — human or bot — who lacks chat history). **Post on every round, not just the last** — each round's summary gives the next reviewer the per-round paper trail. Use the same block in both:
 
 ```
-PR #<N> — Copilot review addressed
+PR #<N> — Copilot review addressed (round <R>)
 
-Triage:            Auto <X>  |  Confirm <Y>  |  HITL <Z>
+Pre-flight: round <R>/<cap> | CI <green|red|pending> | pending review <yes|no>
+Triage:            Auto <X>  |  Confirm <Y>  |  HITL-deferrable <Zd>  |  HITL-blocking <Zb>
 Comments fixed:    <X+Y> / <total>
-HITL replies:      <Z>
+Issues filed:      <Zd> (HITL-deferrable)
+Threads resolved:  <X+Y+Zd>
+Threads left open: <Zb> (HITL-blocking)
 Commits:           <N>
-Threads resolved:  <X+Y>
-Review re-requested: yes | manual
+Review re-requested: yes | manual | no (cap reached)
 
 Commits:
   <sha[:7]>  <message>
@@ -283,7 +285,9 @@ Skipped / deferred:
   - <comment summary> — <reason>
 ```
 
-Skip the PR comment if `X+Y == 0` (nothing changed) — leaves no noise.
+Skip the PR comment only if `X+Y+Zd+Zb == 0` AND no pre-flight check fired — i.e. the round was a true no-op. Otherwise post, even on rounds where you only filed issues or only triaged.
+
+**Failure mode caught in dogfooding (PR #50):** ran 5 rounds, only round 5 posted a PR-comment summary. The intermediate rounds left no paper trail — a reviewer landing on the PR mid-flow couldn't tell what had been triaged, fixed, or deferred without scrolling commit-by-commit.
 
 ---
 
