@@ -86,7 +86,15 @@ User can override the policy for the session: "auto everything", "confirm everyt
 
 ### 3. Plan slices
 
-Group **Auto + Confirm** comments into atomic slices (one logical fix per commit). HITL comments are excluded from slicing — they get thread replies instead. Surface the plan as a table:
+Group **Auto + Confirm** comments into atomic slices. HITL comments are excluded from slicing — they get thread replies instead.
+
+**Slicing rule** (resolves the atomic-vs-bundle question dogfood surfaced):
+
+- **Multi-file PR** — one slice per file or per logical scope (e.g. `src/auth/*`). One commit per slice.
+- **Single-file PR** — bundle by *intent*, not per-comment. If 3 Copilot comments all touch `SKILL.md` and all correct factual errors → one commit. If they touch different concerns (one fixes a typo, one rewrites a section) → split.
+- **Never split a single Copilot comment across commits.** A comment is the smallest atomic unit.
+
+Surface the plan as a table:
 
 | Slice | Files | Commit message |
 |---|---|---|
