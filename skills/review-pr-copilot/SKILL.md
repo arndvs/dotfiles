@@ -172,7 +172,7 @@ Skipped / deferred:
 
 - **No Copilot review found** — say so, offer to address all reviewer comments instead (defer to `address-pr-comments`)
 - **Comment on deleted/renamed file** — surface to user, don't guess
-- **Vague comment** ("consider refactoring") — show your interpretation + proposed fix, get approval per-comment
+- **Vague comment** ("consider refactoring") — the `-25` vague-language signal will normally drop these into HITL; reply on the thread per step 5b. Only fix if the user explicitly re-tiers it to Auto/Confirm with a concrete approach.
 - **Stale comment** (file changed since) — re-read current file, rebase the fix mentally, flag if the comment no longer applies
 - **MCP tool naming differs** — use `tool_search` to find the actual GitHub MCP tools available; common variants: `get_pull_request`, `pull_request_read`, `mcp_github_pull_request_read`
 
