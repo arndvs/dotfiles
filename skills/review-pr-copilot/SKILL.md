@@ -24,7 +24,7 @@ These are **hard dependencies**, with one nuance:
 - **GitHub MCP** is required. If unavailable, surface that to the user and stop.
 - **VS Code PR extension** is required for **full-fidelity execution** (specifically, thread node IDs needed by step 5's `resolve_thread`). If unavailable, the skill may run in **degraded mode** via raw MCP after the user supplies `owner/repo#number`, but it must warn the user that thread resolution will not happen — only acknowledgment replies.
 
-Do not attempt to substitute raw `gh` CLI calls or git plumbing; the resolve-thread and request-review flows use GraphQL node IDs that are not exposed by the CLI.
+Do not attempt to substitute raw `gh` CLI commands (e.g. `gh pr view`) or git plumbing for thread resolution — the resolve-thread and request-review flows use GraphQL node IDs that require `gh api graphql` or the VS Code PR extension. When the PR extension is unavailable or stale, `gh api graphql` is the sanctioned fallback for fetching thread node IDs (see the compliance-audit Phase 2b query). Plain `gh pr` subcommands do not expose these IDs.
 
 ---
 
