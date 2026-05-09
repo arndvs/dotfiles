@@ -157,25 +157,89 @@ After each commit is pushed, for every Copilot thread fully addressed by an Auto
 
 If a fix only partially addresses a thread, post the acknowledgment but **do not resolve** — leave the thread open and note it in the final summary.
 
-### 5b. Reply to HITL comments
+### 5b. HITL comments — file an issue, don't strand the thread
 
-For every HITL-tier comment, post a reply on the thread via `mcp_github_add_reply_to_pull_request_comment` with this shape:
+HITL has two sub-tiers. Pick one before replying:
+
+- **HITL-deferrable** — the *approach* is clear, you just don't want to ship the work in this PR's review cycle (e.g. "add tests for this new adapter", "extract this into a shared util"). File a GitHub issue, post a "filed as #N" reply, **resolve the thread**.
+- **HITL-blocking** — the *approach* itself is ambiguous and needs human judgment to even define (e.g. "consider refactoring this module" with no concrete target). Post the legacy reply, **leave the thread open**.
+
+If you're tempted to call something HITL-deferrable just because it would be a lot of work, re-read step 2 — that's a Confirm-tier ask, not HITL. HITL exists for ambiguity, not effort.
+
+**Show your work.** Print the signal arithmetic for HITL just like Auto/Confirm — never just declare a confidence number.
+
+#### HITL-deferrable flow
+
+1. **Create a GitHub issue** via `mcp_github_issue_write` (method `create_issue`):
+
+   - **Title:** `<scope>: <one-line summary> (from PR #<N> Copilot review)`
+   - **Labels:** best-effort — call `mcp_github_get_label` for `copilot-review` and `hitl-deferred`; if missing, omit (do not create labels without authorization)
+   - **Body:**
+
+     ```markdown
+     **Parent PR:** #<N>
+     **Source comment:** <html_url of the PR comment>
+     **File:** `<path>:<line>`
+     **Confidence:** <score> = <signal arithmetic>
+
+     ## Interpretation
+
+     <one sentence>
+
+     ## Proposed approach
+
+     - <bullet>
+     - <bullet>
+
+     ## Blockers / questions
+
+     - <what makes this non-trivial>
+
+     ## Context for shft
+
+     Files to read:
+     - `<path>` — <why>
+
+     Acceptance criteria:
+     - [ ] <testable outcome>
+
+     Feedback loops:
+     - `<command>`
+     ```
+
+2. **Post the thread reply** via `mcp_github_add_reply_to_pull_request_comment`:
+
+   ```
+   Filed as #<issue-number> for follow-up — not blocking this PR.
+
+   Confidence: <score> = <arithmetic>
+   Interpretation: <one sentence>
+   Proposed approach:
+   - <bullet>
+   - <bullet>
+   ```
+
+3. **Resolve the thread** via `mcp_github_pull_request_review_write` (method `resolve_thread`). The work is now tracked in the issue — the reviewer can either accept the deferral or comment on the issue to challenge it.
+
+#### HITL-blocking flow
+
+Post a reply on the thread with this shape and **do not** resolve, **do not** file an issue, **do not** commit a speculative fix:
 
 ```
-Flagging for human review (confidence: <score>).
+Flagging for human review.
 
+Confidence: <score> = <arithmetic>
 My interpretation: <one sentence>
 
-Proposed approach: <2–3 bullets>
-
-Blockers / questions:
-- <what makes this ambiguous>
-- <what I'd need to know to proceed>
+Why this is HITL-blocking (not deferrable): <what makes the approach itself ambiguous>
 
 Reply with guidance and I'll address in a follow-up commit.
 ```
 
-Do **not** resolve the thread. Do **not** commit a speculative fix.
+**Failure modes caught in dogfooding:**
+
+- **PR #50 round 5** posted `(confidence: 10)` with no arithmetic, then deferred a normal test-coverage ask into HITL using effort-based reasoning ("bundling risks another re-review round"). Both wrong: the score must show signals, and "this is a lot of work" is not a HITL signal — file an issue and move on.
+- **PR #50 round 5** also stranded the deferral in a PR thread that nobody came back to. The HITL-deferrable flow above prevents that — the issue is the durable artifact.
 
 ### 6. Push + re-request review
 
