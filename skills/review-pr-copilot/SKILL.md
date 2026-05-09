@@ -40,7 +40,9 @@ Use `github-pull-request_currentActivePullRequest` (PR extension, not raw MCP) t
 If `currentActivePullRequest` is unavailable or returns no PR, ask the user for `owner/repo#number`, then fall back to `mcp_github_pull_request_read` (method `get_review_comments`) — but warn the user that step 5 will only post acknowledgments and cannot programmatically resolve threads in this mode.
 
 Filter reviews to Copilot:
-- `user.type == "Bot"` AND `user.login` matches `copilot-pull-request-reviewer[bot]` or contains `copilot`
+- Primary: `user.type == "Bot"` — canonical signal
+- Secondary: `user.login` matches one of `copilot-pull-request-reviewer[bot]`, `copilot-swe-agent`, `github-copilot[bot]`, or contains `copilot`
+- The login varies by Copilot variant (review bot, SWE agent, future variants); rely on `user.type == "Bot"` first and the login pattern only to disambiguate from other bots
 
 Skip threads where `isResolved == true` or `isOutdated == true`. **Build a map of `commentId → threadId`** from the response so step 5 can resolve the right thread per fix.
 
