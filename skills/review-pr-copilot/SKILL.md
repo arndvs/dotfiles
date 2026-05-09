@@ -15,7 +15,7 @@ This skill is a **thin orchestrator**. It does not reimplement comment fetching 
 
 - VS Code's built-in `address-pr-comments` skill — fetches and applies fixes
 - The `atomic-commits` skill — branch hygiene, conventional commits, ship mode
-- The GitHub MCP — `mcp_github_pull_request_read`, `mcp_github_resolveReviewThread`, `mcp_github_request_copilot_review`
+- The GitHub MCP — `mcp_github_pull_request_read`, `mcp_github_add_reply_to_pull_request_comment`, `mcp_github_pull_request_review_write` (method `resolve_thread`), `mcp_github_request_copilot_review`
 
 If any of those are unavailable, fall back to the inline steps below.
 
@@ -112,7 +112,7 @@ Addresses Copilot review on PR #<N>:
 
 ### 5. Resolve threads
 
-After each commit pushes, resolve the corresponding Copilot threads via `mcp_github_resolveReviewThread` — **only for Auto and Confirm tier fixes that fully addressed the comment**.
+After each commit is pushed, resolve the corresponding Copilot threads via `mcp_github_pull_request_review_write` (method `resolve_thread`) — **only for Auto and Confirm tier fixes that fully addressed the comment**.
 
 If a fix only partially addresses a thread, leave it open and note it in the final summary.
 
