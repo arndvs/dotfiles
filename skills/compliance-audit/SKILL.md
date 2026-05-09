@@ -82,14 +82,14 @@ gh api graphql -f query='query {
   repository(owner:"<owner>",name:"<repo>"){
     pullRequest(number:<N>){
       reviewThreads(first:50){
-        nodes{ id isResolved comments(first:10){ nodes{ databaseId path body author{login} } } }
+        nodes{ id isResolved comments(last:10){ nodes{ databaseId path body author{login} } } }
       }
     }
   }
 }'
 ```
 
-The query fetches up to 10 comments per thread so you can pair the **first comment** (Copilot's original review) with the **latest agent-authored reply**. For each thread the agent's reply touches, capture: thread ID, original Copilot comment body (first comment), the agent's reply body (latest comment by the PR author or agent), and whether the thread is resolved. Pass this set to Phase 3 — the HITL checks key off reply text (presence of arithmetic, presence of effort-vs-subjectivity reasoning, presence of `Filed as #N` link or `HITL-blocking` declaration).
+The query fetches the **last 10 comments** per thread so the latest agent-authored reply is always included. Pair the **first comment** (Copilot's original review, typically the earliest in the thread) with the **latest agent-authored reply** (the last comment by the PR author or agent). For each thread the agent's reply touches, capture: thread ID, original Copilot comment body (first comment), the agent's reply body (latest comment by the PR author or agent), and whether the thread is resolved. Pass this set to Phase 3 — the HITL checks key off reply text (presence of arithmetic, presence of effort-vs-subjectivity reasoning, presence of `Filed as #N` link or `HITL-blocking` declaration).
 
 If the PR has no Copilot review threads, the HITL checks are vacuously passed — note "no HITL replies to audit" and continue to the diff-based checks in Phase 3.
 

@@ -183,7 +183,7 @@ If a fix only partially addresses a thread, post the acknowledgment but **do not
 
 HITL has two sub-tiers. Pick one before replying:
 
-- **HITL-deferrable** — the *approach* is clear, you just don't want to ship the work in this PR's review cycle (e.g. "add tests for this new adapter", "extract this into a shared util"). File a GitHub issue, post a "filed as #N" reply, **resolve the thread**.
+- **HITL-deferrable** — the comment scores < 40 due to ambiguity signals, but after analysis you can articulate a concrete approach (e.g. "rethink error boundaries" → you identify 3 specific catch blocks to restructure; "consider a caching layer" → you can name the exact module and strategy). File a GitHub issue, post a "filed as #N" reply, **resolve the thread**.
 - **HITL-blocking** — the *approach* itself is ambiguous and needs human judgment to even define (e.g. "consider refactoring this module" with no concrete target). Post the legacy reply, **leave the thread open**.
 
 If you're tempted to call something HITL-deferrable just because it would be a lot of work, re-read step 2 — that's a Confirm-tier ask, not HITL. HITL exists for ambiguity, not effort.
@@ -241,7 +241,7 @@ If you're tempted to call something HITL-deferrable just because it would be a l
    - <bullet>
    ```
 
-3. **Resolve the thread** via `mcp_github_pull_request_review_write` (method `resolve_thread`). The work is now tracked in the issue — the reviewer can either accept the deferral or comment on the issue to challenge it.
+3. **Resolve the thread** via `mcp_github_pull_request_review_write` (method `resolve_thread`). The work is now tracked in the issue — the reviewer can either accept the deferral or comment on the issue to challenge it. **Degraded mode** — if thread IDs are not available (no PR extension, no GraphQL), skip resolution, note "thread not auto-resolved (degraded mode)" in the reply and the summary, and continue. The issue is the durable artifact; resolution is best-effort.
 
 #### HITL-blocking flow
 
