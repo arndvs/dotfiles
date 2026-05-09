@@ -17,7 +17,12 @@ This skill is a **thin orchestrator**. It does not reimplement comment fetching 
 - The GitHub MCP — `mcp_github_pull_request_read`, `mcp_github_add_reply_to_pull_request_comment`, `mcp_github_add_issue_comment`, `mcp_github_pull_request_review_write` (method `resolve_thread`), `mcp_github_request_copilot_review`
 - The VS Code GitHub PR extension — `github-pull-request_currentActivePullRequest` (required for thread node IDs)
 
-These are **hard dependencies**. If the GitHub MCP or PR extension is unavailable, this skill cannot run — surface that to the user and stop. Do not attempt to substitute raw `gh` CLI calls or git plumbing; the resolve-thread and request-review flows use GraphQL node IDs that are not exposed by the CLI.
+These are **hard dependencies**, with one nuance:
+
+- **GitHub MCP** is required. If unavailable, surface that to the user and stop.
+- **VS Code PR extension** is required for **full-fidelity execution** (specifically, thread node IDs needed by step 5's `resolve_thread`). If unavailable, the skill may run in **degraded mode** via raw MCP after the user supplies `owner/repo#number`, but it must warn the user that thread resolution will not happen — only acknowledgment replies.
+
+Do not attempt to substitute raw `gh` CLI calls or git plumbing; the resolve-thread and request-review flows use GraphQL node IDs that are not exposed by the CLI.
 
 ---
 
@@ -89,7 +94,7 @@ PR #<N> — <X> open Copilot comments
   Confirm (40–74):
     3. src/utils/parse.ts:103    [50 +20 specific −10 stale +15 ≤10 lines −15 cross-file = 60]  extract repeated regex
   HITL    (<40):
-    4. src/store/index.ts:1      [50 −25 vague −20 shared util = 5 → clamped to 0, floored to display 28]  "consider refactoring this module"
+    4. src/store/index.ts:1      [50 −25 vague −20 shared util = 5 → clamped]  "consider refactoring this module"
 ```
 
 **Failure mode caught in dogfooding (PR #68):** every comment reported as "100" with no arithmetic. If your output looks like that, the scoring step was skipped — restart from this section.
