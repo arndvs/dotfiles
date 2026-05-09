@@ -9,7 +9,9 @@ Output "Read Review PR Copilot skill." to chat to acknowledge you read this file
 
 ## When to use
 
-Use whenever Copilot has left review comments on a pull request and the user wants to address them. Trigger phrases: "fix the PR comments", "address Copilot review", "clean up review feedback", "fix Copilot's comments", "address PR feedback", "re-request review". Also trigger proactively when the active PR has unresolved Copilot review threads and the user asks to commit or ship.
+Use whenever Copilot has left review comments on a pull request and the user wants to address them. Trigger phrases: "address the review comments", "address review", "address copilot review", "fix the PR comments", "clean up review feedback", "address PR feedback", "re-request review". Also trigger proactively when the active PR has unresolved Copilot review threads and the user asks to commit or ship.
+
+**Never ask the user to paste comment bodies into chat.** Fetch them yourself per step 1 — that's the whole point of the skill. The only thing you may ask the user for is `owner/repo#number` if no active PR is detected.
 
 This skill is a **thin orchestrator**. It does not reimplement comment fetching or commit logic — those live in:
 

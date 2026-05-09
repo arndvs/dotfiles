@@ -28,7 +28,7 @@ This skill operates in two modes depending on the user's intent:
 | Mode       | When                                                                  | Steps    |
 | ---------- | --------------------------------------------------------------------- | -------- |
 | **Commit** | Default. User says "commit", "save progress", "checkpoint my work"    | 0 → 1 → 2 → 3 |
-| **Ship**   | User says "ship", "push", "PR", "create a pull request", "open a PR" | 0 → 1 → 2 → 3 → 4 → 5 |
+| **Ship**   | User says "ship", "push", "PR", "create a pull request", "open a PR" | 0 → 1 → 2 → 3 → 4 → 5 → 6 |
 
 During multi-slice work, use **Commit** mode at each slice. Use **Ship** mode only when all slices are done and the work is ready for review.
 
@@ -153,6 +153,18 @@ fi
 The PR title should summarize the full feature branch, not individual commits. Use the conventional commit format.
 
 **After creating the PR:** report the PR URL to the user. Do not merge — the PR exists for review.
+
+### 6. Request Copilot review (Ship mode only)
+
+After the PR is created (or already exists), request a Copilot review automatically:
+
+```bash
+mcp_github_request_copilot_review  owner=<owner>  repo=<repo>  pullNumber=<N>
+```
+
+If the MCP tool is not loaded, use `tool_search` for "request copilot review" first. If no tool is available, surface the PR URL and ask the user to request review manually.
+
+This ensures every PR gets at least one Copilot review pass before human review.
 
 ---
 
