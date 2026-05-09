@@ -156,13 +156,13 @@ The PR title should summarize the full feature branch, not individual commits. U
 
 ### 6. Request Copilot review (Ship mode only)
 
-After the PR is created (or already exists), request a Copilot review automatically:
+After the PR is created (or already exists), request a Copilot review automatically by calling the MCP tool:
 
-```bash
+```
 mcp_github_request_copilot_review  owner=<owner>  repo=<repo>  pullNumber=<N>
 ```
 
-If the MCP tool is not loaded, use `tool_search` for "request copilot review" first. If no tool is available, surface the PR URL and ask the user to request review manually.
+This is an **agent tool invocation** (MCP), not a shell command — do not run it in a terminal. If the MCP tool is not loaded, use `tool_search` for "request copilot review" first. If no tool is available, surface the PR URL and ask the user to request review manually.
 
 This ensures every PR gets at least one Copilot review pass before human review.
 
