@@ -87,7 +87,10 @@ Group **Auto + Confirm** comments into atomic slices (one logical fix per commit
 | 1 | `src/auth/token.ts` | `fix(auth): handle null user in token refresh` |
 | 2 | `src/api/*.ts` | `fix(api): propagate errors instead of swallowing` |
 
-Wait for user approval.
+**Approval gates per tier** (no global gate — the triage table in step 2 is the only session-wide checkpoint):
+- **Auto slices** — proceed immediately after printing the plan
+- **Confirm slices** — show diff preview and prompt for one-line approval *per comment* before the commit
+- **HITL** — never reach this step
 
 ### 4. Apply + commit each slice
 
