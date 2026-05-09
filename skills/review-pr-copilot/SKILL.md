@@ -168,6 +168,8 @@ Then call `mcp_github_request_copilot_review` on the PR. If it fails, surface th
 
 ### 7. Summary report
 
+Post the summary in two places: chat (for the user) **and** as a top-level PR comment via `mcp_github_add_issue_comment` (for the next reviewer — human or bot — who lacks chat history). Use the same block in both:
+
 ```
 PR #<N> — Copilot review addressed
 
@@ -189,6 +191,8 @@ Awaiting human (HITL):
 Skipped / deferred:
   - <comment summary> — <reason>
 ```
+
+Skip the PR comment if `X+Y == 0` (nothing changed) — leaves no noise.
 
 ---
 
