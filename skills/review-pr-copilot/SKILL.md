@@ -208,3 +208,14 @@ Skipped / deferred:
 - Never force-push without confirmation
 - Never auto-resolve a thread you didn't fully address
 - Stop and ask if a fix would break public API, change types broadly, or modify test assertions
+
+## Escape hatch — skill bug discovered mid-flow
+
+If you notice this skill itself is wrong while running it (e.g. a tool name is stale, a step is contradictory, an MCP returns unexpected shape):
+
+1. **Stop.** Do not bundle the skill fix into a Copilot-comment commit — this violates the "only what Copilot flagged" guardrail above.
+2. Surface the bug in chat with a one-line summary and the failure mode you hit.
+3. Ask the user whether to (a) finish the current Copilot round first then patch the skill, or (b) patch the skill now in a separate commit and resume.
+4. Whichever path the user picks, the skill fix lands in its own commit with `fix(skills):` scope and references the dogfood failure.
+
+**Failure mode caught in dogfooding (PR #68):** mid-round, the agent identified two skill bugs (wrong tool name, missing acknowledgment step) and shipped them as slices 3 and 4 of a Copilot-comment series, polluting the commit history and bypassing the guardrail.
