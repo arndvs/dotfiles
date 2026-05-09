@@ -13,11 +13,11 @@ Use whenever Copilot has left review comments on a pull request and the user wan
 
 This skill is a **thin orchestrator**. It does not reimplement comment fetching or commit logic — those live in:
 
-- VS Code's built-in `address-pr-comments` skill — fetches and applies fixes
 - The `atomic-commits` skill — branch hygiene, conventional commits, ship mode
-- The GitHub MCP — `mcp_github_pull_request_read`, `mcp_github_add_reply_to_pull_request_comment`, `mcp_github_pull_request_review_write` (method `resolve_thread`), `mcp_github_request_copilot_review`
+- The GitHub MCP — `mcp_github_pull_request_read`, `mcp_github_add_reply_to_pull_request_comment`, `mcp_github_add_issue_comment`, `mcp_github_pull_request_review_write` (method `resolve_thread`), `mcp_github_request_copilot_review`
+- The VS Code GitHub PR extension — `github-pull-request_currentActivePullRequest` (required for thread node IDs)
 
-If any of those are unavailable, fall back to the inline steps below.
+These are **hard dependencies**. If the GitHub MCP or PR extension is unavailable, this skill cannot run — surface that to the user and stop. Do not attempt to substitute raw `gh` CLI calls or git plumbing; the resolve-thread and request-review flows use GraphQL node IDs that are not exposed by the CLI.
 
 ---
 
@@ -210,7 +210,7 @@ Skip the PR comment if `X+Y == 0` (nothing changed) — leaves no noise.
 
 ## Edge cases
 
-- **No Copilot review found** — say so, offer to address all reviewer comments instead (defer to `address-pr-comments`)
+- **No Copilot review found** — say so, ask the user whether to address human reviewer comments (this skill is Copilot-scoped; for general review handling use VS Code's built-in `address-pr-comments` separately)
 - **Comment on deleted/renamed file** — surface to user, don't guess
 - **Vague comment** ("consider refactoring") — the `-25` vague-language signal will normally drop these into HITL; reply on the thread per step 5b. Only fix if the user explicitly re-tiers it to Auto/Confirm with a concrete approach.
 - **Stale comment** (file changed since) — re-read current file, rebase the fix mentally, flag if the comment no longer applies
