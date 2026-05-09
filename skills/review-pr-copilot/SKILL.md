@@ -14,7 +14,7 @@ Use whenever Copilot has left review comments on a pull request and the user wan
 This skill is a **thin orchestrator**. It does not reimplement comment fetching or commit logic — those live in:
 
 - The `atomic-commits` skill — branch hygiene, conventional commits, ship mode
-- The GitHub MCP — `mcp_github_pull_request_read`, `mcp_github_add_reply_to_pull_request_comment`, `mcp_github_add_issue_comment`, `mcp_github_pull_request_review_write` (method `resolve_thread`), `mcp_github_request_copilot_review`
+- The GitHub MCP — `mcp_github_pull_request_read`, `mcp_github_add_reply_to_pull_request_comment`, `mcp_github_add_issue_comment`, `mcp_github_pull_request_review_write` (method `resolve_thread`), `mcp_github_request_copilot_review`, `mcp_github_issue_write` (method `create_issue`, used by the HITL-deferrable flow in step 5b). Any of these may be deferred and require `tool_search` to load — see the tool-discovery contract in step 5b before calling.
 - The VS Code GitHub PR extension — `github-pull-request_currentActivePullRequest` (required for thread node IDs)
 
 These are **hard dependencies**, with one nuance:
@@ -30,9 +30,10 @@ Do not attempt to substitute raw `gh` CLI calls or git plumbing; the resolve-thr
 
 ### 0. Pre-flight checks
 
-All three checks below are PR-scoped, so begin step 0 by fetching the PR context: call `github-pull-request_currentActivePullRequest` (or, in degraded mode, prompt the user for `owner/repo#number` and use `mcp_github_pull_request_read`). Once you have a PR number, verify the run is worth starting:
+All checks below are PR-scoped, so begin step 0 by fetching the PR context: call `github-pull-request_currentActivePullRequest` (or, in degraded mode, prompt the user for `owner/repo#number` and use `mcp_github_pull_request_read`). Once you have a PR number, verify the run is worth starting:
 
 - **Round counter** — track Copilot review rounds in this skill's session state, keyed by PR number. Default cap: **3 rounds per PR**. After round 3, stop and surface to the user — further rounds usually mean subjective comments that need a human to break the tie.
+- **Round-cap override contract** — if the user explicitly authorizes continuing past the cap (e.g. "do another round", "keep going"), record the override on that round and **every subsequent round's pre-flight line must include `(cap=<cap> overridden by user on round <R_override>)`** (where `<cap>` is the current cap value, e.g. `3`, and `<R_override>` is the round number when the user authorized the override). This makes it auditable from the PR comment thread that the cap was exceeded by consent, not by drift. PR #50 dogfooded this — round 5 posted only a bare round count with no override marker, so a reviewer landing on the PR could not tell whether the cap had been breached or whether the cap simply didn't exist.
 - **CI status** — call `mcp_github_pull_request_read` (method `get_status_checks`) on the PR, or read `currentActivePullRequest.statusCheckRollup`. If checks are failing, ask the user before proceeding — fixing review nits while CI is red wastes a re-review cycle.
 - **Pending review** — inspect the PR's reviews; if Copilot has a review in `PENDING` state (not yet submitted), stop. Re-running this skill will produce no comments and waste a `request_copilot_review` call.
 
@@ -79,7 +80,28 @@ Start at 50, apply signals, clamp 0–100.
 |---|---|---|
 | **Auto** | ≥ 75 | Fix, commit, resolve thread — no prompt. Reported in final summary. |
 | **Confirm** | 40–74 | Show diff preview + one-line approval prompt per comment before commit. |
-| **HITL** | < 40 | **Do not fix.** Post a reply on the thread with your interpretation and a proposed approach as a question. Leave the thread open. |
+| **HITL** | < 40 | **Do not fix in this PR.** Tier into HITL-deferrable (file an issue, resolve thread) or HITL-blocking (leave open) per step 5b. |
+
+**HITL is for subjective fixes, not large ones.** The tier is decided by *ambiguity*, not by *effort*:
+
+- ✅ HITL: "consider refactoring this module" (no concrete target — ambiguous)
+- ✅ HITL: "rethink the error model here" (taste call — ambiguous)
+- ❌ HITL: "add tests for this new adapter" — that's **Confirm-tier**, deferrable to a follow-up issue but the approach is clear
+- ❌ HITL: "rename `foo` to `bar` across 5 files" — that's **Confirm-tier**, large but mechanical
+- ❌ HITL: "extract this into a shared util" with a named target — **Confirm-tier**, scope is defined
+
+If a comment has a clear approach but you don't want to do it now, the answer is the **HITL-deferrable** flow in step 5b (file an issue). Do not push it into HITL-blocking just to skip the work.
+
+**Forced-Confirm keywords.** If the comment uses any of the following, the floor is **Confirm tier** regardless of arithmetic — these signal a behavior or contract change that needs explicit approval before committing, even if the change *looks* mechanical:
+
+- `refactor:` / "refactor this"
+- "align" / "normalize" / "standardize" (across files)
+- "semantics" / "behavior" / "contract"
+- "signature" / "return type" / "parameter type" change
+- "error semantics" / "error model" / "throw" → "return" or vice versa
+- "rename" of an exported symbol or public API
+
+PR #50 commit `c6c4bed` autofixed an "align error semantics" ask without a Confirm prompt — it was a behavior change masked as a refactor. Auto tier was wrong; the keyword should have forced Confirm.
 
 **Show your work.** For every comment, print the signal arithmetic before the score — never just declare a number. List every applicable signal you considered; if no signals apply on one side, say so explicitly (e.g. `no negative signals applied`). If you cannot explain the arithmetic at all, you are vibing; stop and re-read the comment. Do not invent signals just to show one on each side.
 
@@ -157,25 +179,89 @@ After each commit is pushed, for every Copilot thread fully addressed by an Auto
 
 If a fix only partially addresses a thread, post the acknowledgment but **do not resolve** — leave the thread open and note it in the final summary.
 
-### 5b. Reply to HITL comments
+### 5b. HITL comments — file an issue, don't strand the thread
 
-For every HITL-tier comment, post a reply on the thread via `mcp_github_add_reply_to_pull_request_comment` with this shape:
+HITL has two sub-tiers. Pick one before replying:
+
+- **HITL-deferrable** — the comment scores < 40 due to ambiguity signals, but after analysis you can articulate a concrete approach (e.g. "rethink error boundaries" → you identify 3 specific catch blocks to restructure; "consider a caching layer" → you can name the exact module and strategy). File a GitHub issue, post a "filed as #N" reply, **resolve the thread**.
+- **HITL-blocking** — the *approach* itself is ambiguous and needs human judgment to even define (e.g. "consider refactoring this module" with no concrete target). Post the legacy reply, **leave the thread open**.
+
+If you're tempted to call something HITL-deferrable just because it would be a lot of work, re-read step 2 — that's a Confirm-tier ask, not HITL. HITL exists for ambiguity, not effort.
+
+**Show your work.** Print the signal arithmetic for HITL just like Auto/Confirm — never just declare a confidence number.
+
+#### HITL-deferrable flow
+
+1. **Create a GitHub issue** via `mcp_github_issue_write` (method `create_issue`). If the tool is not loaded, run `tool_search` for "create github issue" first; if no issue-creation tool is available, **stop and surface to the user** — the HITL-deferrable flow requires a durable issue, so falling back to a bare PR-thread reply would re-introduce the PR #50 round-5 stranded-thread failure mode. Do not silently downgrade to HITL-blocking.
+
+   - **Title:** `<scope>: <one-line summary> (from PR #<N> Copilot review)`
+   - **Labels:** best-effort — first use `tool_search` to find an available GitHub label-lookup tool (e.g. `get_label` / `list_labels`); if one is loaded, look up `copilot-review` and `hitl-deferred` and include only labels that already exist. If no label tool is available or the labels are missing, **omit labels entirely** — do not create labels without authorization, and do not let label resolution block issue creation.
+   - **Body:**
+
+     ```markdown
+     **Parent PR:** #<N>
+     **Source comment:** <html_url of the PR comment>
+     **File:** `<path>:<line>`
+     **Confidence:** <score> = <signal arithmetic>
+
+     ## Interpretation
+
+     <one sentence>
+
+     ## Proposed approach
+
+     - <bullet>
+     - <bullet>
+
+     ## Blockers / questions
+
+     - <what makes this non-trivial>
+
+     ## Context for shft
+
+     Files to read:
+     - `<path>` — <why>
+
+     Acceptance criteria:
+     - [ ] <testable outcome>
+
+     Feedback loops:
+     - `<command>`
+     ```
+
+2. **Post the thread reply** via `mcp_github_add_reply_to_pull_request_comment`:
+
+   ```
+   Filed as #<issue-number> for follow-up — not blocking this PR.
+
+   Confidence: <score> = <arithmetic>
+   Interpretation: <one sentence>
+   Proposed approach:
+   - <bullet>
+   - <bullet>
+   ```
+
+3. **Resolve the thread** via `mcp_github_pull_request_review_write` (method `resolve_thread`). The work is now tracked in the issue — the reviewer can either accept the deferral or comment on the issue to challenge it. **Degraded mode** — if thread IDs are not available (e.g. the VS Code PR extension is not loaded and `gh api graphql` is not installed), skip resolution, note "thread not auto-resolved (degraded mode)" in the reply and the summary, and continue. The issue is the durable artifact; resolution is best-effort.
+
+#### HITL-blocking flow
+
+Post a reply on the thread with this shape and **do not** resolve, **do not** file an issue, **do not** commit a speculative fix:
 
 ```
-Flagging for human review (confidence: <score>).
+Flagging for human review.
 
+Confidence: <score> = <arithmetic>
 My interpretation: <one sentence>
 
-Proposed approach: <2–3 bullets>
-
-Blockers / questions:
-- <what makes this ambiguous>
-- <what I'd need to know to proceed>
+Why this is HITL-blocking (not deferrable): <what makes the approach itself ambiguous>
 
 Reply with guidance and I'll address in a follow-up commit.
 ```
 
-Do **not** resolve the thread. Do **not** commit a speculative fix.
+**Failure modes caught in dogfooding:**
+
+- **PR #50 round 5** posted `(confidence: 10)` with no arithmetic, then deferred a normal test-coverage ask into HITL using effort-based reasoning ("bundling risks another re-review round"). Both wrong: the score must show signals, and "this is a lot of work" is not a HITL signal — file an issue and move on.
+- **PR #50 round 5** also stranded the deferral in a PR thread that nobody came back to. The HITL-deferrable flow above prevents that — the issue is the durable artifact.
 
 ### 6. Push + re-request review
 
@@ -185,17 +271,20 @@ Then call `mcp_github_request_copilot_review` on the PR. If it fails, surface th
 
 ### 7. Summary report
 
-Post the summary in two places: chat (for the user) **and** as a top-level PR comment via `mcp_github_add_issue_comment` (for the next reviewer — human or bot — who lacks chat history). Use the same block in both:
+Post the summary in two places: chat (for the user) **and** as a top-level PR comment via `mcp_github_add_issue_comment` (for the next reviewer — human or bot — who lacks chat history). **Post on every round, not just the last** — each round's summary gives the next reviewer the per-round paper trail. Use the same block in both:
 
 ```
-PR #<N> — Copilot review addressed
+PR #<N> — Copilot review addressed (round <R>)
 
-Triage:            Auto <X>  |  Confirm <Y>  |  HITL <Z>
+Pre-flight: round <R>/<cap> | CI <green|red|pending> | pending review <yes|no>[ | (cap=<cap> overridden by user on round <R_override>)]
+Triage:            Auto <X>  |  Confirm <Y>  |  HITL-deferrable <Zd>  |  HITL-blocking <Zb>
 Comments fixed:    <X+Y> / <total>
-HITL replies:      <Z>
-Commits:           <N>
-Threads resolved:  <X+Y>
-Review re-requested: yes | manual
+Issues filed:      <Zd> (HITL-deferrable)
+Threads resolved:  <X+Y+Zd−Zd_degraded>
+Threads not auto-resolved: <Zd_degraded> (HITL-deferrable, degraded mode — issue filed but thread ID unavailable)
+Threads left open: <Zb> (HITL-blocking)
+Commits:           <C>
+Review re-requested: yes | manual | no (cap reached)
 
 Commits:
   <sha[:7]>  <message>
@@ -209,7 +298,13 @@ Skipped / deferred:
   - <comment summary> — <reason>
 ```
 
-Skip the PR comment if `X+Y == 0` (nothing changed) — leaves no noise.
+Omit the `Threads not auto-resolved` line entirely when `Zd_degraded == 0` (i.e. all HITL-deferrable threads were resolved normally). Only include it when degraded mode prevented thread resolution.
+
+Skip the PR comment only if `X+Y+Zd+Zb == 0` AND no pre-flight check fired — i.e. the round was a true no-op. Otherwise post, even on rounds where you only filed issues or only triaged.
+
+The bracketed `(cap=<cap> overridden by user on round <R_override>)` segment in the pre-flight line is **mandatory** on every round after the user authorizes continuing past the cap (per §0). Omit the bracketed segment on rounds 1 through `<cap>`. This is the only sanctioned place to record the override — do not bury it in chat.
+
+**Failure mode caught in dogfooding (PR #50):** ran 5 rounds, only round 5 posted a PR-comment summary. The intermediate rounds left no paper trail — a reviewer landing on the PR mid-flow couldn't tell what had been triaged, fixed, or deferred without scrolling commit-by-commit.
 
 ---
 

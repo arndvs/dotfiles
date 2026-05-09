@@ -20,7 +20,9 @@ Auto-invoke after:
 - `/do-work` completes and produces a commit
 - `/tdd` completes a red-green-refactor cycle
 - `systematic-debugging` produces a fix
-- `review-pr-copilot` finishes a round (catches self-initiated changes bundled into Copilot-comment commits — see PR #68 dogfood)
+- `review-pr-copilot` finishes a round (catches self-initiated changes bundled into Copilot-comment commits — see PR #68 dogfood). Specifically check:
+  - **HITL tier classification** — any HITL-tier reply that lacks signal arithmetic, or that uses *effort* reasoning ("this would be a lot of work", "bundling risks another round") instead of *subjectivity* reasoning ("the approach itself is ambiguous"). Flag as a tier misclassification — the comment was almost certainly Confirm-tier and got punted into HITL to dodge the work. (Failure mode: PR #50 round 5.)
+  - **HITL deferral path** — every HITL-tier reply must either (a) link a filed GitHub issue and have its thread resolved (HITL-deferrable), or (b) explicitly state "HITL-blocking" with a one-sentence reason about why the *approach* is ambiguous. Bare "flagging for review" replies with no issue link and no blocking reason are stranded threads — flag and require the agent to either file an issue or supply the blocking reason. (Failure mode: PR #50 round 5.)
 
 Can also be invoked manually: `/compliance-audit` to review the most recent commit against active context.
 
@@ -60,6 +62,42 @@ git diff HEAD~1 HEAD
 # Or staged changes if not yet committed
 git diff --cached
 ```
+
+---
+
+### Phase 2b — Fetch PR review threads (review-pr-copilot trigger only)
+
+The HITL-tier-classification and HITL-deferral-path checks under the `review-pr-copilot` trigger evaluate **PR thread replies**, not diffs. When auditing a `review-pr-copilot` round you must fetch those threads before scoring.
+
+**Required tools** (MCP tools may be deferred — use `tool_search` if not loaded):
+
+- `github-pull-request_currentActivePullRequest` (preferred, returns thread node IDs)
+- `gh api graphql` fallback (CLI command, not an MCP tool — run via terminal when the PR-extension cache is stale)
+- `mcp_github_pull_request_read` (method `get_review_comments`) for comment bodies — **degraded mode only** (see below)
+
+**Fetch pattern:**
+
+```bash
+gh api graphql -f query='query {
+  repository(owner:"<owner>",name:"<repo>"){
+    pullRequest(number:<N>){
+      reviewThreads(first:50){
+        nodes{
+          id isResolved
+          firstComment: comments(first:1){ nodes{ databaseId path body author{login} } }
+          lastComments: comments(last:10){ nodes{ databaseId path body author{login} } }
+        }
+      }
+    }
+  }
+}'
+```
+
+The query aliases two comment windows per thread: `firstComment` (the original Copilot review comment) and `lastComments` (the 10 most recent replies). In practice this covers all review threads — Copilot PRs rarely exceed 50 threads or 10 replies per thread. If a PR does exceed these limits, increase the `first:` / `last:` values or paginate using `pageInfo { hasNextPage endCursor }`. Pair `firstComment.nodes[0]` (Copilot's original) with the latest agent-authored entry in `lastComments` (scan from the end for a comment whose `author.login` matches the PR author or agent). For each thread the agent's reply touches, capture: thread ID, original Copilot comment body, the agent's reply body, and whether the thread is resolved. Pass this set to Phase 3 — the HITL checks key off reply text (presence of arithmetic, presence of effort-vs-subjectivity reasoning, presence of `Filed as #N` link or `HITL-blocking` declaration).
+
+If the PR has no Copilot review threads, the HITL checks are vacuously passed — note "no HITL replies to audit" and continue to the diff-based checks in Phase 3.
+
+**Degraded mode** — if both `currentActivePullRequest` and `gh api graphql` are unavailable (e.g. `gh` CLI not installed), fall back to `mcp_github_pull_request_read` (method `get_review_comments`). This API returns comment bodies but **not** `isResolved` state or GraphQL thread IDs, so the HITL-deferral-path check ("issue link + thread resolved") cannot be fully validated. In degraded mode: check reply bodies for arithmetic and `Filed as #N` links as normal, but mark the resolved-state check as `UNCLEAR — thread resolution not verifiable without GraphQL` and continue to Phase 3.
 
 ---
 
