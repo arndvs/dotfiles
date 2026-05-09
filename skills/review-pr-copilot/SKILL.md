@@ -79,7 +79,17 @@ Start at 50, apply signals, clamp 0–100.
 |---|---|---|
 | **Auto** | ≥ 75 | Fix, commit, resolve thread — no prompt. Reported in final summary. |
 | **Confirm** | 40–74 | Show diff preview + one-line approval prompt per comment before commit. |
-| **HITL** | < 40 | **Do not fix.** Post a reply on the thread with your interpretation and a proposed approach as a question. Leave the thread open. |
+| **HITL** | < 40 | **Do not fix in this PR.** Tier into HITL-deferrable (file an issue, resolve thread) or HITL-blocking (leave open) per step 5b. |
+
+**HITL is for subjective fixes, not large ones.** The tier is decided by *ambiguity*, not by *effort*:
+
+- ✅ HITL: "consider refactoring this module" (no concrete target — ambiguous)
+- ✅ HITL: "rethink the error model here" (taste call — ambiguous)
+- ❌ HITL: "add tests for this new adapter" — that's **Confirm-tier**, deferrable to a follow-up issue but the approach is clear
+- ❌ HITL: "rename `foo` to `bar` across 5 files" — that's **Confirm-tier**, large but mechanical
+- ❌ HITL: "extract this into a shared util" with a named target — **Confirm-tier**, scope is defined
+
+If a comment has a clear approach but you don't want to do it now, the answer is the **HITL-deferrable** flow in step 5b (file an issue). Do not push it into HITL-blocking just to skip the work.
 
 **Show your work.** For every comment, print the signal arithmetic before the score — never just declare a number. List every applicable signal you considered; if no signals apply on one side, say so explicitly (e.g. `no negative signals applied`). If you cannot explain the arithmetic at all, you are vibing; stop and re-read the comment. Do not invent signals just to show one on each side.
 
