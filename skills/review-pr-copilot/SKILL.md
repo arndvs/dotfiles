@@ -280,7 +280,7 @@ Pre-flight: round <R>/<cap> | CI <green|red|pending> | pending review <yes|no>[ 
 Triage:            Auto <X>  |  Confirm <Y>  |  HITL-deferrable <Zd>  |  HITL-blocking <Zb>
 Comments fixed:    <X+Y> / <total>
 Issues filed:      <Zd> (HITL-deferrable)
-Threads resolved:  <X+Y+Zd_resolved>
+Threads resolved:  <X+Y+Zd−Zd_degraded>
 Threads not auto-resolved: <Zd_degraded> (HITL-deferrable, degraded mode — issue filed but thread ID unavailable)
 Threads left open: <Zb> (HITL-blocking)
 Commits:           <C>
