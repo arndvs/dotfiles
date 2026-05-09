@@ -32,21 +32,55 @@ Fetch reviews via `mcp_github_pull_request_read` (method `getReviews`) and isola
 
 Fetch inline comments and filter to that user. Skip threads where `isResolved == true` or `outdated == true`.
 
-### 2. Summarize and confirm
+### 2. Score each comment + triage
 
-Print a numbered list before touching code:
+Score every comment 0–100 using observable signals, not vibes:
+
+**Positive signals** (add):
+- `+20` Comment is specific — cites exact line and exact change
+- `+25` Fix is mechanical — rename, add guard, add type, fix typo, add missing await
+- `+15` Touches ≤1 file and ≤10 lines
+- `+15` Touched code has test coverage
+- `+10` No public API / exported type signature change
+- `+15` Copilot quoted the existing code or proposed a concrete replacement
+
+**Negative signals** (subtract):
+- `−20` Touches a shared util, type, schema, or hook used in 3+ places
+- `−25` Vague language: "consider", "might want to", "could", "perhaps", "in some cases"
+- `−15` Cross-file or cross-module change
+- `−20` Modifies test assertions or fixtures (risk: masking the bug)
+- `−15` Changes error-handling semantics (swallow ↔ throw, sync ↔ async)
+- `−10` File changed since the comment was posted (stale context)
+
+Start at 50, apply signals, clamp 0–100.
+
+**Tiers + policy:**
+
+| Tier | Score | Action |
+|---|---|---|
+| **Auto** | ≥ 75 | Fix, commit, resolve thread — no prompt. Reported in final summary. |
+| **Confirm** | 40–74 | Show diff preview + one-line approval prompt per comment before commit. |
+| **HITL** | < 40 | **Do not fix.** Post a reply on the thread with your interpretation and a proposed approach as a question. Leave the thread open. |
+
+Print the triage table before any action:
 
 ```
 PR #<N> — <X> open Copilot comments
-  1. <file>:<line> — <one-line summary>
-  2. ...
+
+  Auto    (≥75):
+    1. src/auth/token.ts:42      [88]  add null guard on user
+    2. src/api/fetch.ts:17       [82]  fix typo in error message
+  Confirm (40–74):
+    3. src/utils/parse.ts:103    [62]  extract repeated regex
+  HITL    (<40):
+    4. src/store/index.ts:1      [28]  "consider refactoring this module"
 ```
 
-Ask the user to confirm or exclude any items. **Do not proceed without confirmation** if more than 3 comments — silent batch fixes are how regressions ship.
+User can override the policy for the session: "auto everything", "confirm everything", "be conservative" (raise thresholds), or list specific comment numbers to re-tier.
 
 ### 3. Plan slices
 
-Group comments into atomic slices (one logical fix per commit). Surface the plan as a table:
+Group **Auto + Confirm** comments into atomic slices (one logical fix per commit). HITL comments are excluded from slicing — they get thread replies instead. Surface the plan as a table:
 
 | Slice | Files | Commit message |
 |---|---|---|
@@ -75,9 +109,29 @@ Addresses Copilot review on PR #<N>:
 
 ### 5. Resolve threads
 
-After each commit pushes, resolve the corresponding Copilot threads via `mcp_github_resolveReviewThread`. Map comment IDs to thread IDs from step 1.
+After each commit pushes, resolve the corresponding Copilot threads via `mcp_github_resolveReviewThread` — **only for Auto and Confirm tier fixes that fully addressed the comment**.
 
 If a fix only partially addresses a thread, leave it open and note it in the final summary.
+
+### 5b. Reply to HITL comments
+
+For every HITL-tier comment, post a reply on the thread via `mcp_github_add_reply_to_pull_request_comment` with this shape:
+
+```
+Flagging for human review (confidence: <score>).
+
+My interpretation: <one sentence>
+
+Proposed approach: <2–3 bullets>
+
+Blockers / questions:
+- <what makes this ambiguous>
+- <what I'd need to know to proceed>
+
+Reply with guidance and I'll address in a follow-up commit.
+```
+
+Do **not** resolve the thread. Do **not** commit a speculative fix.
 
 ### 6. Push + re-request review
 
@@ -90,13 +144,19 @@ Then call `mcp_github_request_copilot_review` on the PR. If it fails, surface th
 ```
 PR #<N> — Copilot review addressed
 
-Comments fixed:    <X> / <total>
+Triage:            Auto <X>  |  Confirm <Y>  |  HITL <Z>
+Comments fixed:    <X+Y> / <total>
+HITL replies:      <Z>
 Commits:           <N>
-Threads resolved:  <X>
+Threads resolved:  <X+Y>
 Review re-requested: yes | manual
 
 Commits:
   <sha[:7]>  <message>
+  ...
+
+Awaiting human (HITL):
+  - #<comment-id> <file>:<line> — <one-line summary>  [confidence: <score>]
   ...
 
 Skipped / deferred:
