@@ -1,6 +1,6 @@
 ---
 name: review-pr-copilot
-description: "End-to-end loop for addressing GitHub Copilot review comments on the active PR: fetch Copilot-only feedback, fix in atomic commits, resolve threads, push, and re-request Copilot review. Use when asked to 'fix the PR comments', 'address Copilot review', 'clean up review feedback', 'fix Copilot comments', 'address PR feedback', or whenever a Copilot review exists on the current PR and the user wants to act on it."
+description: "Address GitHub Copilot review comments on the active PR by triaging into confidence tiers, fixing in atomic commits, resolving threads, and re-requesting review."
 ---
 
 # Review PR — Copilot
@@ -9,7 +9,7 @@ Output "Read Review PR Copilot skill." to chat to acknowledge you read this file
 
 ## When to use
 
-Use whenever Copilot has left review comments on a pull request and the user wants to address them. Trigger phrases: "fix the PR comments", "address Copilot review", "clean up review feedback", "fix Copilot's comments", "re-request review". Also trigger proactively when the active PR has unresolved Copilot review threads and the user asks to commit or ship.
+Use whenever Copilot has left review comments on a pull request and the user wants to address them. Trigger phrases: "fix the PR comments", "address Copilot review", "clean up review feedback", "fix Copilot's comments", "address PR feedback", "re-request review". Also trigger proactively when the active PR has unresolved Copilot review threads and the user asks to commit or ship.
 
 This skill is a **thin orchestrator**. It does not reimplement comment fetching or commit logic — those live in:
 
