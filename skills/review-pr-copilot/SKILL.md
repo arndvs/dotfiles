@@ -81,7 +81,7 @@ Start at 50, apply signals, clamp 0–100.
 | **Confirm** | 40–74 | Show diff preview + one-line approval prompt per comment before commit. |
 | **HITL** | < 40 | **Do not fix.** Post a reply on the thread with your interpretation and a proposed approach as a question. Leave the thread open. |
 
-**Show your work.** For every comment, print the signal arithmetic before the score — never just declare a number. If you cannot list at least one positive and one negative signal you considered, you are vibing; stop and re-read the comment.
+**Show your work.** For every comment, print the signal arithmetic before the score — never just declare a number. List every applicable signal you considered; if no signals apply on one side, say so explicitly (e.g. `no negative signals applied`). If you cannot explain the arithmetic at all, you are vibing; stop and re-read the comment. Do not invent signals just to show one on each side.
 
 Print the triage table before any action, with the math visible:
 
