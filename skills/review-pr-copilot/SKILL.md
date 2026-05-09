@@ -30,7 +30,7 @@ Do not attempt to substitute raw `gh` CLI calls or git plumbing; the resolve-thr
 
 ### 0. Pre-flight checks
 
-All three checks below are PR-scoped, so begin step 0 by fetching the PR context: call `github-pull-request_currentActivePullRequest` (or, in degraded mode, prompt the user for `owner/repo#number` and use `mcp_github_pull_request_read`). Once you have a PR number, verify the run is worth starting:
+All checks below are PR-scoped, so begin step 0 by fetching the PR context: call `github-pull-request_currentActivePullRequest` (or, in degraded mode, prompt the user for `owner/repo#number` and use `mcp_github_pull_request_read`). Once you have a PR number, verify the run is worth starting:
 
 - **Round counter** — track Copilot review rounds in this skill's session state, keyed by PR number. Default cap: **3 rounds per PR**. After round 3, stop and surface to the user — further rounds usually mean subjective comments that need a human to break the tie.
 - **Round-cap override contract** — if the user explicitly authorizes continuing past the cap (e.g. "do another round", "keep going"), record the override on that round and **every subsequent round's pre-flight line must include `(cap=3 overridden by user on round <N>)`**. This makes it auditable from the PR comment thread that the cap was exceeded by consent, not by drift. PR #50 dogfooded this — round 5 posted only a bare round count with no override marker, so a reviewer landing on the PR could not tell whether the cap had been breached or whether the cap simply didn't exist.
@@ -195,7 +195,7 @@ If you're tempted to call something HITL-deferrable just because it would be a l
 1. **Create a GitHub issue** via `mcp_github_issue_write` (method `create_issue`):
 
    - **Title:** `<scope>: <one-line summary> (from PR #<N> Copilot review)`
-   - **Labels:** best-effort — call `mcp_github_get_label` for `copilot-review` and `hitl-deferred`; if missing, omit (do not create labels without authorization)
+   - **Labels:** best-effort — first use `tool_search` to find an available GitHub label-lookup tool (e.g. `get_label` / `list_labels`); if one is loaded, look up `copilot-review` and `hitl-deferred` and include only labels that already exist. If no label tool is available or the labels are missing, **omit labels entirely** — do not create labels without authorization, and do not let label resolution block issue creation.
    - **Body:**
 
      ```markdown
