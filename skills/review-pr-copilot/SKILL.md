@@ -215,6 +215,7 @@ Skip the PR comment if `X+Y == 0` (nothing changed) — leaves no noise.
 - **Vague comment** ("consider refactoring") — the `-25` vague-language signal will normally drop these into HITL; reply on the thread per step 5b. Only fix if the user explicitly re-tiers it to Auto/Confirm with a concrete approach.
 - **Stale comment** (file changed since) — re-read current file, rebase the fix mentally, flag if the comment no longer applies
 - **MCP tool naming differs** — use `tool_search` to find the actual GitHub MCP tools available; common variants: `get_pull_request`, `pull_request_read`, `mcp_github_pull_request_read`
+- **"Outdated" ≠ "Resolved" in the GitHub UI** — when your fix changes the line a comment was anchored to, GitHub labels the thread `Outdated` in the conversation tab and collapses it. This is independent of resolution. A thread can be both Outdated *and* Resolved; the UI only surfaces "Outdated". Verify resolution via `currentActivePullRequest` `reviewThreads[].isResolved`, or expand the thread in the **Files changed** tab to see the green ✅ Resolved badge. If a user reports "the threads aren't resolved", check the data, not the conversation tab.
 
 ---
 
