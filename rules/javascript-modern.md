@@ -12,3 +12,5 @@ paths:
 - Use RegExp `v` flag
 - Use Iterator helpers: `values()`, `keys()`, `entries()`, `map()`, `filter()`, `reduce()`, `find()`, `some()`, `every()`, `toArray()`
 - Use `Object.groupBy` and `Map.groupBy`
+
+**Runtime guardrail:** Some APIs above (Set methods, `Promise.withResolvers`, Iterator helpers, `Object.groupBy`) require Node 22+ or recent browser baselines. Only use them when the project's `engines.node` and target browsers support them, or when a polyfill/transpilation step is in place. Check `package.json` `engines` before adopting.

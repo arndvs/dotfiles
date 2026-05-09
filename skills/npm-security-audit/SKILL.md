@@ -417,19 +417,20 @@ nslookup suspicious-domain.xyz
 Run this before `npm install` on any unfamiliar repo:
 
 ```bash
-find . -name "package.json" -not -path "*/node_modules/*" | sort | while read pkg; do
-  python3 -c "
-import json
-p=json.load(open('$pkg'))
-s=p.get('scripts',{})
-danger=['preinstall','postinstall','prepare','install']
-hits=[k for k in danger if k in s]
+find . -name "package.json" -not -path "*/node_modules/*" -print0 | sort -z | while IFS= read -r -d '' pkg; do
+  python3 - "$pkg" <<'PY'
+import json, sys
+path = sys.argv[1]
+p = json.load(open(path))
+s = p.get('scripts', {})
+danger = ['preinstall', 'postinstall', 'prepare', 'install']
+hits = [k for k in danger if k in s]
 if hits:
-    print('WARNING $pkg -- LIFECYCLE HOOKS:')
+    print(f'WARNING {path} -- LIFECYCLE HOOKS:')
     for h in hits: print(f'  {h}: {s[h]}')
 else:
-    print('OK $pkg -- no lifecycle hooks')
-"
+    print(f'OK {path} -- no lifecycle hooks')
+PY
 done
 ```
 
