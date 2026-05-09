@@ -92,6 +92,17 @@ Start at 50, apply signals, clamp 0–100.
 
 If a comment has a clear approach but you don't want to do it now, the answer is the **HITL-deferrable** flow in step 5b (file an issue). Do not push it into HITL-blocking just to skip the work.
 
+**Forced-Confirm keywords.** If the comment uses any of the following, the floor is **Confirm tier** regardless of arithmetic — these signal a behavior or contract change that needs explicit approval before committing, even if the change *looks* mechanical:
+
+- `refactor:` / "refactor this"
+- "align" / "normalize" / "standardize" (across files)
+- "semantics" / "behavior" / "contract"
+- "signature" / "return type" / "parameter type" change
+- "error semantics" / "error model" / "throw" → "return" or vice versa
+- "rename" of an exported symbol or public API
+
+PR #50 commit `c6c4bed` autofixed an "align error semantics" ask without a Confirm prompt — it was a behavior change masked as a refactor. Auto tier was wrong; the keyword should have forced Confirm.
+
 **Show your work.** For every comment, print the signal arithmetic before the score — never just declare a number. List every applicable signal you considered; if no signals apply on one side, say so explicitly (e.g. `no negative signals applied`). If you cannot explain the arithmetic at all, you are vibing; stop and re-read the comment. Do not invent signals just to show one on each side.
 
 Print the triage table before any action, with the math visible:
