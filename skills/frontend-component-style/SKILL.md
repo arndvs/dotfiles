@@ -1,11 +1,15 @@
 ---
 name: frontend-component-style
-description: "Frontend component file structure and naming. Use when CREATING a new component, REFACTORING an existing one, SPLITTING a large file, EXTRACTING data or logic, or DECIDING where a piece of code should live. Triggers on phrases like 'build a component', 'scaffold this', 'sketch a layout', 'prototype this', 'extract this into', 'split this component', 'is this file too big', 'where should this live', 'promote to production'. Do NOT use for small edits, bug fixes, or style tweaks — path-gated rules cover those."
+description: "Frontend component file structure, naming, and layer separation for new or refactored components."
 ---
 
 # Frontend Component Style
 
 Output "Read Frontend Component Style skill." to chat to acknowledge you read this file.
+
+## When to use
+
+Use when CREATING a new component, REFACTORING an existing one, SPLITTING a large file, EXTRACTING data or logic, or DECIDING where a piece of code should live. Triggers on phrases like 'build a component', 'scaffold this', 'sketch a layout', 'prototype this', 'extract this into', 'split this component', 'is this file too big', 'where should this live', 'promote to production'. Do NOT use for small edits, bug fixes, or style tweaks — path-gated rules cover those.
 
 This skill answers two structural questions: **where does each piece of code live**, and **what is each piece named** (including the names of related types and interfaces). Styling and runtime concerns (Tailwind tokens, dark-mode variants, server/client split, animation) and accessibility requirements (ARIA semantics, keyboard navigation, focus management, reduced-motion handling, CLS-safe variants) are owned by the relevant path-gated rules listed at the bottom — trust them; don't duplicate, but do preserve those requirements when creating or refactoring components. TypeScript typing patterns themselves remain in `rules/typescript-conventions.md`.
 
