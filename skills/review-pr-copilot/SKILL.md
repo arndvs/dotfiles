@@ -110,11 +110,21 @@ Addresses Copilot review on PR #<N>:
 - <file>:<line> — "<short quote of the comment>"
 ```
 
-### 5. Resolve threads
+### 5. Acknowledge + resolve threads
 
-After each commit is pushed, resolve the corresponding Copilot threads via `mcp_github_pull_request_review_write` (method `resolve_thread`) — **only for Auto and Confirm tier fixes that fully addressed the comment**.
+After each commit is pushed, for every Copilot thread fully addressed by an Auto or Confirm fix:
 
-If a fix only partially addresses a thread, leave it open and note it in the final summary.
+1. **Post an acknowledgment reply** via `mcp_github_add_reply_to_pull_request_comment` with this shape:
+
+   ```
+   Fixed in <sha[:7]>: <one-line summary of the change>.
+   ```
+
+   This leaves a paper trail in the thread before it closes — reviewers (human or bot) can see what was done without diffing against the PR.
+
+2. **Resolve the thread** via `mcp_github_pull_request_review_write` (method `resolve_thread`, `threadId` from step 1).
+
+If a fix only partially addresses a thread, post the acknowledgment but **do not resolve** — leave the thread open and note it in the final summary.
 
 ### 5b. Reply to HITL comments
 
