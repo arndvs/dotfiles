@@ -1,6 +1,6 @@
 ---
 name: compliance-audit
-description: "Auto-invoke after any do-work, tdd, systematic-debugging, or review-pr-copilot task completes. Reviews the diff against active rules and skills, flags violations, and updates the skill if a gap is found. Closes the loop between 'rule was loaded' and 'rule was followed'."
+description: "Auto-invoke after any do-work, tdd, systematic-debugging, or review-pr-copilot task completes to review the diff against active rules and skills, flag violations, update the skill if a gap is found, and close the loop between 'rule was loaded' and 'rule was followed'."
 ---
 
 # Compliance Audit
