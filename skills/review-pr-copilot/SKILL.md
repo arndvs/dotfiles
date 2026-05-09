@@ -276,7 +276,7 @@ Post the summary in two places: chat (for the user) **and** as a top-level PR co
 ```
 PR #<N> — Copilot review addressed (round <R>)
 
-Pre-flight: round <R>/<cap> | CI <green|red|pending> | pending review <yes|no>
+Pre-flight: round <R>/<cap> | CI <green|red|pending> | pending review <yes|no>[ | (cap=<cap> overridden by user on round <N>)]
 Triage:            Auto <X>  |  Confirm <Y>  |  HITL-deferrable <Zd>  |  HITL-blocking <Zb>
 Comments fixed:    <X+Y> / <total>
 Issues filed:      <Zd> (HITL-deferrable)
@@ -298,6 +298,8 @@ Skipped / deferred:
 ```
 
 Skip the PR comment only if `X+Y+Zd+Zb == 0` AND no pre-flight check fired — i.e. the round was a true no-op. Otherwise post, even on rounds where you only filed issues or only triaged.
+
+The bracketed `(cap=<cap> overridden by user on round <N>)` segment in the pre-flight line is **mandatory** on every round after the user authorizes continuing past the cap (per §0). Omit the bracketed segment on rounds 1 through `<cap>`. This is the only sanctioned place to record the override — do not bury it in chat.
 
 **Failure mode caught in dogfooding (PR #50):** ran 5 rounds, only round 5 posted a PR-comment summary. The intermediate rounds left no paper trail — a reviewer landing on the PR mid-flow couldn't tell what had been triaged, fixed, or deferred without scrolling commit-by-commit.
 
