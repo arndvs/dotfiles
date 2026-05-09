@@ -64,19 +64,23 @@ Start at 50, apply signals, clamp 0–100.
 | **Confirm** | 40–74 | Show diff preview + one-line approval prompt per comment before commit. |
 | **HITL** | < 40 | **Do not fix.** Post a reply on the thread with your interpretation and a proposed approach as a question. Leave the thread open. |
 
-Print the triage table before any action:
+**Show your work.** For every comment, print the signal arithmetic before the score — never just declare a number. If you cannot list at least one positive and one negative signal you considered, you are vibing; stop and re-read the comment.
+
+Print the triage table before any action, with the math visible:
 
 ```
 PR #<N> — <X> open Copilot comments
 
   Auto    (≥75):
-    1. src/auth/token.ts:42      [88]  add null guard on user
-    2. src/api/fetch.ts:17       [82]  fix typo in error message
+    1. src/auth/token.ts:42      [50 +25 mechanical +20 specific +15 ≤10 lines −10 stale = 100]  add null guard on user
+    2. src/api/fetch.ts:17       [50 +25 mechanical +20 specific +15 ≤10 lines = 100 → clamped]  fix typo in error message
   Confirm (40–74):
-    3. src/utils/parse.ts:103    [62]  extract repeated regex
+    3. src/utils/parse.ts:103    [50 +20 specific −10 stale +15 ≤10 lines −15 cross-file = 60]  extract repeated regex
   HITL    (<40):
-    4. src/store/index.ts:1      [28]  "consider refactoring this module"
+    4. src/store/index.ts:1      [50 −25 vague −20 shared util = 5 → clamped to 0, floored to display 28]  "consider refactoring this module"
 ```
+
+**Failure mode caught in dogfooding (PR #68):** every comment reported as "100" with no arithmetic. If your output looks like that, the scoring step was skipped — restart from this section.
 
 User can override the policy for the session: "auto everything", "confirm everything", "be conservative" (raise thresholds), or list specific comment numbers to re-tier.
 
