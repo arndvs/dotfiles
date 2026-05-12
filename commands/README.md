@@ -18,6 +18,7 @@ User types /work → commands/work.md → loads skills/do-work/SKILL.md → exec
 |---------|-------|---------|
 | `/address-review` | `review-pr-copilot` | Fetch and address Copilot review comments on active PR |
 | `/audit` | `codebase-audit` | Ruthless audit reporting only real problems |
+| `/check` | `session-close` | Pre-flight checklist before ending a coding session |
 | `/document` | `document` | Write, update, or audit documentation |
 | `/explore` | `explore` | Deep codebase exploration via parallel subagents |
 | `/plan` | `architect` | Implementation plan with vertical slices |

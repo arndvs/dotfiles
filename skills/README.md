@@ -16,6 +16,7 @@ Skills are auto-discovered from `skills/*/SKILL.md`. The agent reads each skill'
 | `codebase-audit` | "audit", "code audit", "find bugs" | Ruthless audit reporting only real problems |
 | `compliance-audit` | Auto-invoked after do-work, tdd, systematic-debugging | Review diff against active rules, flag violations |
 | `do-work` | "implement", "build this", "fix this", "work loop" | Core execution loop: understand → plan → implement → validate → commit |
+| `error-audit` | After sessions with repeated retry loops | Analyze cross-session error patterns to surface systemic issues |
 | `document` | "write docs", "update the README", "create an ADR" | Write, update, or audit documentation |
 | `explore` | "explore", "understand", "investigate", "how does X work" | Deep codebase exploration via parallel subagents |
 | `frontend-component-style` | "build a component", "scaffold this", "extract this into" | Component file structure, naming, and layer separation |
@@ -26,6 +27,7 @@ Skills are auto-discovered from `skills/*/SKILL.md`. The agent reads each skill'
 | `research` | "research", "investigate before building", "flush unknowns" | Cache exploration into a research document |
 | `review-pr-copilot` | "address review comments", "fix PR comments" | Triage Copilot review comments, fix, resolve threads |
 | `sanity-best-practices` | Working with Sanity CMS content, schemas, GROQ | Sanity development patterns and framework integrations |
+| `session-close` | "/check", before ending a session | Pre-flight checklist: quality gates before session end |
 | `sketch-the-solution` | "design UX", "UX process", "product design process" | 7-phase UX design: user stories → tested interfaces |
 | `skill-scaffolder` | "create a skill", "scaffold a skill" | Meta-skill for building new agent skills |
 | `stress-test` | "/stress-test", before deploying, after rules update | Adversarial rule compliance testing |
