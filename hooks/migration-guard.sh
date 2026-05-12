@@ -33,7 +33,7 @@ _deny() {
 # Detect migration commands across common ORMs
 if echo "$COMMAND" | grep -qiE '(prisma[[:space:]]+migrate[[:space:]]+(deploy|dev)|prisma[[:space:]]+db[[:space:]]+push|artisan[[:space:]]+migrate|knex[[:space:]]+migrate|db-migrate[[:space:]]+up|typeorm[[:space:]]+migration:run|drizzle-kit[[:space:]]+push)'; then
     # Allow test database targets (POSIX ERE: use _test followed by non-word or end)
-    if echo "$COMMAND" | grep -qiE '(DATABASE_URL.*test|localhost:5433|:5433|_test([^A-Za-z0-9_]|$))'; then
+    if echo "$COMMAND" | grep -qiE '(DATABASE_URL.*test|localhost:5433([^0-9]|$)|:5433([^0-9]|$)|_test([^A-Za-z0-9_]|$))'; then
         exit 0
     fi
 
