@@ -17,6 +17,7 @@ Bootstrap symlinks `hooks/` → `~/.claude/hooks/` and merges the configuration 
 |--------|-------|---------|----------|
 | `secret-guard.sh` | PreToolUse | Bash | Blocks commands that expose credentials (echo $TOKEN, bare env/printenv, cat secrets/) |
 | `migration-guard.sh` | PreToolUse | Bash | Blocks database migration commands targeting non-test databases |
+| `git-workflow-gate.sh` | PreToolUse | Bash | Enforces git safety: no commit to main, conventional messages, no force-push, no dirty-tree switch, no cd+git chains |
 | `format-check.sh` | Stop | — | Detects Biome/Prettier/ESLint and formats modified files (non-blocking) |
 | `typecheck.sh` | Stop | — | Runs `tsc --noEmit` on TypeScript projects; blocks stop until types pass |
 | `compaction-guard.sh` | PreCompact | auto | Blocks auto-compaction at ~95% context; directs agent to follow handoff protocol |
@@ -51,3 +52,26 @@ Edit the scripts in `~/dotfiles/hooks/` (source of truth). Changes propagate via
 3. Re-run `ctrl bootstrap` (or `bash ~/dotfiles/bin/bootstrap.sh`) to merge the updated config
 
 To disable a hook, remove its entry from `~/.claude/settings.json` (or from `settings-hooks.json` and re-run bootstrap with a fresh `~/.claude/settings.json`).
+
+## Fail Modes
+
+Every hook declares its fail mode on line 2 as `# FAIL_MODE: closed|open`.
+
+| Mode | Meaning | When to use |
+|------|---------|-------------|
+| `closed` | Unhandled errors produce deny JSON — if the hook crashes, the operation is blocked | Security/correctness (secret-guard, migration-guard, git-workflow-gate) |
+| `open` | Unhandled errors exit 0 — if the hook crashes, the operation proceeds | Quality/convenience (format-check, typecheck, hud-session) |
+
+**Principle:** Hooks that prevent irreversible damage fail closed. Hooks that improve quality fail open.
+
+## Per-Repo Config
+
+The `git-workflow-gate.sh` hook reads an optional `.ctrlshft` YAML file at the repo root for per-repo overrides:
+
+```yaml
+# .ctrlshft — per-repo hook configuration
+commit_types: [feat, fix, refactor, chore, docs, test, perf, ci]
+protected_branches: [main, master, production]
+```
+
+If the file doesn't exist, defaults apply. If parsing fails, defaults apply (fail-open for config).

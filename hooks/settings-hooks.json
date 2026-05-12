@@ -21,6 +21,10 @@
           {
             "type": "command",
             "command": "\"$HOME/.claude/hooks/migration-guard.sh\""
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/git-workflow-gate.sh\""
           }
         ]
       }
