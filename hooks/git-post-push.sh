@@ -29,7 +29,7 @@ fi
 # Skip if the push failed (non-zero exit in tool_result)
 EXIT_CODE=$(echo "$INPUT" | jq -r '.tool_result.exit_code // .tool_result.exitCode // "0"')
 [[ "$EXIT_CODE" != "0" ]] && exit 0
-if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|)[[:space:]]*git[[:space:]]+push([[:space:]]|$)'; then
+if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git[[:space:]]+push([[:space:]]|$)'; then
     exit 0
 fi
 

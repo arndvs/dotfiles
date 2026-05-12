@@ -207,26 +207,25 @@ _test "allows git pushd in post-push (not a push)" 0 \
     "$HOOKS_DIR/git-post-push.sh"
 
 # Hermetic test: stub gh to return no PRs and verify reminder output
-if command -v gh &>/dev/null; then
-    GH_SHIM_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t ctrlshft)
-    cat > "$GH_SHIM_DIR/gh" <<'SHIMEOF'
+# No guard on `command -v gh` — the shim provides gh for the test
+GH_SHIM_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t ctrlshft)
+cat > "$GH_SHIM_DIR/gh" <<'SHIMEOF'
 #!/usr/bin/env bash
 # Stub: return empty PR list
 echo "0"
 SHIMEOF
-    chmod +x "$GH_SHIM_DIR/gh"
+chmod +x "$GH_SHIM_DIR/gh"
 
-    OLD_PATH="$PATH"
-    export PATH="$GH_SHIM_DIR:$PATH"
+OLD_PATH="$PATH"
+export PATH="$GH_SHIM_DIR:$PATH"
 
-    _test "emits PR reminder when no PR exists (hermetic)" 0 \
-        "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin test-feature\"},\"tool_result\":{\"stdout\":\"ok\"},\"cwd\":\"$TEST_REPO\"}" \
-        "$HOOKS_DIR/git-post-push.sh" \
-        "No PR exists"
+_test "emits PR reminder when no PR exists (hermetic)" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin test-feature\"},\"tool_result\":{\"stdout\":\"ok\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-post-push.sh" \
+    "No PR exists"
 
-    export PATH="$OLD_PATH"
-    rm -rf "$GH_SHIM_DIR"
-fi
+export PATH="$OLD_PATH"
+rm -rf "$GH_SHIM_DIR"
 
 _teardown_test_repo
 
