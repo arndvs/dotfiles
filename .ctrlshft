@@ -21,9 +21,3 @@ commit_types:
 protected_branches:
   - main
   - master
-
-# Plan file paths checked by plan-quality-gate.sh
-# (hook checks these relative to git root)
-# plan_files:
-#   - PLAN.md
-#   - docs/PLAN.md

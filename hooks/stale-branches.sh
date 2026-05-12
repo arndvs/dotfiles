@@ -8,6 +8,7 @@
 # Fail-open: network issues or non-git repos silently pass.
 
 set -euo pipefail
+trap 'exit 0' ERR  # fail-open: any error → allow
 
 # Consume stdin (required by hook protocol)
 cat > /dev/null

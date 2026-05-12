@@ -67,6 +67,8 @@ Every hook declares its fail mode on line 2 as `# FAIL_MODE: closed|open`.
 
 **Principle:** Hooks that prevent irreversible damage fail closed. Hooks that improve quality fail open.
 
+**Implementation:** Fail-closed hooks use `trap '_fail_closed' ERR` to emit deny JSON on any error. Fail-open hooks use `trap 'exit 0' ERR` to ensure any unhandled error exits cleanly without blocking.
+
 ## Per-Repo Config
 
 The `git-workflow-gate.sh` hook reads an optional `.ctrlshft` YAML file at the repo root for per-repo overrides:

@@ -7,6 +7,7 @@
 # Skips silently if no tsconfig.json or no modified .ts/.tsx files.
 
 set -euo pipefail
+trap 'exit 0' ERR  # fail-open: any error → allow
 
 if ! command -v jq &>/dev/null; then
     exit 0

@@ -9,6 +9,7 @@
 # Fail-open: non-git directories and missing tools silently pass.
 
 set -euo pipefail
+trap 'exit 0' ERR  # fail-open: any error → allow
 
 if ! command -v jq &>/dev/null; then
     exit 0

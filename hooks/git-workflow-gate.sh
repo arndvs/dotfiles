@@ -88,7 +88,7 @@ _protected_branches() {
         local branches
         branches=$(sed -n '/^protected_branches:/,/^[^[:space:]-]/{
             s/^[[:space:]]*-[[:space:]]*//p
-        }' "$config" 2>/dev/null | grep -v '^$' | tr '\n' '|' | sed 's/|$//') || true
+        }' "$config" 2>/dev/null | grep -v '^$' | sed 's/[.[\(*+?{|^$/\\&/g' | tr '\n' '|' | sed 's/|$//') || true
         if [[ -n "$branches" ]]; then
             echo "$branches"
             return
@@ -123,7 +123,7 @@ fi
 #         (only validates -m inline messages; editor/file-based
 #          commits pass through — see README § Commit Message Validation)
 # ============================================================
-if echo "$COMMAND" | grep -qE 'git[[:space:]]+commit'; then
+if echo "$COMMAND" | grep -qE 'git[[:space:]]+commit([[:space:]]|$)'; then
     # Check current branch
     local_branch=$(git branch --show-current 2>/dev/null || echo "")
     protected=$(_protected_branches)
@@ -140,7 +140,7 @@ if echo "$COMMAND" | grep -qE 'git[[:space:]]+commit'; then
         if [[ -n "$msg" ]]; then
             types=$(_commit_types)
             # Pattern: type(scope): description  OR  type: description
-            if ! echo "$msg" | grep -qE "^($types)(\([a-z0-9._-]+\))?: .+"; then
+            if ! echo "$msg" | grep -qE "^($types)(\([a-z0-9._-]+\))?!?: .+"; then
                 _deny "🚫 Commit message doesn't follow conventional format. Expected: <type>(<scope>): <description>. Allowed types: ${types//|/, }"
             fi
         fi
@@ -150,7 +150,7 @@ fi
 # ============================================================
 # GATE 2: Block push safety violations
 # ============================================================
-if echo "$COMMAND" | grep -qE 'git[[:space:]]+push'; then
+if echo "$COMMAND" | grep -qE 'git[[:space:]]+push([[:space:]]|$)'; then
     # Block force-push without --force-with-lease (handles flag at end of command)
     if echo "$COMMAND" | grep -qE '[[:space:]](--force|-f)([[:space:]]|$)' && ! echo "$COMMAND" | grep -qE '[[:space:]]--force-with-lease'; then
         _deny "🚫 Force-push without --force-with-lease is dangerous. Use --force-with-lease to protect against overwriting others' work."

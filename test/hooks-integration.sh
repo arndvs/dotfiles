@@ -91,6 +91,22 @@ _test "blocks cd+git chain" 2 \
     "$HOOKS_DIR/git-workflow-gate.sh" \
     "cd"
 
+_test "allows git commit-tree (not a commit)" 0 \
+    '{"tool_name":"Bash","tool_input":{"command":"git commit-tree abc123 -m \"merge\""}}' \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
+_test "allows breaking change feat!: message" 0 \
+    '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"feat!: breaking api change\""}}' \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
+_test "allows scoped breaking change feat(api)!: message" 0 \
+    '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"feat(api)!: remove endpoint\""}}' \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
+_test "allows git pushd (not a push)" 0 \
+    '{"tool_name":"Bash","tool_input":{"command":"git pushd some-ref"}}' \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
 echo ""
 
 # ─── secret-guard.sh ─────────────────────────────────────────────────────────
@@ -158,6 +174,14 @@ _test "skips non-push commands" 0 \
 
 _test "handles push command (exit 0, fail-open)" 0 \
     '{"tool_name":"Bash","tool_input":{"command":"git push origin feature-branch"},"tool_result":{"stdout":"Everything up-to-date"}}' \
+    "$HOOKS_DIR/git-post-push.sh"
+
+_test "skips on failed push (exit_code non-zero)" 0 \
+    '{"tool_name":"Bash","tool_input":{"command":"git push origin main"},"tool_result":{"stdout":"rejected","exit_code":1}}' \
+    "$HOOKS_DIR/git-post-push.sh"
+
+_test "allows git pushd in post-push (not a push)" 0 \
+    '{"tool_name":"Bash","tool_input":{"command":"git pushd some-ref"},"tool_result":{"stdout":"ok"}}' \
     "$HOOKS_DIR/git-post-push.sh"
 
 echo ""

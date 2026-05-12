@@ -8,6 +8,7 @@
 # Fail-open: if gh CLI is missing or network fails, silently passes.
 
 set -euo pipefail
+trap 'exit 0' ERR  # fail-open: any error → allow
 
 if ! command -v jq &>/dev/null; then
     exit 0
@@ -18,7 +19,11 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
 # Only trigger on git push commands (POSIX ERE: [[:space:]] not \s)
 [[ -z "$COMMAND" ]] && exit 0
-if ! echo "$COMMAND" | grep -qE 'git[[:space:]]+push'; then
+
+# Skip if the push failed (non-zero exit in tool_result)
+EXIT_CODE=$(echo "$INPUT" | jq -r '.tool_result.exit_code // .tool_result.exitCode // "0"')
+[[ "$EXIT_CODE" != "0" ]] && exit 0
+if ! echo "$COMMAND" | grep -qE 'git[[:space:]]+push([[:space:]]|$)'; then
     exit 0
 fi
 

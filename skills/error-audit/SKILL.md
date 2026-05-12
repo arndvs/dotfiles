@@ -1,6 +1,6 @@
 ---
 name: error-audit
-description: "Cross-session error pattern analysis. Use when asked to 'audit errors', 'find repeated failures', 'error patterns', 'what keeps failing', 'recurring issues', or during periodic codebase health checks."
+description: "Analyzes cross-session error patterns to surface systemic issues worth automating."
 ---
 
 # Error Audit

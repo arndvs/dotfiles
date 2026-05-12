@@ -11,6 +11,7 @@
 #   Stop         → {session_id, transcript_path}
 
 set -euo pipefail
+trap 'exit 0' ERR  # fail-open: any error → allow
 
 DOTFILES="${DOTFILES:-$HOME/dotfiles}"
 

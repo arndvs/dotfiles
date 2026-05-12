@@ -11,6 +11,7 @@
 #   2. Project reads   → tracks file reads in external projects (for cross-project visibility)
 
 set -euo pipefail
+trap 'exit 0' ERR  # fail-open: any error → allow
 
 INPUT=$(cat)
 

@@ -1,6 +1,6 @@
 ---
 name: session-close
-description: "Pre-flight checklist before ending a session. Use when asked to 'check before ending', 'session close', 'pre-flight', 'wrap up', 'land the plane', or 'end session'. Runs quality gates and reports status."
+description: "Pre-flight checklist that runs quality gates before ending a coding session."
 ---
 
 # Session Close (`/check`)
