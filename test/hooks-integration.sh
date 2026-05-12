@@ -21,7 +21,7 @@ _test() {
     local expect_output="${5:-}"
 
     local output ec
-    output=$(echo "$input" | bash "$hook" 2>&1) && ec=0 || ec=$?
+    output=$(printf '%s' "$input" | bash "$hook" 2>&1) && ec=0 || ec=$?
 
     if [[ $ec -ne $expected_exit ]]; then
         FAIL=$((FAIL + 1))

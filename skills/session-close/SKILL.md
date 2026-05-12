@@ -1,6 +1,6 @@
 ---
 name: session-close
-description: "Pre-flight checklist that runs quality gates before ending a coding session."
+description: Pre-flight checklist that runs quality gates before ending a coding session.
 ---
 
 # Session Close (`/check`)

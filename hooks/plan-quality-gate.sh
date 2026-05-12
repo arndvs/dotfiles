@@ -17,6 +17,12 @@ fi
 
 INPUT=$(cat)
 
+# cd into the hook event's working directory
+EVENT_CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
+if [[ -n "$EVENT_CWD" ]]; then
+    cd "$EVENT_CWD" || exit 0  # fail-open
+fi
+
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 [[ "$TOOL_NAME" == "Bash" ]] || exit 0
 

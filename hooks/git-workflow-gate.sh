@@ -12,7 +12,8 @@
 #   2 — Block push when behind origin + block force-push without --force-with-lease
 #   3 — Block branch switch with dirty working tree
 #
-# Config: reads `.ctrlshft` YAML at repo root for commit_types override.
+# Config: reads `.ctrlshft` YAML at repo root for commit_types and
+#         protected_branches overrides.
 # Fail-closed: any unhandled error outputs deny JSON.
 
 set -euo pipefail
@@ -37,8 +38,16 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 [[ -z "$COMMAND" ]] && exit 0
 
 # Only process git commands (POSIX ERE: [[:space:]] not \s)
-if ! echo "$COMMAND" | grep -qE '(^|[[:space:]]|;|&&|\|)[[:space:]]*git[[:space:]]'; then
+# Match git as a command — after ^, ;, &&, | only (not bare whitespace,
+# which would false-positive on "echo git status").
+if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|)[[:space:]]*git[[:space:]]'; then
     exit 0
+fi
+
+# --- cd into the hook event's working directory ---
+EVENT_CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
+if [[ -n "$EVENT_CWD" ]]; then
+    cd "$EVENT_CWD" || _deny "git-workflow-gate: cannot cd to event cwd '$EVENT_CWD'"
 fi
 
 # --- Helper: portable timeout (macOS may lack timeout) ---
@@ -114,7 +123,7 @@ _warn() {
 # GATE 0: Block cd + git command chains (&&  or ;)
 # ============================================================
 # Agent should use the cwd parameter instead of cd && git
-if echo "$COMMAND" | grep -qE 'cd[[:space:]]+[^[:space:];]+[[:space:]]*(&&|;)[[:space:]]*git[[:space:]]'; then
+if echo "$COMMAND" | grep -qE 'cd[[:space:]]+("[^"]*"|'\''[^'\'']*'\''|[^[:space:];]+)[[:space:]]*(&&|;)[[:space:]]*git[[:space:]]'; then
     _deny "🚫 Don't chain cd && git commands. Use the cwd parameter on the tool call instead — cd chains leak shell state."
 fi
 

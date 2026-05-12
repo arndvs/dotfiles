@@ -17,6 +17,12 @@ fi
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
+# cd into the hook event's working directory
+EVENT_CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
+if [[ -n "$EVENT_CWD" ]]; then
+    cd "$EVENT_CWD" || exit 0  # fail-open
+fi
+
 # Only trigger on git push commands (POSIX ERE: [[:space:]] not \s)
 [[ -z "$COMMAND" ]] && exit 0
 
@@ -61,7 +67,7 @@ PR_COUNT=$(_timeout 5 gh pr list --head "$BRANCH" --state open --json number --j
 [[ -z "$PR_COUNT" ]] && exit 0
 
 if [[ "$PR_COUNT" == "0" ]]; then
-    jq -cn --arg msg "📋 No PR exists for branch '$BRANCH'. Consider running: gh pr create --base dev" \
+    jq -cn --arg msg "📋 No PR exists for branch '$BRANCH'. Consider running: gh pr create" \
         '{"hookSpecificOutput":{"additionalContext":$msg}}' >&2
 fi
 

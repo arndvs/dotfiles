@@ -1,6 +1,6 @@
 ---
 name: error-audit
-description: "Analyzes cross-session error patterns to surface systemic issues worth automating."
+description: Analyzes cross-session error patterns to surface systemic issues worth automating; invoke after sessions with repeated retry loops or before proposing new hooks.
 ---
 
 # Error Audit
