@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# FAIL_MODE: open
 # hud-session.sh — SessionStart / Stop hook: emit HUD events.
 #
 # Receives Claude Code hook JSON on stdin containing session lifecycle data.

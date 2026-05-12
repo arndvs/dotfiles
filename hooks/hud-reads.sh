@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# FAIL_MODE: open
 # hud-reads.sh — Emit "read" events to the HUD daemon.
 #
 # Handles two Claude Code hook events:

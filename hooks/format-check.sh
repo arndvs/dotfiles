@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# FAIL_MODE: open
 # format-check.sh — Stop hook: run project formatter on modified files.
 #
 # Receives Claude Code Stop JSON on stdin.

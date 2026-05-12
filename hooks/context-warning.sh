@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# FAIL_MODE: open
 # context-warning.sh — UserPromptSubmit hook: inject graduated context warnings.
 #
 # ⚠️  STUB — requires statusLine experiment to confirm input format.

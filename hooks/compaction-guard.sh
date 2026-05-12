@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# FAIL_MODE: closed
 # compaction-guard.sh — PreCompact hook: block automatic compaction, enforce handoff.
 #
 # Receives Claude Code PreCompact JSON on stdin (matcher: "auto").

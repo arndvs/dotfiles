@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# FAIL_MODE: closed
 # migration-guard.sh — PreToolUse hook: block migration commands without confirmation.
 #
 # Receives Claude Code PreToolUse JSON on stdin.

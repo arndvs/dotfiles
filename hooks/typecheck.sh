@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# FAIL_MODE: open
 # typecheck.sh — Stop hook: run TypeScript type checker.
 #
 # Receives Claude Code Stop JSON on stdin.

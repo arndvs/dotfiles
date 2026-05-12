@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# FAIL_MODE: closed
 # secret-guard.sh — PreToolUse hook: block credential-exposing commands.
 #
 # Receives Claude Code PreToolUse JSON on stdin.
