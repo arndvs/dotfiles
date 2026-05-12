@@ -64,6 +64,6 @@ Maps failure modes to their enforcement mechanisms. Use this to identify gaps an
 
 | Failure Mode | Proposed Mechanism | Status |
 |---|---|---|
-| Session ends without quality check | Session Close Skill (`/check`) | Slice 4 — planned |
-| Cross-session errors repeating | Error Audit Skill | Slice 7 — planned |
+| Session ends without quality check | Session Close Skill (`/check`) | Skill added — integration/automation pending |
+| Cross-session errors repeating | Error Audit Skill | Skill added — integration/automation pending |
 | Tests not run before push | QA integration hook | Slice 12 — planned |

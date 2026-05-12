@@ -12,10 +12,20 @@ HOOKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../hooks" && pwd)"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# --- Cleanup trap: remove temp dirs on abort (EXIT/INT/TERM) ---
+_CLEANUP_DIRS=()
+_cleanup() {
+    for dir in "${_CLEANUP_DIRS[@]+"${_CLEANUP_DIRS[@]}"}"; do
+        [[ -n "$dir" && -d "$dir" ]] && rm -rf "$dir"
+    done
+}
+trap '_cleanup' EXIT INT TERM
+
 # --- Temp git repo fixture (deterministic branch for hermetic tests) ---
 TEST_REPO=""
 _setup_test_repo() {
     TEST_REPO=$(mktemp -d 2>/dev/null || mktemp -d -t ctrlshft)
+    _CLEANUP_DIRS+=("$TEST_REPO")
     git init -q "$TEST_REPO"
     git -C "$TEST_REPO" config user.name "Test"
     git -C "$TEST_REPO" config user.email "test@test"
@@ -209,6 +219,7 @@ _test "allows git pushd in post-push (not a push)" 0 \
 # Hermetic test: stub gh to return no PRs and verify reminder output
 # No guard on `command -v gh` — the shim provides gh for the test
 GH_SHIM_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t ctrlshft)
+_CLEANUP_DIRS+=("$GH_SHIM_DIR")
 cat > "$GH_SHIM_DIR/gh" <<'SHIMEOF'
 #!/usr/bin/env bash
 # Stub: return empty PR list
