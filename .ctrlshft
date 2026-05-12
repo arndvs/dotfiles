@@ -1,0 +1,23 @@
+# .ctrlshft — per-repo hook configuration for ctrlshft itself
+#
+# Used by hooks that support per-repo overrides.
+# See hooks/README.md for full documentation.
+
+# Allowed conventional commit type prefixes (git-workflow-gate.sh)
+commit_types:
+  - feat
+  - fix
+  - refactor
+  - chore
+  - docs
+  - test
+  - perf
+  - ci
+  - build
+  - style
+  - revert
+
+# Branches that direct commits are blocked on (git-workflow-gate.sh)
+protected_branches:
+  - main
+  - master

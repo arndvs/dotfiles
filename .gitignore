@@ -63,3 +63,4 @@ clients/*
 !clients/README.md
 !clients/_template/
 !clients/_template/**
+mechanisms/

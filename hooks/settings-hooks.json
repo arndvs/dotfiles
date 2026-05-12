@@ -6,6 +6,10 @@
           {
             "type": "command",
             "command": "\"$HOME/.claude/hooks/hud-session.sh\""
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/stale-branches.sh\""
           }
         ]
       }
@@ -21,6 +25,14 @@
           {
             "type": "command",
             "command": "\"$HOME/.claude/hooks/migration-guard.sh\""
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/git-workflow-gate.sh\""
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/plan-quality-gate.sh\""
           }
         ]
       }
@@ -50,6 +62,15 @@
           {
             "type": "command",
             "command": "\"$HOME/.claude/hooks/hud-reads.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/git-post-push.sh\""
           }
         ]
       }

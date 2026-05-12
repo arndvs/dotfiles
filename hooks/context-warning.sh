@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# FAIL_MODE: open
 # context-warning.sh — UserPromptSubmit hook: inject graduated context warnings.
 #
 # ⚠️  STUB — requires statusLine experiment to confirm input format.
@@ -18,6 +19,7 @@
 #   statusLine → writes ~/.claude/context-pct → context-warning.sh reads it
 
 set -euo pipefail
+trap 'exit 0' ERR  # fail-open: any error → allow
 
 STATE_FILE="$HOME/.claude/context-pct"
 
