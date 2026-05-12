@@ -6,6 +6,10 @@
           {
             "type": "command",
             "command": "\"$HOME/.claude/hooks/hud-session.sh\""
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/stale-branches.sh\""
           }
         ]
       }
@@ -54,6 +58,15 @@
           {
             "type": "command",
             "command": "\"$HOME/.claude/hooks/hud-reads.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/git-post-push.sh\""
           }
         ]
       }

@@ -18,6 +18,8 @@ Bootstrap symlinks `hooks/` → `~/.claude/hooks/` and merges the configuration 
 | `secret-guard.sh` | PreToolUse | Bash | Blocks commands that expose credentials (echo $TOKEN, bare env/printenv, cat secrets/) |
 | `migration-guard.sh` | PreToolUse | Bash | Blocks database migration commands targeting non-test databases |
 | `git-workflow-gate.sh` | PreToolUse | Bash | Enforces git safety: no commit to main, conventional messages, no force-push, no dirty-tree switch, no cd+git chains |
+| `git-post-push.sh` | PostToolUse | Bash | Info nag when no PR exists after pushing to a feature branch |
+| `stale-branches.sh` | SessionStart | — | Reports merged or stale (>14d) local branches at session start |
 | `format-check.sh` | Stop | — | Detects Biome/Prettier/ESLint and formats modified files (non-blocking) |
 | `typecheck.sh` | Stop | — | Runs `tsc --noEmit` on TypeScript projects; blocks stop until types pass |
 | `compaction-guard.sh` | PreCompact | auto | Blocks auto-compaction at ~95% context; directs agent to follow handoff protocol |
