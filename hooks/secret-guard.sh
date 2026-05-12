@@ -6,7 +6,7 @@
 # Exits 2 (block) if the command would expose credentials.
 # Defense-in-depth alongside deny rules in Claude Code settings.
 
-set -euo pipefail
+set -Eeuo pipefail
 
 # --- Fail-closed trap: any unhandled error = deny ---
 _fail_closed() {

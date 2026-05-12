@@ -5,7 +5,7 @@
 # Receives Claude Code PreToolUse JSON on stdin.
 # Exits 2 (block) if a database migration targets a non-test database.
 
-set -euo pipefail
+set -Eeuo pipefail
 
 # --- Fail-closed trap: any unhandled error = deny ---
 _fail_closed() {

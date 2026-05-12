@@ -16,7 +16,7 @@
 #         protected_branches overrides.
 # Fail-closed: any unhandled error outputs deny JSON.
 
-set -euo pipefail
+set -Eeuo pipefail
 
 # --- Fail-closed trap: any error = deny ---
 _fail_closed() {
