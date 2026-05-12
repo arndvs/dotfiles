@@ -42,7 +42,7 @@ The agent picks issues in this order (defined in `prompt.md`):
 | File | Purpose |
 |------|---------|
 | `shft` | Main CLI — command routing, state management, environment validation |
-| `afk.sh` | AFK loop implementation — Docker sandbox, iteration control, locking |
+| `afk.sh` | AFK loop implementation — `srt` sandbox, iteration control, locking |
 | `once.sh` | Single HITL run — invokes Claude with issue context |
 | `prompt.md` | System prompt injected into AFK/HITL sessions |
 | `_build_prompt.sh` | Assembles the full prompt from issues + recent commits |
@@ -51,4 +51,4 @@ The agent picks issues in this order (defined in `prompt.md`):
 
 - AFK runs in a **sandboxed container** via `srt` (Anthropic Sandbox Runtime) — filesystem and network isolation provided by Docker
 - **Short-lived GitHub App tokens** are minted per AFK iteration via `bin/mint_github_app_token.py` — no long-lived auth tokens
-- **Lock file** (`/tmp/shft-afk.lock`) prevents concurrent AFK loops
+- **Lock directory** (`/tmp/shft-afk.lock`) prevents concurrent AFK loops (acquired via `mkdir`)

@@ -41,7 +41,7 @@ Loaded when `$ACTIVE_CONTEXTS` (set by `detect-context.sh` on `cd()`) matches, o
 
 ### Tier 3 — Path-gated
 
-Loaded when the agent edits a file matching the rule's `applyTo` glob pattern. These are convention-enforcement rules in `rules/`.
+Loaded when the agent edits a file matching the rule's `paths` glob pattern. These are convention-enforcement rules in `rules/`.
 
 Examples: TypeScript conventions load on `**/*.{ts,tsx}`, migration safety loads on `**/migrations/**`.
 
