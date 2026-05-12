@@ -6,7 +6,7 @@ CLI scripts and infrastructure. Bootstrap symlinks `ctrl` and `shft` to `~/.loca
 
 | Script | Purpose |
 |--------|---------|
-| `ctrl` | Manage your environment — `ctrl bootstrap`, `ctrl check`, `ctrl update` |
+| `ctrl` | Manage your environment — `ctrl bootstrap`, `ctrl check`, `ctrl sync` |
 | `ctrlshft-claude` | Claude Code wrapper that parses stdout and emits HUD events |
 
 ## Bootstrap & Propagation
