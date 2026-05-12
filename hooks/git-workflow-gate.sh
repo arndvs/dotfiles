@@ -66,11 +66,13 @@ _commit_types() {
     local config="${root}/.ctrlshft"
 
     if [[ -n "$root" && -f "$config" ]]; then
-        # POSIX-compatible parsing: extract commit_types array values (block-list YAML)
+        # Awk state-machine parser: start after ^commit_types:, stop at next top-level key
         local types
-        types=$(sed -n '/^commit_types:/,/^[^[:space:]-]/{
-            s/^[[:space:]]*-[[:space:]]*//p
-        }' "$config" 2>/dev/null | grep -v '^$' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's/[].[(*+?{|\\^$)}]/\\&/g' | tr '\n' '|' | sed 's/|$//') || true
+        types=$(awk '
+            /^commit_types:/ { f=1; next }
+            f && /^[^[:space:]-]/ { exit }
+            f { sub(/^[[:space:]]*-[[:space:]]*/, ""); sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); if (length) print }
+        ' "$config" 2>/dev/null | sed 's/[][\\()*+?.{|^$}]/\\&/g' | tr '\n' '|' | sed 's/|$//') || true
         if [[ -n "$types" ]]; then
             echo "$types"
             return
@@ -89,9 +91,11 @@ _protected_branches() {
 
     if [[ -n "$root" && -f "$config" ]]; then
         local branches
-        branches=$(sed -n '/^protected_branches:/,/^[^[:space:]-]/{
-            s/^[[:space:]]*-[[:space:]]*//p
-        }' "$config" 2>/dev/null | grep -v '^$' | sed 's/[].[(*+?{|\\^$)}]/\\&/g' | tr '\n' '|' | sed 's/|$//') || true
+        branches=$(awk '
+            /^protected_branches:/ { f=1; next }
+            f && /^[^[:space:]-]/ { exit }
+            f { sub(/^[[:space:]]*-[[:space:]]*/, ""); sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); if (length) print }
+        ' "$config" 2>/dev/null | sed 's/[][\\()*+?.{|^$}]/\\&/g' | tr '\n' '|' | sed 's/|$//') || true
         if [[ -n "$branches" ]]; then
             echo "$branches"
             return
