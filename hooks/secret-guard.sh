@@ -33,12 +33,12 @@ _deny() {
 }
 
 # Block commands that print credentials to stdout
-if echo "$COMMAND" | grep -qiE '(^|[[:space:]]|;|&&|\|)(echo|printf|cat)[[:space:]]+.*\$\{?[A-Za-z_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)'; then
+if echo "$COMMAND" | grep -qiE '(^|;|&&|\|\||\|)[[:space:]]*(sudo[[:space:]]+)?(echo|printf|cat)[[:space:]]+.*\$\{?[A-Za-z_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)'; then
     _deny "🔒 Blocked: command would expose credentials. Use run-with-secrets.sh for credential injection."
 fi
 
 # Block bare env/printenv (dumps all env vars including secrets)
-if echo "$COMMAND" | grep -qE '(^|[[:space:]]|;|&&|\|)(printenv|env)[[:space:]]*($|;|&&|\|)'; then
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*(printenv|env)[[:space:]]*($|;|&&|\|)'; then
     _deny "🔒 Blocked: bare env/printenv dumps all variables. Use echo \$SPECIFIC_VAR instead."
 fi
 
