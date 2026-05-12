@@ -70,7 +70,7 @@ _commit_types() {
         local types
         types=$(sed -n '/^commit_types:/,/^[^[:space:]-]/{
             s/^[[:space:]]*-[[:space:]]*//p
-        }' "$config" 2>/dev/null | grep -v '^$' | tr '\n' '|' | sed 's/|$//') || true
+        }' "$config" 2>/dev/null | grep -v '^$' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's/[].[\\(*+?{|^$]/\\&/g' | tr '\n' '|' | sed 's/|$//') || true
         if [[ -n "$types" ]]; then
             echo "$types"
             return

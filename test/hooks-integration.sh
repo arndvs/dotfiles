@@ -9,6 +9,8 @@ FAIL=0
 FAILURES=()
 
 HOOKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../hooks" && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
 
 # --- Temp git repo fixture (deterministic branch for hermetic tests) ---
 TEST_REPO=""
@@ -203,6 +205,28 @@ _test "skips on failed push (exit_code non-zero)" 0 \
 _test "allows git pushd in post-push (not a push)" 0 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git pushd some-ref\"},\"tool_result\":{\"stdout\":\"ok\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-post-push.sh"
+
+# Hermetic test: stub gh to return no PRs and verify reminder output
+if command -v gh &>/dev/null; then
+    GH_SHIM_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t ctrlshft)
+    cat > "$GH_SHIM_DIR/gh" <<'SHIMEOF'
+#!/usr/bin/env bash
+# Stub: return empty PR list
+echo "0"
+SHIMEOF
+    chmod +x "$GH_SHIM_DIR/gh"
+
+    OLD_PATH="$PATH"
+    export PATH="$GH_SHIM_DIR:$PATH"
+
+    _test "emits PR reminder when no PR exists (hermetic)" 0 \
+        "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin test-feature\"},\"tool_result\":{\"stdout\":\"ok\"},\"cwd\":\"$TEST_REPO\"}" \
+        "$HOOKS_DIR/git-post-push.sh" \
+        "No PR exists"
+
+    export PATH="$OLD_PATH"
+    rm -rf "$GH_SHIM_DIR"
+fi
 
 _teardown_test_repo
 
