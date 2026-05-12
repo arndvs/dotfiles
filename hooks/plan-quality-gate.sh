@@ -29,8 +29,8 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 [[ -n "$COMMAND" ]] || exit 0
 
-# Only trigger on scaffolding/creation patterns
-SCAFFOLD_PATTERN='mkdir|npx create-|npm init|yarn create|pnpm create|cookiecutter|degit|git clone'
+# Only trigger on scaffolding/creation patterns (anchored to command boundaries)
+SCAFFOLD_PATTERN='(^|;|&&|\|\|?|[[:space:]])(mkdir|npx create-|npm init|yarn create|pnpm create|cookiecutter|degit|git clone)([[:space:]]|$)'
 if ! echo "$COMMAND" | grep -qE "$SCAFFOLD_PATTERN"; then
     exit 0
 fi
