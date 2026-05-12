@@ -29,6 +29,10 @@
           {
             "type": "command",
             "command": "\"$HOME/.claude/hooks/git-workflow-gate.sh\""
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/plan-quality-gate.sh\""
           }
         ]
       }
