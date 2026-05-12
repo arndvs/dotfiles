@@ -10,6 +10,19 @@ FAILURES=()
 
 HOOKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../hooks" && pwd)"
 
+# --- Temp git repo fixture (deterministic branch for hermetic tests) ---
+TEST_REPO=""
+_setup_test_repo() {
+    TEST_REPO=$(mktemp -d)
+    git init -q "$TEST_REPO"
+    git -C "$TEST_REPO" checkout -q -b test-feature
+    git -C "$TEST_REPO" commit -q --allow-empty -m "init"
+}
+_teardown_test_repo() {
+    [[ -n "$TEST_REPO" && -d "$TEST_REPO" ]] && rm -rf "$TEST_REPO"
+    TEST_REPO=""
+}
+
 green() { printf "  \033[32m✓\033[0m %s\n" "$1"; }
 red()   { printf "  \033[31m✗\033[0m %s\n" "$1"; }
 
@@ -48,64 +61,67 @@ echo ""
 # ─── git-workflow-gate.sh ─────────────────────────────────────────────────────
 echo "── git-workflow-gate.sh ──"
 
+# Set up temp repo so branch-dependent tests are deterministic
+_setup_test_repo
+
 _test "allows normal git command" 0 \
-    '{"tool_name":"Bash","tool_input":{"command":"git status"}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git status\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
 
 _test "allows commit on feature branch (not main)" 0 \
-    '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"fix: something\""}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit -m \\\"fix: something\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
-# Note: Gate 1 checks current branch via `git branch --show-current`.
-# We're on a feature branch, so commit is allowed.
 
 _test "blocks non-conventional commit" 2 \
-    '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"updated stuff\""}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit -m \\\"updated stuff\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh" \
     "conventional format"
 
 _test "allows conventional commit" 0 \
-    '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"feat: add new feature\""}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit -m \\\"feat: add new feature\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
 
 _test "blocks force push" 2 \
-    '{"tool_name":"Bash","tool_input":{"command":"git push --force origin main"}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push --force origin main\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh" \
     "force-with-lease"
 
 _test "blocks force push (no trailing args)" 2 \
-    '{"tool_name":"Bash","tool_input":{"command":"git push --force"}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push --force\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh" \
     "force-with-lease"
 
 _test "blocks short flag -f force push" 2 \
-    '{"tool_name":"Bash","tool_input":{"command":"git push -f origin main"}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push -f origin main\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh" \
     "force-with-lease"
 
 _test "allows force-with-lease" 0 \
-    '{"tool_name":"Bash","tool_input":{"command":"git push --force-with-lease origin feature"}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push --force-with-lease origin feature\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
 
 _test "blocks cd+git chain" 2 \
-    '{"tool_name":"Bash","tool_input":{"command":"cd /other/repo && git commit -m \"feat: x\""}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cd /other/repo && git commit -m \\\"feat: x\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh" \
     "cd"
 
 _test "allows git commit-tree (not a commit)" 0 \
-    '{"tool_name":"Bash","tool_input":{"command":"git commit-tree abc123 -m \"merge\""}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit-tree abc123 -m \\\"merge\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
 
 _test "allows breaking change feat!: message" 0 \
-    '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"feat!: breaking api change\""}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit -m \\\"feat!: breaking api change\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
 
 _test "allows scoped breaking change feat(api)!: message" 0 \
-    '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"feat(api)!: remove endpoint\""}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit -m \\\"feat(api)!: remove endpoint\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
 
 _test "allows git pushd (not a push)" 0 \
-    '{"tool_name":"Bash","tool_input":{"command":"git pushd some-ref"}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git pushd some-ref\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
+
+_teardown_test_repo
 
 echo ""
 
@@ -168,21 +184,25 @@ echo ""
 # ─── git-post-push.sh ────────────────────────────────────────────────────────
 echo "── git-post-push.sh ──"
 
+_setup_test_repo
+
 _test "skips non-push commands" 0 \
-    '{"tool_name":"Bash","tool_input":{"command":"git status"},"tool_result":{"stdout":"On branch main"}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git status\"},\"tool_result\":{\"stdout\":\"On branch main\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-post-push.sh"
 
 _test "handles push command (exit 0, fail-open)" 0 \
-    '{"tool_name":"Bash","tool_input":{"command":"git push origin feature-branch"},"tool_result":{"stdout":"Everything up-to-date"}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin feature-branch\"},\"tool_result\":{\"stdout\":\"Everything up-to-date\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-post-push.sh"
 
 _test "skips on failed push (exit_code non-zero)" 0 \
-    '{"tool_name":"Bash","tool_input":{"command":"git push origin main"},"tool_result":{"stdout":"rejected","exit_code":1}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin main\"},\"tool_result\":{\"stdout\":\"rejected\",\"exit_code\":1},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-post-push.sh"
 
 _test "allows git pushd in post-push (not a push)" 0 \
-    '{"tool_name":"Bash","tool_input":{"command":"git pushd some-ref"},"tool_result":{"stdout":"ok"}}' \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git pushd some-ref\"},\"tool_result\":{\"stdout\":\"ok\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-post-push.sh"
+
+_teardown_test_repo
 
 echo ""
 
