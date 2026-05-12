@@ -166,6 +166,16 @@ _test "blocks piped install" 2 \
     "$HOOKS_DIR/secret-guard.sh" \
     "piped install"
 
+_test "blocks cat secrets/.env.secrets" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"cat secrets/.env.secrets"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "secrets file"
+
+_test "blocks cat ~/dotfiles/secrets/.env.secrets" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"cat ~/dotfiles/secrets/.env.secrets"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "secrets file"
+
 echo ""
 
 # ─── migration-guard.sh ──────────────────────────────────────────────────────
