@@ -13,7 +13,7 @@ HOOKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../hooks" && pwd)"
 # --- Temp git repo fixture (deterministic branch for hermetic tests) ---
 TEST_REPO=""
 _setup_test_repo() {
-    TEST_REPO=$(mktemp -d)
+    TEST_REPO=$(mktemp -d 2>/dev/null || mktemp -d -t ctrlshft)
     git init -q "$TEST_REPO"
     git -C "$TEST_REPO" config user.name "Test"
     git -C "$TEST_REPO" config user.email "test@test"

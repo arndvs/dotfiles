@@ -188,7 +188,7 @@ if echo "$COMMAND" | grep -qE 'git[[:space:]]+(checkout|switch)[[:space:]]'; the
     fi
 
     # Check for dirty working tree
-    if [[ -n $(git status --porcelain 2>/dev/null) ]]; then
+    if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
         # Allow if only untracked files (no modified/staged)
         if git status --porcelain 2>/dev/null | grep -qE '^[^?]'; then
             _deny "🚫 Working tree has uncommitted changes. Commit or stash before switching branches."

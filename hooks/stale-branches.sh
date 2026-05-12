@@ -20,7 +20,7 @@ fi
 
 # Detect default branch
 DEFAULT_BRANCH=""
-for candidate in main master dev; do
+for candidate in main master dev develop; do
     if git rev-parse --verify "origin/$candidate" &>/dev/null; then
         DEFAULT_BRANCH="$candidate"
         break

@@ -19,6 +19,7 @@
 #   statusLine → writes ~/.claude/context-pct → context-warning.sh reads it
 
 set -euo pipefail
+trap 'exit 0' ERR  # fail-open: any error → allow
 
 STATE_FILE="$HOME/.claude/context-pct"
 
