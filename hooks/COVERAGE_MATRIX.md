@@ -16,7 +16,7 @@ Maps failure modes to their enforcement mechanisms. Use this to identify gaps an
 | Failure Mode | Mechanism | Type | Coverage |
 |---|---|---|---|
 | Direct commit to protected branch | `git-workflow-gate.sh` Gate 1 | PreToolUse/Block | ✅ |
-| Non-conventional commit message | `git-workflow-gate.sh` Gate 1 | PreToolUse/Block | ✅ |
+| Non-conventional commit message | `git-workflow-gate.sh` Gate 1 | PreToolUse/Block | ⚠️ (`-m` only) |
 | Force push without `--force-with-lease` | `git-workflow-gate.sh` Gate 2 | PreToolUse/Block | ✅ |
 | Push when behind remote | `git-workflow-gate.sh` Gate 2 | PreToolUse/Block | ✅ |
 | Branch switch with dirty tree | `git-workflow-gate.sh` Gate 3 | PreToolUse/Block | ✅ |

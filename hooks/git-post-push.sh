@@ -16,9 +16,9 @@ fi
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
-# Only trigger on git push commands
+# Only trigger on git push commands (POSIX ERE: [[:space:]] not \s)
 [[ -z "$COMMAND" ]] && exit 0
-if ! echo "$COMMAND" | grep -qE 'git\s+push'; then
+if ! echo "$COMMAND" | grep -qE 'git[[:space:]]+push'; then
     exit 0
 fi
 
@@ -40,14 +40,24 @@ if echo "$BRANCH" | grep -qxE 'main|master|dev|develop'; then
     exit 0
 fi
 
+# Portable timeout (macOS may lack timeout)
+_timeout() {
+    if command -v timeout &>/dev/null; then
+        timeout "$@"
+    else
+        "${@:2}"
+    fi
+}
+
 # Check if a PR already exists for this branch (timeout after 5s)
-PR_COUNT=$(timeout 5 gh pr list --head "$BRANCH" --state open --json number --jq 'length' 2>/dev/null || echo "")
+PR_COUNT=$(_timeout 5 gh pr list --head "$BRANCH" --state open --json number --jq 'length' 2>/dev/null || echo "")
 
 # If gh failed or timed out, silently pass
 [[ -z "$PR_COUNT" ]] && exit 0
 
 if [[ "$PR_COUNT" == "0" ]]; then
-    echo "{\"hookSpecificOutput\":{\"additionalContext\":\"📋 No PR exists for branch '$BRANCH'. Consider running: gh pr create --base dev\"}}" >&2
+    jq -cn --arg msg "📋 No PR exists for branch '$BRANCH'. Consider running: gh pr create --base dev" \
+        '{"hookSpecificOutput":{"additionalContext":$msg}}' >&2
 fi
 
 exit 0

@@ -46,5 +46,5 @@ fi
 
 # No plan found — emit info warning (never blocks)
 MSG="⚠️ No plan file found (PLAN.md, docs/PLAN.md). Consider documenting your approach before scaffolding."
-echo "{\"hookSpecificOutput\":{\"additionalContext\":\"$MSG\"}}" >&2
+jq -cn --arg msg "$MSG" '{"hookSpecificOutput":{"additionalContext":$msg}}' >&2
 exit 0

@@ -72,6 +72,16 @@ _test "blocks force push" 2 \
     "$HOOKS_DIR/git-workflow-gate.sh" \
     "force-with-lease"
 
+_test "blocks force push (no trailing args)" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"git push --force"}}' \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "force-with-lease"
+
+_test "blocks short flag -f force push" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"git push -f origin main"}}' \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "force-with-lease"
+
 _test "allows force-with-lease" 0 \
     '{"tool_name":"Bash","tool_input":{"command":"git push --force-with-lease origin feature"}}' \
     "$HOOKS_DIR/git-workflow-gate.sh"

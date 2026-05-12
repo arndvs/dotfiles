@@ -9,10 +9,6 @@
 
 set -euo pipefail
 
-if ! command -v jq &>/dev/null; then
-    exit 0
-fi
-
 # Consume stdin (required by hook protocol)
 cat > /dev/null
 
@@ -31,19 +27,28 @@ for candidate in main master dev; do
 done
 [[ -z "$DEFAULT_BRANCH" ]] && exit 0
 
+# Portable timeout (macOS may lack timeout)
+_timeout() {
+    if command -v timeout &>/dev/null; then
+        timeout "$@"
+    else
+        "${@:2}"
+    fi
+}
+
 # Fetch to ensure we have latest remote state (timeout 10s, fail silently)
-timeout 10 git fetch origin "$DEFAULT_BRANCH" --quiet 2>/dev/null || true
+_timeout 10 git fetch origin "$DEFAULT_BRANCH" --quiet 2>/dev/null || true
 
 STALE_BRANCHES=()
 
-# Find local branches merged into default
+# Find local branches merged into default (exact match filter, not substring)
 while IFS= read -r branch; do
     branch=$(echo "$branch" | xargs)  # trim whitespace
     [[ -z "$branch" ]] && continue
     [[ "$branch" == "$DEFAULT_BRANCH" ]] && continue
     [[ "$branch" == "dev" ]] && continue
     STALE_BRANCHES+=("$branch (merged)")
-done < <(git branch --merged "origin/$DEFAULT_BRANCH" 2>/dev/null | grep -v '^\*' | grep -v "$DEFAULT_BRANCH")
+done < <(git branch --merged "origin/$DEFAULT_BRANCH" 2>/dev/null | grep -v '^\*' | grep -vxF "  $DEFAULT_BRANCH")
 
 # Find branches with no commits in 14+ days
 CUTOFF=$(date -d "14 days ago" +%s 2>/dev/null || date -v-14d +%s 2>/dev/null || echo "")
@@ -69,7 +74,7 @@ if [[ -n "$CUTOFF" ]]; then
         if [[ -n "$last_commit" && "$last_commit" -lt "$CUTOFF" ]]; then
             STALE_BRANCHES+=("$branch (stale >14d)")
         fi
-    done < <(git branch 2>/dev/null | grep -v '^\*' | grep -v "$DEFAULT_BRANCH")
+    done < <(git branch 2>/dev/null | grep -v '^\*' | grep -vxF "  $DEFAULT_BRANCH")
 fi
 
 # Nothing to report
@@ -89,5 +94,10 @@ if [[ $TOTAL -gt 10 ]]; then
 fi
 MSG="$MSG Consider: git branch -d <branch>"
 
-echo "{\"hookSpecificOutput\":{\"additionalContext\":\"$MSG\"}}" >&2
+# JSON-safe output via jq (if available), else plain-text fallback
+if command -v jq &>/dev/null; then
+    jq -cn --arg msg "$MSG" '{"hookSpecificOutput":{"additionalContext":$msg}}' >&2
+else
+    echo "{\"hookSpecificOutput\":{\"additionalContext\":\"Stale branches detected. Run: git branch --merged\"}}" >&2
+fi
 exit 0

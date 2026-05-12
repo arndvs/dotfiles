@@ -29,7 +29,7 @@ Bootstrap symlinks `hooks/` → `~/.claude/hooks/` and merges the configuration 
 
 ## Requirements
 
-- **jq** — all scripts parse JSON from stdin via jq. Scripts skip gracefully if jq is missing.
+- **jq** — all fail-closed hooks (secret-guard, migration-guard, git-workflow-gate) **require** jq and deny if missing. Fail-open hooks (stale-branches, plan-quality-gate, git-post-push) skip gracefully if jq is missing.
 - **npx** — format-check and typecheck use npx to run project-local tools.
 
 ## Editor Compatibility
@@ -72,9 +72,27 @@ Every hook declares its fail mode on line 2 as `# FAIL_MODE: closed|open`.
 The `git-workflow-gate.sh` hook reads an optional `.ctrlshft` YAML file at the repo root for per-repo overrides:
 
 ```yaml
-# .ctrlshft — per-repo hook configuration
-commit_types: [feat, fix, refactor, chore, docs, test, perf, ci]
-protected_branches: [main, master, production]
+# .ctrlshft — per-repo hook configuration (block-list format)
+commit_types:
+  - feat
+  - fix
+  - refactor
+  - chore
+  - docs
+  - test
+  - perf
+  - ci
+
+protected_branches:
+  - main
+  - master
+  - production
 ```
 
+> **Note:** Use YAML block-list format (one `- item` per line). Inline arrays (`[feat, fix, ...]`) are not supported by the parser.
+
 If the file doesn't exist, defaults apply. If parsing fails, defaults apply (fail-open for config).
+
+### Commit Message Validation
+
+The conventional commit check in `git-workflow-gate.sh` only validates messages passed inline via the `-m` flag (e.g., `git commit -m "feat: ..."`). Editor-based commits (no `-m` flag) or commits using `-F`/`--file` are **not** validated — the message content isn't visible in the command string. This is a known limitation; linting all commit messages requires a native `commit-msg` git hook.
