@@ -33,7 +33,7 @@ _deny() {
 }
 
 # Block commands that print credentials to stdout
-if echo "$COMMAND" | grep -qiE '(^|[[:space:]]|;|&&|\|)(echo|printf|cat)[[:space:]]+.*(\$\{?[A-Za-z_]*|[A-Za-z_]*)(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)'; then
+if echo "$COMMAND" | grep -qiE '(^|[[:space:]]|;|&&|\|)(echo|printf|cat)[[:space:]]+.*\$\{?[A-Za-z_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)'; then
     _deny "🔒 Blocked: command would expose credentials. Use run-with-secrets.sh for credential injection."
 fi
 
