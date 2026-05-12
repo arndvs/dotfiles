@@ -13,13 +13,13 @@ Rules use YAML frontmatter with a `paths` field (list of globs). When the agent 
 | `dark-mode.md` | `**/*.{tsx,jsx,css,scss}` | DMDS surface tokens, dark variants for all components |
 | `env-security.md` | `**/.env*`, `**/secrets/**`, `**/credentials*` | No hardcoded secrets; environment variables via `run-with-secrets.sh` |
 | `framer-motion.md` | `**/*.{tsx,jsx}` | Scroll-triggered reveals, no hero animations, CLS-safe, reduced-motion |
-| `frontend-conventions.md` | `**/*.{ts,tsx,js,jsx,css,scss,html,svelte,vue}` | Modern web APIs, baseline browser support (Feb 2026) |
-| `git-conventions.md` | `**/*.{ts,tsx,js,jsx,py,rb,go,rs,java,php,sh,md,yml,json}` | Atomic commits, conventional messages, clean diffs |
+| `frontend-conventions.md` | `**/*.{ts,tsx,js,jsx,mjs,cjs,css,scss,html,svelte,vue}` | Modern web APIs, baseline browser support (Feb 2026) |
+| `git-conventions.md` | `**/*.{ts,tsx,js,jsx,mjs,cjs,py,rb,go,rs,java,php,sh,bash,md,yml,yaml,json}` | Atomic commits, conventional messages, clean diffs |
 | `javascript-modern.md` | `**/*.{ts,tsx,js,jsx,mjs,cjs}` | Modern JS APIs — Set methods, `Object.groupBy`, Iterator helpers |
 | `migration-safety.md` | `**/migrations/**`, `**/prisma/migrations/**` | Backwards-compatible migrations, rollback paths, nullable-first |
 | `server-vs-client-components.md` | `**/app/**/*.{tsx,jsx}` | Default Server Components, minimal `'use client'`, server fetches |
 | `tailwind-shadcn.md` | `**/*.{tsx,jsx}` | shadcn CSS variables, class grouping, mobile-first, component variants |
-| `terminal-workarounds.md` | `**/bin/**`, `**/*.sh` | VS Code heredoc workarounds, background server output redirect |
+| `terminal-workarounds.md` | `**/bin/**`, `**/*.sh`, `**/*.bash` | VS Code heredoc workarounds, background server output redirect |
 | `test-conventions.md` | `**/*.test.*`, `**/*.spec.*`, `**/__tests__/**`, `**/services/**` | describe/it structure, one assertion per behavior, mock at boundaries |
 | `typescript-conventions.md` | `**/*.{ts,tsx}` | Object params, `satisfies`, explicit interfaces, `noUncheckedIndexedAccess` |
 
