@@ -7,7 +7,7 @@
 # digest suggesting cleanup. Capped at 10 branches to avoid noise.
 # Fail-open: network issues or non-git repos silently pass.
 
-set -euo pipefail
+set -Eeuo pipefail
 trap 'exit 0' ERR  # fail-open: any error → allow
 
 # Consume stdin (required by hook protocol)

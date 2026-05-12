@@ -7,7 +7,7 @@
 # branch, outputs an info reminder to create one.
 # Fail-open: if gh CLI is missing or network fails, silently passes.
 
-set -euo pipefail
+set -Eeuo pipefail
 trap 'exit 0' ERR  # fail-open: any error → allow
 
 if ! command -v jq &>/dev/null; then
