@@ -43,14 +43,14 @@ graph TB
 
 | Directory | Purpose | Details |
 |-----------|---------|---------|
-| [rules/](../rules/README.md) | Path-gated coding conventions (T3) | 12 files, load when edited file matches `applyTo` glob |
+| [rules/](../rules/README.md) | Path-gated coding conventions (T3) | 12 files, load when edited file matches `paths` glob |
 | [instructions/](../instructions/README.md) | Context, service, and task-triggered knowledge (T1–T2) | 8 files + `_local/`, tiered loading |
 | [skills/](../skills/README.md) | Multi-step workflow definitions (T4) | 22 public skills, triggered by task description |
 | [agents/](../agents/README.md) | Read-only subagent personas | 6 agents across 3 model tiers (Haiku/Sonnet/Opus) |
 | [commands/](../commands/README.md) | `/slash` command dispatchers | 8 commands, each loads one skill |
 | [hooks/](../hooks/README.md) | Claude Code lifecycle guards | Block secrets, migrations, auto-compaction; format on stop |
 | [bin/](../bin/README.md) | CLI scripts and infrastructure | Bootstrap, context detection, HUD daemon, secret management |
-| [shft/](../shft/README.md) | Autonomous execution loop | HITL and AFK modes, Docker-sandboxed, issue-driven |
+| [shft/](../shft/README.md) | Autonomous execution loop | HITL and AFK modes, `srt`-sandboxed, issue-driven |
 | [secrets/](../secrets/README.md) | Three-tier credential isolation | Config / credentials / AFK tokens — agents never see credentials |
 | [hud/](../hud/README.md) | Real-time observability dashboard | HTTP + WebSocket daemon, SQLite persistence, scanline UI |
 | [clients/](../clients/README.md) | Per-client project isolation | Auto-detected on `cd()`, injects client instructions |
@@ -114,7 +114,7 @@ The planning pipeline chains skills end-to-end:
 
 | I need to... | Go to |
 |-------------|-------|
-| Add a coding convention | [rules/](../rules/README.md) — create `rules/your-rule.md` with `applyTo` frontmatter |
+| Add a coding convention | [rules/](../rules/README.md) — create `rules/your-rule.md` with `paths` frontmatter |
 | Add stack-specific knowledge | [instructions/](../instructions/README.md) — create or edit the matching `.instructions.md` |
 | Create a new workflow | [skills/](../skills/README.md) — create `skills/your-skill/SKILL.md` |
 | Add a slash command | [commands/](../commands/README.md) — create `commands/your-command.md` dispatching to a skill |

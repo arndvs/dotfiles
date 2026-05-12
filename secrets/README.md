@@ -37,7 +37,7 @@ secrets/
 └── citation-evidence/   ← citation builder data
 ```
 
-The entire `secrets/` directory is gitignored. Nothing here is ever committed.
+The `secrets/` directory is gitignored except for this README. No credentials or config files here are ever committed.
 
 ## Adding Secrets
 

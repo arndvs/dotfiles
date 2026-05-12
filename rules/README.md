@@ -1,15 +1,15 @@
 # Rules
 
-Path-gated coding conventions (Tier 3). Each rule loads only when the agent touches files matching its `applyTo` glob pattern.
+Path-gated coding conventions (Tier 3). Each rule loads only when the agent touches files matching its `paths` glob pattern.
 
 ## How Rules Load
 
-Rules use YAML frontmatter with an `applyTo` field. When the agent edits a file matching the glob, the rule is loaded automatically. Rules without a matching glob stay dormant — zero overhead for irrelevant stacks.
+Rules use YAML frontmatter with a `paths` field (list of globs). When the agent edits a file matching any glob, the rule is loaded automatically. Rules without a matching glob stay dormant — zero overhead for irrelevant stacks.
 
 ## Rule Inventory
 
-| Rule | `applyTo` | Enforces |
-|------|-----------|----------|
+| Rule | `paths` | Enforces |
+|------|---------|----------|
 | `dark-mode.md` | `**/*.{tsx,jsx,css,scss}` | DMDS surface tokens, dark variants for all components |
 | `env-security.md` | `**/.env*`, `**/secrets/**`, `**/credentials*` | No hardcoded secrets; environment variables via `run-with-secrets.sh` |
 | `framer-motion.md` | `**/*.{tsx,jsx}` | Scroll-triggered reveals, no hero animations, CLS-safe, reduced-motion |
@@ -30,7 +30,8 @@ Rules use YAML frontmatter with an `applyTo` field. When the agent edits a file 
    ```yaml
    ---
    description: "What this rule enforces"
-   applyTo: "**/*.{ts,tsx}"
+   paths:
+     - "**/*.{ts,tsx}"
    ---
    ```
 3. Write the convention content below the frontmatter

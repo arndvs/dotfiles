@@ -7,7 +7,7 @@ The autonomous execution side of ctrl+shft. `ctrl` manages your environment; `sh
 | Mode | Command | How it works |
 |------|---------|-------------|
 | **HITL** | `shft run` | Claude with `--permission-mode acceptEdits` — you watch and approve each edit |
-| **AFK** | `shft afk [n]` | Autonomous loop in Docker sandbox — picks issues, implements, commits, closes, repeats for `n` iterations (default 5) |
+| **AFK** | `shft afk [n]` | Autonomous loop via `srt` (Anthropic Sandbox Runtime, Docker-backed) — picks issues, implements, commits, closes, repeats for `n` iterations (default 5) |
 
 ## Commands
 
@@ -49,6 +49,6 @@ The agent picks issues in this order (defined in `prompt.md`):
 
 ## Security
 
-- AFK runs in a **Docker sandbox** — the agent cannot access the host filesystem or network directly
+- AFK runs in a **sandboxed container** via `srt` (Anthropic Sandbox Runtime) — filesystem and network isolation provided by Docker
 - **Short-lived GitHub App tokens** are minted per AFK iteration via `bin/mint_github_app_token.py` — no long-lived auth tokens
 - **Lock file** (`/tmp/shft-afk.lock`) prevents concurrent AFK loops
