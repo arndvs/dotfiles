@@ -38,9 +38,9 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 [[ -z "$COMMAND" ]] && exit 0
 
 # Only process git commands (POSIX ERE: [[:space:]] not \s)
-# Match git as a command — after ^, ;, &&, | only (not bare whitespace,
+# Match git as a command — after ^, ;, &&, ||, | (not bare whitespace,
 # which would false-positive on "echo git status").
-if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git[[:space:]]'; then
+if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git[[:space:]]'; then
     exit 0
 fi
 
