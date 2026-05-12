@@ -40,14 +40,8 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 # Only process git commands (POSIX ERE: [[:space:]] not \s)
 # Match git as a command — after ^, ;, &&, | only (not bare whitespace,
 # which would false-positive on "echo git status").
-if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|)[[:space:]]*git[[:space:]]'; then
+if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git[[:space:]]'; then
     exit 0
-fi
-
-# --- cd into the hook event's working directory ---
-EVENT_CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
-if [[ -n "$EVENT_CWD" ]]; then
-    cd "$EVENT_CWD" || _deny "git-workflow-gate: cannot cd to event cwd '$EVENT_CWD'"
 fi
 
 # --- Helper: portable timeout (macOS may lack timeout) ---
@@ -118,6 +112,12 @@ _warn() {
     jq -cn --arg msg "$1" '{"hookSpecificOutput":{"additionalContext":$msg}}' >&2
     exit 0
 }
+
+# --- cd into the hook event's working directory ---
+EVENT_CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
+if [[ -n "$EVENT_CWD" ]]; then
+    cd "$EVENT_CWD" || _deny "git-workflow-gate: cannot cd to event cwd '$EVENT_CWD'"
+fi
 
 # ============================================================
 # GATE 0: Block cd + git command chains (&&  or ;)

@@ -35,11 +35,16 @@ git status --porcelain
 ### 2. Unpushed commits
 
 ```bash
-git log --oneline @{u}..HEAD 2>/dev/null
+if git rev-parse --abbrev-ref '@{u}' &>/dev/null; then
+  git log --oneline @{u}..HEAD 2>/dev/null
+else
+  echo "NO UPSTREAM"
+fi
 ```
 
 - **PASS**: empty output (nothing unpushed)
 - **FAIL**: list the commits and push them
+- **WARN**: no upstream configured — local commits may not be tracked
 
 ### 3. PR exists for branch
 
