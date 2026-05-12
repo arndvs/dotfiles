@@ -7,6 +7,13 @@
 
 set -euo pipefail
 
+# --- Fail-closed trap: any unhandled error = deny ---
+_fail_closed() {
+    echo '{"hookSpecificOutput":{"permissionDecision":"deny","permissionDecisionReason":"migration-guard: unhandled error — denying (fail-closed)"}}' >&2
+    exit 2
+}
+trap '_fail_closed' ERR
+
 if ! command -v jq &>/dev/null; then
     exit 0  # jq required — skip gracefully if missing
 fi
