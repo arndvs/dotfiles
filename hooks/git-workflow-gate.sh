@@ -164,8 +164,8 @@ fi
 # GATE 2: Block push safety violations
 # ============================================================
 if echo "$COMMAND" | grep -qE 'git[[:space:]]+push([[:space:]]|$)'; then
-    # Block force-push without --force-with-lease (handles flag at end of command)
-    if echo "$COMMAND" | grep -qE '[[:space:]](--force|-f)([[:space:]]|$)' && ! echo "$COMMAND" | grep -qE '[[:space:]]--force-with-lease'; then
+    # Block force-push without --force-with-lease (handles --force, -f, and combined short flags like -fu)
+    if echo "$COMMAND" | grep -qE '[[:space:]](--force|-f|-[a-zA-Z]*f[a-zA-Z]*)([[:space:]]|$)' && ! echo "$COMMAND" | grep -qE '[[:space:]]--force-with-lease'; then
         _deny "🚫 Force-push without --force-with-lease is dangerous. Use --force-with-lease to protect against overwriting others' work."
     fi
 

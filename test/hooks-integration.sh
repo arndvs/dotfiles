@@ -110,6 +110,11 @@ _test "blocks short flag -f force push" 2 \
     "$HOOKS_DIR/git-workflow-gate.sh" \
     "force-with-lease"
 
+_test "blocks combined short flag -fu force push" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push -fu origin main\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "force-with-lease"
+
 _test "allows force-with-lease" 0 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push --force-with-lease origin feature\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
