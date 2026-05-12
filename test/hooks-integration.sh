@@ -15,6 +15,8 @@ TEST_REPO=""
 _setup_test_repo() {
     TEST_REPO=$(mktemp -d)
     git init -q "$TEST_REPO"
+    git -C "$TEST_REPO" config user.name "Test"
+    git -C "$TEST_REPO" config user.email "test@test"
     git -C "$TEST_REPO" checkout -q -b test-feature
     git -C "$TEST_REPO" commit -q --allow-empty -m "init"
 }

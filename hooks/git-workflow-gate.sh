@@ -91,7 +91,7 @@ _protected_branches() {
         local branches
         branches=$(sed -n '/^protected_branches:/,/^[^[:space:]-]/{
             s/^[[:space:]]*-[[:space:]]*//p
-        }' "$config" 2>/dev/null | grep -v '^$' | sed 's/[.[\(*+?{|^$/\\&/g' | tr '\n' '|' | sed 's/|$//') || true
+        }' "$config" 2>/dev/null | grep -v '^$' | sed 's/[].[\\(*+?{|^$]/\\&/g' | tr '\n' '|' | sed 's/|$//') || true
         if [[ -n "$branches" ]]; then
             echo "$branches"
             return
