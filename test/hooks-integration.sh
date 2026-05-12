@@ -16,7 +16,7 @@ cd "$REPO_ROOT"
 _CLEANUP_DIRS=()
 _cleanup() {
     for dir in "${_CLEANUP_DIRS[@]+"${_CLEANUP_DIRS[@]}"}"; do
-        [[ -n "$dir" && -d "$dir" ]] && rm -rf "$dir"
+        if [[ -n "$dir" && -d "$dir" ]]; then rm -rf "$dir"; fi
     done
 }
 trap '_cleanup' EXIT INT TERM
@@ -57,7 +57,7 @@ _test() {
         return
     fi
 
-    if [[ -n "$expect_output" ]] && ! echo "$output" | grep -qF "$expect_output"; then
+    if [[ -n "$expect_output" ]] && ! printf '%s\n' "$output" | grep -qF "$expect_output"; then
         FAIL=$((FAIL + 1))
         FAILURES+=("$label: expected output containing '$expect_output'")
         red "$label (missing expected output)"

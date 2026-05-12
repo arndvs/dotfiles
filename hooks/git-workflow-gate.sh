@@ -123,7 +123,7 @@ fi
 # GATE 0: Block cd + git command chains (&&  or ;)
 # ============================================================
 # Agent should use the cwd parameter instead of cd && git
-if echo "$COMMAND" | grep -qE 'cd[[:space:]]+("[^"]*"|'\''[^'\'']*'\''|[^[:space:];]+)[[:space:]]*(&&|;)[[:space:]]*git[[:space:]]'; then
+if echo "$COMMAND" | grep -qE 'cd[[:space:]]+("[^"]*"|'\''[^'\'']*'\''|[^[:space:];]+)[[:space:]]*(&&|;)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git[[:space:]]'; then
     _deny "🚫 Don't chain cd && git commands. Use the cwd parameter on the tool call instead — cd chains leak shell state."
 fi
 
