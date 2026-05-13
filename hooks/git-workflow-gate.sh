@@ -123,6 +123,14 @@ if [[ -n "$EVENT_CWD" ]]; then
     cd "$EVENT_CWD" || _deny "git-workflow-gate: cannot cd to event cwd '$EVENT_CWD'"
 fi
 
+# --- Deny git repo override flags; use the tool's cwd instead ---
+# This hook performs its safety checks relative to EVENT_CWD. Allowing
+# git -C / --git-dir / --work-tree would let the actual command target
+# a different repository than the one that was validated.
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git([[:space:]]+[^;&|[:space:]]+)*[[:space:]]+(-C[[:space:]]+|--git-dir(=|[[:space:]]+)|--work-tree(=|[[:space:]]+))'; then
+    _deny "🚫 Don't use git -C, --git-dir, or --work-tree in commands. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
+fi
+
 # ============================================================
 # GATE 0: Block cd + git command chains (&&  or ;)
 # ============================================================
