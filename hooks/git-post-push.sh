@@ -33,6 +33,13 @@ if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-
     exit 0
 fi
 
+# Skip git push invocations that explicitly target a different repo/work tree.
+# This hook resolves branch/PR state from the hook event's cwd, so handling
+# these forms would risk checking the wrong branch and missing the reminder.
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git([[:space:]]+(-C|--git-dir|--work-tree)([=[:space:]][^;&|[:space:]]+)*)+[[:space:]]+push([[:space:]]|$)'; then
+    exit 0
+fi
+
 # Skip if gh CLI not available
 if ! command -v gh &>/dev/null; then
     exit 0
