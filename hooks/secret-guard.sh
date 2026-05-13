@@ -38,12 +38,12 @@ if echo "$COMMAND" | grep -qiE '(^|;|&&|\|\||\|)[[:space:]]*(sudo[[:space:]]+)?(
 fi
 
 # Block bare env/printenv (dumps all env vars including secrets)
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*(printenv|env)[[:space:]]*($|;|&&|\|)'; then
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*(printenv|env)[[:space:]]*($|;|&&|\|\||\|)'; then
     _deny "🔒 Blocked: bare env/printenv dumps all variables. Use echo \$SPECIFIC_VAR instead."
 fi
 
 # Block cat on secrets files (covers bare name + path prefixes)
-if echo "$COMMAND" | grep -qE 'cat[[:space:]]+([^[:space:]]*/)?\.env\.secrets|cat[[:space:]]+([^[:space:]]*/)?secrets/\.env|cat[[:space:]]+~/dotfiles/secrets/'; then
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*(sudo[[:space:]]+)?cat[[:space:]]+(([^[:space:]]*/)?\.env\.secrets|([^[:space:]]*/)?secrets/\.env|~/dotfiles/secrets/)'; then
     _deny "🔒 Blocked: direct read of secrets file. Use run-with-secrets.sh for credential access."
 fi
 
