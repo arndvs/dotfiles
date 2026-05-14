@@ -87,7 +87,7 @@ bin/
 
 ## Audit Fixes Applied
 
-All 27 findings from the codebase audit are addressed:
+All 10 priority findings from the codebase audit are addressed:
 
 - **C-1**: No `--json` flag in mint_token (flag doesn't exist)
 - **H-2**: head_ref fetched via REST, not from webhook payload

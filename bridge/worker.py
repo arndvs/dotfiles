@@ -45,7 +45,7 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
             **extra,
         )
 
-    emit("bridge.job.claimed", iteration=job.iteration)
+    emit("bridge.job.claimed")
 
     # 1. Mint token.
     token = github.mint_token(cfg.mint_script)

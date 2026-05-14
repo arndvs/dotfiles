@@ -1,9 +1,10 @@
 """Bridge configuration loaded from environment.
 
 Required vars come from ~/dotfiles/secrets/.env.agent (non-sensitive)
-and ~/dotfiles/secrets/.env.secrets (sensitive). The shell integration
-sources these at session start; systemd units load them via
-EnvironmentFile= directives.
+and ~/dotfiles/secrets/.env.secrets (sensitive). `.env.agent` is sourced
+into interactive shells; `.env.secrets` is process-scoped only — injected
+via systemd EnvironmentFile= or `run-with-secrets.sh`, never sourced
+into the shell to avoid secret leakage.
 """
 from __future__ import annotations
 

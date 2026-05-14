@@ -234,7 +234,14 @@ def bump_iteration(conn: sqlite3.Connection, claim_key: str) -> int:
 
     Uses the dedicated claim_keys table (fixes H-4 from audit —
     iteration count is independent of job volume).
+
+    Ensures the claim_key row exists first (UPSERT guard) so the
+    function is robust to partial/older DB state.
     """
+    conn.execute(
+        "INSERT OR IGNORE INTO claim_keys (claim_key) VALUES (?)",
+        (claim_key,),
+    )
     conn.execute(
         """
         UPDATE claim_keys
@@ -247,4 +254,4 @@ def bump_iteration(conn: sqlite3.Connection, claim_key: str) -> int:
         "SELECT current_iteration FROM claim_keys WHERE claim_key = ?",
         (claim_key,),
     ).fetchone()
-    return row["current_iteration"] if row else 1
+    return row["current_iteration"]
