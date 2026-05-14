@@ -165,6 +165,20 @@ _test "blocks non-conventional commit via --message=" 2 \
     "$HOOKS_DIR/git-workflow-gate.sh" \
     "conventional format"
 
+_test "blocks +refspec force push" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin +HEAD:main\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "Refspec prefixed"
+
+_test "allows +refspec with --force-with-lease" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push --force-with-lease origin +HEAD:main\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
+_test "blocks unquoted -m message" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit -m updated\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "Could not parse commit message"
+
 _teardown_test_repo
 
 echo ""
@@ -211,6 +225,16 @@ _test "blocks echo credential with brace and digits" 2 \
     "$HOOKS_DIR/secret-guard.sh" \
     "credentials"
 
+_test "blocks FOO=bar env (leading env assignments)" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"FOO=bar env"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "env/printenv"
+
+_test "blocks FOO=bar printenv (leading env assignments)" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"FOO=bar printenv"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "env/printenv"
+
 echo ""
 
 # ─── migration-guard.sh ──────────────────────────────────────────────────────
@@ -228,6 +252,11 @@ _test "blocks prisma migrate deploy" 2 \
 _test "allows migration to test db" 0 \
     '{"tool_name":"Bash","tool_input":{"command":"DATABASE_URL=postgres://localhost:5433/test npx prisma migrate deploy"}}' \
     "$HOOKS_DIR/migration-guard.sh"
+
+_test "blocks spoofed test DB in chained command" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"echo DATABASE_URL=test && npx prisma migrate deploy"}}' \
+    "$HOOKS_DIR/migration-guard.sh" \
+    "Migration"
 
 echo ""
 

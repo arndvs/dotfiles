@@ -32,8 +32,11 @@ _deny() {
 
 # Detect migration commands across common ORMs
 if echo "$COMMAND" | grep -qiE '(prisma[[:space:]]+migrate[[:space:]]+(deploy|dev)|prisma[[:space:]]+db[[:space:]]+push|artisan[[:space:]]+migrate|knex[[:space:]]+migrate|db-migrate[[:space:]]+up|typeorm[[:space:]]+migration:run|drizzle-kit[[:space:]]+push)'; then
-    # Allow test database targets (POSIX ERE: use _test followed by non-word or end)
-    if echo "$COMMAND" | grep -qiE '(DATABASE_URL.*test|localhost:5433([^0-9]|$)|:5433([^0-9]|$)|_test([^A-Za-z0-9_]|$))'; then
+    # Allow test database targets — only match env assignments that directly
+    # prefix the migration command (VAR=val cmd), not arbitrary command text.
+    # Extract the env-assignment prefix before the first non-assignment token.
+    env_prefix=$(echo "$COMMAND" | sed -n 's/^\(\([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]*\)*\).*/\1/p')
+    if [[ -n "$env_prefix" ]] && echo "$env_prefix" | grep -qiE '(DATABASE_URL.*test|localhost:5433([^0-9]|$)|:5433([^0-9]|$)|_test([^A-Za-z0-9_]|$))'; then
         exit 0
     fi
 

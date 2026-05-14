@@ -38,7 +38,8 @@ if echo "$COMMAND" | grep -qiE '(^|;|&&|\|\||\|)[[:space:]]*(sudo[[:space:]]+)?(
 fi
 
 # Block bare env/printenv (dumps all env vars including secrets)
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*(printenv|env)[[:space:]]*($|;|&&|\|\||\|)'; then
+# Also catches leading env assignments: FOO=bar env, FOO=bar printenv
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(printenv|env)[[:space:]]*($|;|&&|\|\||\|)'; then
     _deny "🔒 Blocked: bare env/printenv dumps all variables. Use echo \$SPECIFIC_VAR instead."
 fi
 

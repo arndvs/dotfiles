@@ -172,6 +172,9 @@ if echo "$COMMAND" | grep -qE "git${GIT_OPTS}[[:space:]]+commit([[:space:]]|\$)"
             if ! echo "$msg" | grep -qE "^($types)(\([a-z0-9._-]+\))?!?: .+"; then
                 _deny "🚫 Commit message doesn't follow conventional format. Expected: <type>(<scope>): <description>. Allowed types: ${types//|/, }"
             fi
+        else
+            # -m/--message flag present but message could not be parsed (e.g. unquoted: git commit -m updated)
+            _deny "🚫 Could not parse commit message. Wrap the message in quotes: git commit -m \"type(scope): description\""
         fi
     fi
 fi
@@ -180,9 +183,14 @@ fi
 # GATE 2: Block push safety violations
 # ============================================================
 if echo "$COMMAND" | grep -qE "git${GIT_OPTS}[[:space:]]+push([[:space:]]|\$)"; then
-    # Block force-push without --force-with-lease (handles --force, -f, and combined short flags like -fu)
+    # Block force-push without --force-with-lease (handles --force, -f, combined short flags like -fu, and +refspec)
     if echo "$COMMAND" | grep -qE '[[:space:]](--force|-f|-[a-zA-Z]*f[a-zA-Z]*)([[:space:]]|$)' && ! echo "$COMMAND" | grep -qE '[[:space:]]--force-with-lease'; then
         _deny "🚫 Force-push without --force-with-lease is dangerous. Use --force-with-lease to protect against overwriting others' work."
+    fi
+
+    # Block +refspec force-update (e.g. git push origin +HEAD:main)
+    if echo "$COMMAND" | grep -qE '[[:space:]]\+[^[:space:]]+' && ! echo "$COMMAND" | grep -qE '[[:space:]]--force-with-lease'; then
+        _deny "🚫 Refspec prefixed with '+' forces the update. Use --force-with-lease instead of +refspec."
     fi
 
     # Check if behind origin (only if we can reach remote)
