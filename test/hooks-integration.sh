@@ -124,6 +124,20 @@ _test "blocks cd+git chain" 2 \
     "$HOOKS_DIR/git-workflow-gate.sh" \
     "cd"
 
+_test "allows git commit -C HEAD (subcommand option, not global)" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit -C HEAD\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
+_test "blocks git -C /repo (global repo override)" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -C /tmp/other-repo status\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "git -C"
+
+_test "blocks git --no-pager -C /repo (global -C after flags)" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git --no-pager -C /tmp/other-repo log\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "git -C"
+
 _test "allows git commit-tree (not a commit)" 0 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit-tree abc123 -m \\\"merge\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"

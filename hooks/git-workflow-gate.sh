@@ -127,8 +127,18 @@ fi
 # This hook performs its safety checks relative to EVENT_CWD. Allowing
 # git -C / --git-dir / --work-tree would let the actual command target
 # a different repository than the one that was validated.
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git([[:space:]]+[^;&|[:space:]]+)*[[:space:]]+(-C[[:space:]]+|--git-dir(=|[[:space:]]+)|--work-tree(=|[[:space:]]+))'; then
-    _deny "🚫 Don't use git -C, --git-dir, or --work-tree in commands. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
+
+# --git-dir and --work-tree are unambiguous global-only options — scan anywhere.
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git[^;&|]*(--git-dir(=|[[:space:]]+)|--work-tree(=|[[:space:]]+))'; then
+    _deny "🚫 Don't use git --git-dir or --work-tree in commands. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
+fi
+
+# -C is positional: global 'git -C <path>' vs subcommand option 'git commit -C HEAD'.
+# Only block when -C appears in the global-options slot (before the subcommand).
+# Global options are flag-like tokens (starting with -); the subcommand is the first
+# non-flag word after 'git'. Skip non-C flags (and their optional values) to reach -C.
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git([[:space:]]+-[^C[:space:]][^[:space:]]*([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+-C[[:space:]]'; then
+    _deny "🚫 Don't use git -C in commands. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
 fi
 
 # --- Pattern: optional git global options (e.g. --no-pager, -c key=val) ---
