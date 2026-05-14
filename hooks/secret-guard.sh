@@ -34,7 +34,8 @@ _deny() {
 
 # Block commands that print credentials to stdout
 # Handles sudo, command, builtin prefixes (e.g. command echo $SECRET_KEY)
-if echo "$COMMAND" | grep -qiE '(^|;|&&|\|\||\|)[[:space:]]*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+)*(echo|printf|cat)[[:space:]]+.*\$\{?[A-Za-z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)'; then
+# Also handles env prefix (e.g. env echo $SECRET_KEY)
+if echo "$COMMAND" | grep -qiE '(^|;|&&|\|\||\|)[[:space:]]*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env[[:space:]]+)*(echo|printf|cat)[[:space:]]+.*\$\{?[A-Za-z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)'; then
     _deny "🔒 Blocked: command would expose credentials. Use run-with-secrets.sh for credential injection."
 fi
 

@@ -57,7 +57,7 @@ _test() {
         return
     fi
 
-    if [[ -n "$expect_output" ]] && ! printf '%s\n' "$output" | grep -qF "$expect_output"; then
+    if [[ -n "$expect_output" ]] && ! printf '%s\n' "$output" | grep -qF -- "$expect_output"; then
         FAIL=$((FAIL + 1))
         FAILURES+=("$label: expected output containing '$expect_output'")
         red "$label (missing expected output)"
@@ -228,6 +228,23 @@ _test "blocks chained checkout -b && switch with dirty tree" 2 \
     "$HOOKS_DIR/git-workflow-gate.sh" \
     "uncommitted changes"
 
+# Restore clean state for remaining tests
+git -C "$TEST_REPO" checkout -- file.txt 2>/dev/null || true
+
+_test "blocks command git -C /repo (command prefix + global -C)" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"command git -C /tmp/other-repo status\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "git -C"
+
+_test "blocks env git --git-dir=/other (env prefix + --git-dir)" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"env git --git-dir=/other status\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "--git-dir"
+
+_test "allows conventional commit with apostrophe in double-quoted msg" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit -m \\\"fix: handle 'quoted' value\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
 _teardown_test_repo
 
 echo ""
@@ -299,7 +316,13 @@ _test "blocks command cat secrets file (command prefix bypass)" 2 \
     "$HOOKS_DIR/secret-guard.sh" \
     "secrets file"
 
+_test "blocks env echo credential (env prefix bypass)" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"env echo $SECRET_KEY"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "credentials"
+
 echo ""
+
 
 # ─── migration-guard.sh ──────────────────────────────────────────────────────
 echo "── migration-guard.sh ──"
@@ -361,6 +384,10 @@ _test "allows git pushd in post-push (not a push)" 0 \
 
 _test "detects push with --no-pager global option" 0 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git --no-pager push origin test-feature\"},\"tool_result\":{\"stdout\":\"ok\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-post-push.sh"
+
+_test "skips git --no-pager -C /repo push (global opts before -C)" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git --no-pager -C /other/repo push origin main\"},\"tool_result\":{\"stdout\":\"ok\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-post-push.sh"
 
 # Hermetic test: stub gh to return no PRs and verify reminder output

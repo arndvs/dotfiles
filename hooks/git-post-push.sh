@@ -40,7 +40,8 @@ fi
 # Skip git push invocations that explicitly target a different repo/work tree.
 # This hook resolves branch/PR state from the hook event's cwd, so handling
 # these forms would risk checking the wrong branch and missing the reminder.
-if echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git([[:space:]]+(-C|--git-dir|--work-tree)([=[:space:]][^;&|[:space:]]+)*)+${GIT_OPTS}[[:space:]]+push([[:space:]]|\$)"; then
+# Allow global options before the repo-targeting flags (e.g. git --no-pager -C /repo push)
+if echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git${GIT_OPTS}([[:space:]]+(-C|--git-dir|--work-tree)([=[:space:]][^;&|[:space:]]+)*)+${GIT_OPTS}[[:space:]]+push([[:space:]]|\$)"; then
     exit 0
 fi
 

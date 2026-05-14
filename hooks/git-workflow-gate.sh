@@ -130,7 +130,8 @@ fi
 # a different repository than the one that was validated.
 
 # --git-dir and --work-tree are unambiguous global-only options — scan anywhere.
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git[^;&|]*(--git-dir(=|[[:space:]]+)|--work-tree(=|[[:space:]]+))'; then
+# Include command/builtin/env prefixes so `command git --git-dir=...` is also caught.
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(command[[:space:]]+|builtin[[:space:]]+|env[[:space:]]+)*git[^;&|]*(--git-dir(=|[[:space:]]+)|--work-tree(=|[[:space:]]+))'; then
     _deny "🚫 Don't use git --git-dir or --work-tree in commands. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
 fi
 
@@ -138,7 +139,7 @@ fi
 # Only block when -C appears in the global-options slot (before the subcommand).
 # Global options are flag-like tokens (starting with -); the subcommand is the first
 # non-flag word after 'git'. Skip non-C flags (and their optional values) to reach -C.
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git([[:space:]]+-[^C[:space:]][^[:space:]]*([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+-C[[:space:]]'; then
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(command[[:space:]]+|builtin[[:space:]]+|env[[:space:]]+)*git([[:space:]]+-[^C[:space:]][^[:space:]]*([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+-C[[:space:]]'; then
     _deny "🚫 Don't use git -C in commands. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
 fi
 
@@ -180,7 +181,12 @@ if echo "$COMMAND" | grep -qE "git${GIT_OPTS}[[:space:]]+commit([[:space:]]|\$)"
         # Extract FIRST -m/--message value (the commit subject for multi-paragraph commits).
         # grep -oE returns matches left-to-right; head -1 takes the first (= subject line).
         # || true: grep exits 1 when no match; suppress to avoid ERR trap with -Eeuo pipefail.
-        first_match=$(echo "$COMMAND" | grep -oE "(-m[[:space:]]*|--message[=[:space:]]*)([\"'])[^\"']*[\"']" | head -1) || true
+        # Use separate patterns for double-quoted and single-quoted messages to avoid
+        # mismatched delimiter truncation (e.g. -m "fix: 'quoted' value").
+        first_match=$(echo "$COMMAND" | grep -oE "(-m[[:space:]]*|--message[=[:space:]]*)\"[^\"]*\"" | head -1) || true
+        if [[ -z "$first_match" ]]; then
+            first_match=$(echo "$COMMAND" | grep -oE "(-m[[:space:]]*|--message[=[:space:]]*)'[^']*'" | head -1) || true
+        fi
         msg=""
         if [[ -n "$first_match" ]]; then
             msg=$(echo "$first_match" | sed "s/^-m[[:space:]]*//;s/^--message[=[:space:]]*//;s/^[\"']//;s/[\"']$//")
