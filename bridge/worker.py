@@ -100,12 +100,12 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
     if iteration_num > cfg.max_iterations:
         emit("bridge.loop.cap_exceeded", iteration=iteration_num)
         if existing:
-            github.update_issue(
+            github.add_label(
                 token,
                 owner=owner,
                 repo=repo_name,
                 issue_number=existing["number"],
-                labels=["copilot-review", "agent-loop-exceeded"],
+                label="agent-loop-exceeded",
             )
             github.comment_on_issue(
                 token,

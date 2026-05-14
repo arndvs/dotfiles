@@ -260,6 +260,23 @@ def update_issue(
         r.raise_for_status()
 
 
+def add_label(
+    token: Token,
+    *,
+    owner: str,
+    repo: str,
+    issue_number: int,
+    label: str,
+) -> None:
+    """Add a single label without clobbering existing labels."""
+    with _client(token) as client:
+        r = client.post(
+            f"/repos/{owner}/{repo}/issues/{issue_number}/labels",
+            json={"labels": [label]},
+        )
+        r.raise_for_status()
+
+
 def comment_on_issue(
     token: Token, *, owner: str, repo: str, issue_number: int, body: str
 ) -> None:

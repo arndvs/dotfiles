@@ -106,6 +106,8 @@ def prepare(
                     "reset", "--hard", f"origin/{head_ref}",
                 ],
                 check=True,
+                timeout=60,
+                env=env,
             )
         except subprocess.CalledProcessError as e:
             raise WorkspaceError(
@@ -116,10 +118,12 @@ def prepare(
     subprocess.run(
         ["git", "-C", str(path), "config", "user.name", "ctrl-shft bridge"],
         check=True,
+        timeout=10,
     )
     subprocess.run(
         ["git", "-C", str(path), "config", "user.email", "bridge@ctrlshft.local"],
         check=True,
+        timeout=10,
     )
 
     return path
