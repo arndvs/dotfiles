@@ -125,6 +125,11 @@ _test "blocks sudo git push --force (sudo prefix)" 2 \
     "$HOOKS_DIR/git-workflow-gate.sh" \
     "force-with-lease"
 
+_test "blocks env with assignments before git (env FOO=bar git)" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"env FOO=bar git push --force origin main\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "force-with-lease"
+
 _test "allows force-with-lease" 0 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push --force-with-lease origin feature\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
@@ -358,6 +363,16 @@ _test "blocks env echo credential (env prefix bypass)" 2 \
     '{"tool_name":"Bash","tool_input":{"command":"env echo $SECRET_KEY"}}' \
     "$HOOKS_DIR/secret-guard.sh" \
     "credentials"
+
+_test "blocks env with assignments before echo credential" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"env FOO=bar echo $SECRET_KEY"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "credentials"
+
+_test "blocks env with assignments before printenv" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"env FOO=bar printenv"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "env/printenv"
 
 echo ""
 

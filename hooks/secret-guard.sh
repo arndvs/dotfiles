@@ -34,8 +34,8 @@ _deny() {
 
 # Block commands that print credentials to stdout
 # Handles sudo, command, builtin prefixes (e.g. command echo $SECRET_KEY)
-# Also handles env prefix (e.g. env echo $SECRET_KEY)
-if echo "$COMMAND" | grep -qiE '(^|;|&&|\|\||\|)[[:space:]]*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env[[:space:]]+)*(echo|printf|cat)[[:space:]]+.*\$\{?[A-Za-z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)'; then
+# Also handles env prefix with assignments (e.g. env FOO=bar echo $SECRET_KEY)
+if echo "$COMMAND" | grep -qiE '(^|;|&&|\|\||\|)[[:space:]]*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*(echo|printf|cat)[[:space:]]+.*\$\{?[A-Za-z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)'; then
     _deny "🔒 Blocked: command would expose credentials. Use run-with-secrets.sh for credential injection."
 fi
 
@@ -43,7 +43,7 @@ fi
 # Also catches leading env assignments: FOO=bar env, FOO=bar printenv
 # Handles sudo/command/builtin prefixes and env-as-wrapper (env env, env printenv)
 # Also catches assignment-only env invocations: env FOO=bar (still dumps env)
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env[[:space:]]+)*(printenv|env)([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]*($|;|&&|\|\||\|)'; then
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*(printenv|env)([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]*($|;|&&|\|\||\|)'; then
     _deny "🔒 Blocked: bare env/printenv dumps all variables. Use echo \$SPECIFIC_VAR instead."
 fi
 
