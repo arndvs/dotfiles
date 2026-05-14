@@ -115,12 +115,22 @@ _test "blocks combined short flag -fu force push" 2 \
     "$HOOKS_DIR/git-workflow-gate.sh" \
     "force-with-lease"
 
+_test "blocks command git push --force (command prefix)" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"command git push --force origin main\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "force-with-lease"
+
 _test "allows force-with-lease" 0 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push --force-with-lease origin feature\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
 
 _test "blocks cd+git chain" 2 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cd /other/repo && git commit -m \\\"feat: x\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "cd"
+
+_test "blocks cd+git chain with intermediate commands" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cd /other/repo && true && git commit -m \\\"feat: x\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh" \
     "cd"
 
@@ -273,6 +283,21 @@ _test "blocks FOO=bar printenv (leading env assignments)" 2 \
     '{"tool_name":"Bash","tool_input":{"command":"FOO=bar printenv"}}' \
     "$HOOKS_DIR/secret-guard.sh" \
     "env/printenv"
+
+_test "blocks command echo credential (command prefix bypass)" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"command echo $SECRET_KEY"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "credentials"
+
+_test "blocks command env (command prefix bypass)" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"command env"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "env/printenv"
+
+_test "blocks command cat secrets file (command prefix bypass)" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"command cat secrets/.env.secrets"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "secrets file"
 
 echo ""
 

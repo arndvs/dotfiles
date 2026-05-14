@@ -40,7 +40,8 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 # Only process git commands (POSIX ERE: [[:space:]] not \s)
 # Match git as a command — after ^, ;, &&, ||, | (not bare whitespace,
 # which would false-positive on "echo git status").
-if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git[[:space:]]'; then
+# Also matches shell wrappers: command git, builtin git, env git.
+if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(command[[:space:]]+|builtin[[:space:]]+|env[[:space:]]+)*git[[:space:]]'; then
     exit 0
 fi
 
@@ -149,10 +150,13 @@ fi
 GIT_OPTS='([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*'
 
 # ============================================================
-# GATE 0: Block cd + git command chains (&&  or ;)
+# GATE 0: Block cd + git command chains (&&, ;, or ||)
 # ============================================================
-# Agent should use the cwd parameter instead of cd && git
-if echo "$COMMAND" | grep -qE 'cd[[:space:]]+("[^"]*"|'\''[^'\'']*'\''|[^[:space:];]+)[[:space:]]*(&&|;)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]+[[:space:]]+)*git[[:space:]]'; then
+# Agent should use the cwd parameter instead of cd && git.
+# Catches cd anywhere before a later git in the same chain,
+# not just immediately adjacent (e.g. cd /repo && true && git commit).
+if echo "$COMMAND" | grep -qE 'cd[[:space:]]+("[^"]*"|'\''[^'\'']*'\''|[^[:space:];|&]+)' && \
+   echo "$COMMAND" | grep -qE 'cd[[:space:]].*([;&]|\|\||&&).*git[[:space:]]'; then
     _deny "🚫 Don't chain cd && git commands. Use the cwd parameter on the tool call instead — cd chains leak shell state."
 fi
 

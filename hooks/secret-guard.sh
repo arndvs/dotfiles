@@ -33,18 +33,21 @@ _deny() {
 }
 
 # Block commands that print credentials to stdout
-if echo "$COMMAND" | grep -qiE '(^|;|&&|\|\||\|)[[:space:]]*(sudo[[:space:]]+)?(echo|printf|cat)[[:space:]]+.*\$\{?[A-Za-z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)'; then
+# Handles sudo, command, builtin prefixes (e.g. command echo $SECRET_KEY)
+if echo "$COMMAND" | grep -qiE '(^|;|&&|\|\||\|)[[:space:]]*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+)*(echo|printf|cat)[[:space:]]+.*\$\{?[A-Za-z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)'; then
     _deny "🔒 Blocked: command would expose credentials. Use run-with-secrets.sh for credential injection."
 fi
 
 # Block bare env/printenv (dumps all env vars including secrets)
 # Also catches leading env assignments: FOO=bar env, FOO=bar printenv
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(printenv|env)[[:space:]]*($|;|&&|\|\||\|)'; then
+# Handles command/builtin prefixes
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(command[[:space:]]+|builtin[[:space:]]+)*(printenv|env)[[:space:]]*($|;|&&|\|\||\|)'; then
     _deny "🔒 Blocked: bare env/printenv dumps all variables. Use echo \$SPECIFIC_VAR instead."
 fi
 
 # Block cat on secrets files (covers bare name + path prefixes)
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*(sudo[[:space:]]+)?cat[[:space:]]+(([^[:space:]]*/)?\.env\.secrets|([^[:space:]]*/)?secrets/\.env|~/dotfiles/secrets/)'; then
+# Handles sudo, command, builtin prefixes
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+)*cat[[:space:]]+(([^[:space:]]*/)?\.env\.secrets|([^[:space:]]*/)?secrets/\.env|~/dotfiles/secrets/)'; then
     _deny "🔒 Blocked: direct read of secrets file. Use run-with-secrets.sh for credential access."
 fi
 
