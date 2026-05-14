@@ -67,11 +67,13 @@ fi
 ```bash
 # Auto-detect
 if [[ -f "tsconfig.json" ]]; then
-  npx tsc --noEmit 2>&1 | tail -5
+  TSC_OUTPUT=$(npx tsc --noEmit 2>&1); TSC_EXIT=$?
+  echo "$TSC_OUTPUT" | tail -5
+  # Use $TSC_EXIT for pass/fail — piping to tail loses the original exit code
 fi
 ```
 
-- **PASS**: exit 0
+- **PASS**: TSC_EXIT == 0
 - **SKIP**: no tsconfig.json
 - **FAIL**: show errors, ask user whether to fix
 
@@ -81,11 +83,13 @@ Auto-detect from package.json, composer.json, Makefile, pyproject.toml:
 
 ```bash
 if [[ -f "package.json" ]] && grep -q '"test"' package.json; then
-  npm test 2>&1 | tail -20
+  TEST_OUTPUT=$(npm test 2>&1); TEST_EXIT=$?
+  echo "$TEST_OUTPUT" | tail -20
+  # Use $TEST_EXIT for pass/fail
 fi
 ```
 
-- **PASS**: exit 0
+- **PASS**: TEST_EXIT == 0
 - **SKIP**: no test runner detected
 - **FAIL**: show failures, ask user whether to fix
 
@@ -93,11 +97,13 @@ fi
 
 ```bash
 if [[ -f "package.json" ]] && grep -q '"lint"' package.json; then
-  npm run lint 2>&1 | tail -10
+  LINT_OUTPUT=$(npm run lint 2>&1); LINT_EXIT=$?
+  echo "$LINT_OUTPUT" | tail -10
+  # Use $LINT_EXIT for pass/fail
 fi
 ```
 
-- **PASS**: exit 0
+- **PASS**: LINT_EXIT == 0
 - **SKIP**: no linter detected
 - **FAIL**: show issues (non-blocking — report only)
 
