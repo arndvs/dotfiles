@@ -41,8 +41,9 @@ fi
 
 # Block bare env/printenv (dumps all env vars including secrets)
 # Also catches leading env assignments: FOO=bar env, FOO=bar printenv
-# Handles command/builtin prefixes
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(command[[:space:]]+|builtin[[:space:]]+)*(printenv|env)[[:space:]]*($|;|&&|\|\||\|)'; then
+# Handles command/builtin prefixes and env-as-wrapper (env env, env printenv)
+# Also catches assignment-only env invocations: env FOO=bar (still dumps env)
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(command[[:space:]]+|builtin[[:space:]]+|env[[:space:]]+)*(printenv|env)([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]*($|;|&&|\|\||\|)'; then
     _deny "🔒 Blocked: bare env/printenv dumps all variables. Use echo \$SPECIFIC_VAR instead."
 fi
 

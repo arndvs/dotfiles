@@ -156,8 +156,9 @@ GIT_OPTS='([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-
 # Agent should use the cwd parameter instead of cd && git.
 # Catches cd anywhere before a later git in the same chain,
 # not just immediately adjacent (e.g. cd /repo && true && git commit).
-if echo "$COMMAND" | grep -qE 'cd[[:space:]]+("[^"]*"|'\''[^'\'']*'\''|[^[:space:];|&]+)' && \
-   echo "$COMMAND" | grep -qE 'cd[[:space:]].*([;&]|\|\||&&).*git[[:space:]]'; then
+# Anchored to command boundaries so 'echo cd /tmp' doesn't false-positive.
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*cd[[:space:]]+("[^"]*"|'\''[^'\'']*'\''|[^[:space:];|&]+)' && \
+   echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*cd[[:space:]].*([;&]|\|\||&&).*git[[:space:]]'; then
     _deny "🚫 Don't chain cd && git commands. Use the cwd parameter on the tool call instead — cd chains leak shell state."
 fi
 
