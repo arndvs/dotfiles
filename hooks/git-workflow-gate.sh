@@ -163,8 +163,14 @@ if echo "$COMMAND" | grep -qE "git${GIT_OPTS}[[:space:]]+commit([[:space:]]|\$)"
     # Validate commit message format (only if -m/--message flag present)
     # Handles: -m "msg", -m 'msg', -m"msg", --message="msg", --message "msg"
     if echo "$COMMAND" | grep -qE "[[:space:]](-m[[:space:]]|-m[\"']|--message[=[:space:]])"; then
-        # Extract message — handles -m "msg", -m 'msg', -m"msg", --message="msg", --message 'msg'
-        msg=$(echo "$COMMAND" | sed -n "s/.*\(-m[[:space:]]*\|--message[=[:space:]]*\)[\"']\([^\"']*\)[\"'].*/\2/p")
+        # Extract FIRST -m/--message value (the commit subject for multi-paragraph commits).
+        # grep -oE returns matches left-to-right; head -1 takes the first (= subject line).
+        # || true: grep exits 1 when no match; suppress to avoid ERR trap with -Eeuo pipefail.
+        first_match=$(echo "$COMMAND" | grep -oE "(-m[[:space:]]*|--message[=[:space:]]*)([\"'])[^\"']*[\"']" | head -1) || true
+        msg=""
+        if [[ -n "$first_match" ]]; then
+            msg=$(echo "$first_match" | sed "s/^-m[[:space:]]*//;s/^--message[=[:space:]]*//;s/^[\"']//;s/[\"']$//")
+        fi
 
         if [[ -n "$msg" ]]; then
             types=$(_commit_types)
@@ -210,16 +216,22 @@ fi
 # GATE 3: Block branch switch with dirty working tree
 # ============================================================
 if echo "$COMMAND" | grep -qE "git${GIT_OPTS}[[:space:]]+(checkout|switch)[[:space:]]"; then
-    # Skip if it's a file restore (checkout -- file) or new branch creation (-b/-c)
-    if echo "$COMMAND" | grep -qE '(checkout[[:space:]]+--[[:space:]]|checkout[[:space:]]+-b[[:space:]]|switch[[:space:]]+-c[[:space:]]|switch[[:space:]]+--create[[:space:]])'; then
-        exit 0
-    fi
+    # Mask creation/restore forms so they don't count as bare switches.
+    # A chained command like `git checkout -b tmp && git switch main` must still
+    # trigger the dirty-tree check for the bare `switch main` portion.
+    masked_cmd=$(echo "$COMMAND" | sed \
+        -e 's/checkout[[:space:]]*-b[[:space:]]/NEWBRANCH /g' \
+        -e 's/checkout[[:space:]]*--[[:space:]]/RESTORE /g' \
+        -e 's/switch[[:space:]]*-c[[:space:]]/NEWBRANCH /g' \
+        -e 's/switch[[:space:]]*--create[[:space:]]/NEWBRANCH /g')
 
-    # Check for dirty working tree
-    if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
-        # Allow if only untracked files (no modified/staged)
-        if git status --porcelain 2>/dev/null | grep -qE '^[^?]'; then
-            _deny "🚫 Working tree has uncommitted changes. Commit or stash before switching branches."
+    if echo "$masked_cmd" | grep -qE '(checkout|switch)[[:space:]]'; then
+        # Non-creation checkout/switch remains — check dirty working tree
+        if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
+            # Allow if only untracked files (no modified/staged)
+            if git status --porcelain 2>/dev/null | grep -qE '^[^?]'; then
+                _deny "🚫 Working tree has uncommitted changes. Commit or stash before switching branches."
+            fi
         fi
     fi
 fi

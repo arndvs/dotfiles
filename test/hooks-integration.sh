@@ -179,6 +179,31 @@ _test "blocks unquoted -m message" 2 \
     "$HOOKS_DIR/git-workflow-gate.sh" \
     "Could not parse commit message"
 
+_test "allows multi -m commit (validates subject not body)" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit -m \\\"feat: add API\\\" -m \\\"body text\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
+_test "blocks multi -m commit when subject is non-conventional" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit -m \\\"updated stuff\\\" -m \\\"more detail\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "conventional format"
+
+# --- Gate 3: dirty-tree tests with chained commands ---
+# Create a tracked file and modify it to produce a dirty working tree
+echo "initial" > "$TEST_REPO/file.txt"
+git -C "$TEST_REPO" add file.txt
+git -C "$TEST_REPO" commit -q -m "add file"
+echo "modified" > "$TEST_REPO/file.txt"
+
+_test "allows checkout -b with dirty tree (creation only)" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git checkout -b new-branch\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
+_test "blocks chained checkout -b && switch with dirty tree" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git checkout -b tmp && git switch main\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "uncommitted changes"
+
 _teardown_test_repo
 
 echo ""
