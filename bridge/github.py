@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import logging
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -40,7 +41,7 @@ def mint_token(mint_script: Path) -> Token:
     """
     try:
         result = subprocess.run(
-            ["python3", str(mint_script)],
+            [sys.executable, str(mint_script)],
             check=True,
             capture_output=True,
             text=True,
@@ -84,6 +85,7 @@ def _client(token: Token) -> httpx.Client:
 @dataclass
 class PrMetadata:
     head_ref: str
+    head_repo_full_name: str  # fork-aware: may differ from base repo
     title: str
     html_url: str
 
@@ -91,13 +93,19 @@ class PrMetadata:
 def fetch_pr_metadata(
     token: Token, *, owner: str, repo: str, pr_number: int
 ) -> PrMetadata:
-    """Fetch PR metadata via REST (fixes H-3 — no inline httpx usage)."""
+    """Fetch PR metadata via REST (fixes H-3 — no inline httpx usage).
+
+    Returns head_repo_full_name so callers can clone from the fork repo
+    when the PR originates from a fork (the head branch only exists there).
+    """
     with _client(token) as client:
         r = client.get(f"/repos/{owner}/{repo}/pulls/{pr_number}")
         r.raise_for_status()
         data = r.json()
+    head_repo = data["head"].get("repo") or {}
     return PrMetadata(
         head_ref=data["head"]["ref"],
+        head_repo_full_name=head_repo.get("full_name", f"{owner}/{repo}"),
         title=data["title"],
         html_url=data["html_url"],
     )

@@ -54,13 +54,19 @@ def prepare(
     repo_full_name: str,
     pr_number: int,
     head_ref: str,
+    head_repo_full_name: str | None = None,
 ) -> Path:
-    """Ensure a workspace exists and is synced to origin/<head_ref>."""
+    """Ensure a workspace exists and is synced to origin/<head_ref>.
+
+    For fork PRs, head_repo_full_name should be the fork's full_name
+    so the clone targets the repo where the branch actually exists.
+    """
     workspaces_root.mkdir(parents=True, exist_ok=True)
     claim_key = f"{repo_full_name}#{pr_number}"
     path = workspace_path(workspaces_root, claim_key)
     env = _git_env(token)
-    clone_url = f"https://github.com/{repo_full_name}.git"
+    clone_repo = head_repo_full_name or repo_full_name
+    clone_url = f"https://github.com/{clone_repo}.git"
 
     if not path.exists():
         logger.info("Cloning %s @ %s into %s", repo_full_name, head_ref, path)

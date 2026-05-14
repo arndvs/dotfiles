@@ -17,6 +17,7 @@ StandardError=append:%h/bridge/logs/bridge.log
 
 # Hardening
 NoNewPrivileges=yes
+ProtectSystem=strict
 # MVP: worker needs access to both ~/bridge and ~/dotfiles/working
 # Phase 2: tighten to just ~/bridge once per-workspace working/ lands
 ReadWritePaths=%h/bridge %h/dotfiles/working

@@ -80,7 +80,8 @@ class Config:
             webhook_port=int(opt("BRIDGE_PORT", "8765")),
             copilot_bot_login=bot_login,
             repo_allowlist=allowlist,
-            max_iterations=int(opt("BRIDGE_MAX_ITERATIONS", "8")),
+            max_iterations=int(opt("BRIDGE_MAX_ITERATIONS", "3")),
+            # ^^ default 3 — low cap for MVP safety
             worker_count=int(opt("WORKER_COUNT", "1")),
             dotfiles_root=dotfiles,
             bridge_root=bridge_root,

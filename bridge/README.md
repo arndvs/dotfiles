@@ -38,13 +38,13 @@ Set in `secrets/.env.agent` and `secrets/.env.secrets`:
 | Variable | Description |
 |---|---|
 | `WEBHOOK_SECRET` | GitHub webhook secret (≥32 chars entropy) |
-| `BRIDGE_PORT` | Port for webhook receiver (default: 8787) |
+| `BRIDGE_PORT` | Port for webhook receiver (default: 8765) |
 | `COPILOT_BOT_LOGIN` | Bot login, e.g. `copilot-swe-agent[bot]` |
 | `BRIDGE_REPO_ALLOWLIST` | Comma-separated `owner/repo` list |
 | `GITHUB_APP_ID` | GitHub App ID for token minting |
-| `GITHUB_APP_PRIVATE_KEY_PATH` | Path to `.pem` file |
+| `GITHUB_APP_PRIVATE_KEY_B64` | Base64-encoded private key (used by mint script) |
 | `GITHUB_APP_INSTALLATION_ID` | Installation ID |
-| `MAX_ITERATIONS` | Loop cap per PR (default: 3) |
+| `BRIDGE_MAX_ITERATIONS` | Loop cap per PR (default: 3) |
 
 ## MVP Constraints (Accepted)
 

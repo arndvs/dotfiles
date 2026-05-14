@@ -131,6 +131,7 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
         repo_full_name=repo,
         pr_number=job.pr_number,
         head_ref=pr_meta.head_ref,
+        head_repo_full_name=pr_meta.head_repo_full_name,
     )
     emit("bridge.workspace.prepared", path=str(ws_path))
 
