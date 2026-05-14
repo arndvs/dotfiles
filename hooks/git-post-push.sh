@@ -29,14 +29,18 @@ fi
 # Skip if the push failed (non-zero exit in tool_result)
 EXIT_CODE=$(echo "$INPUT" | jq -r '.tool_result.exit_code // .tool_result.exitCode // "0"')
 [[ "$EXIT_CODE" != "0" ]] && exit 0
-if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git[[:space:]]+push([[:space:]]|$)'; then
+# Only trigger on git push commands (POSIX ERE: [[:space:]] not \s)
+# Allow global options (--no-pager, -c key=val) between git and push.
+# Dangerous flags (-C/--git-dir/--work-tree) are handled below.
+GIT_OPTS='([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*'
+if ! echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git${GIT_OPTS}[[:space:]]+push([[:space:]]|\$)"; then
     exit 0
 fi
 
 # Skip git push invocations that explicitly target a different repo/work tree.
 # This hook resolves branch/PR state from the hook event's cwd, so handling
 # these forms would risk checking the wrong branch and missing the reminder.
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git([[:space:]]+(-C|--git-dir|--work-tree)([=[:space:]][^;&|[:space:]]+)*)+[[:space:]]+push([[:space:]]|$)'; then
+if echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git([[:space:]]+(-C|--git-dir|--work-tree)([=[:space:]][^;&|[:space:]]+)*)+${GIT_OPTS}[[:space:]]+push([[:space:]]|\$)"; then
     exit 0
 fi
 

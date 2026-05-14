@@ -140,6 +140,31 @@ _test "allows git pushd (not a push)" 0 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git pushd some-ref\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
 
+_test "blocks non-conventional commit via --no-pager" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git --no-pager commit -m \\\"updated stuff\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "conventional format"
+
+_test "blocks non-conventional commit via -c option" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -c user.name=x commit -m \\\"updated stuff\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "conventional format"
+
+_test "blocks force push via --no-pager" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git --no-pager push --force origin main\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "force-with-lease"
+
+_test "blocks non-conventional commit via -m\\\"msg\\\" (no space)" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit -m\\\"updated stuff\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "conventional format"
+
+_test "blocks non-conventional commit via --message=" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit --message=\\\"updated stuff\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "conventional format"
+
 _teardown_test_repo
 
 echo ""
@@ -175,6 +200,16 @@ _test "blocks cat ~/dotfiles/secrets/.env.secrets" 2 \
     '{"tool_name":"Bash","tool_input":{"command":"cat ~/dotfiles/secrets/.env.secrets"}}' \
     "$HOOKS_DIR/secret-guard.sh" \
     "secrets file"
+
+_test "blocks echo credential with digits in var name" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"echo $AUTH0_TOKEN"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "credentials"
+
+_test "blocks echo credential with brace and digits" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"echo ${OAUTH2_SECRET}"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "credentials"
 
 echo ""
 
@@ -229,6 +264,10 @@ _test "skips on failed push (exit_code non-zero)" 0 \
 
 _test "allows git pushd in post-push (not a push)" 0 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git pushd some-ref\"},\"tool_result\":{\"stdout\":\"ok\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-post-push.sh"
+
+_test "detects push with --no-pager global option" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git --no-pager push origin test-feature\"},\"tool_result\":{\"stdout\":\"ok\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-post-push.sh"
 
 # Hermetic test: stub gh to return no PRs and verify reminder output

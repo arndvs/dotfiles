@@ -131,11 +131,18 @@ if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_
     _deny "🚫 Don't use git -C, --git-dir, or --work-tree in commands. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
 fi
 
+# --- Pattern: optional git global options (e.g. --no-pager, -c key=val) ---
+# Dangerous repo-targeting flags (-C/--git-dir/--work-tree) are already
+# denied above, so any remaining global options between git and the
+# subcommand are safe to pass through.
+# Matches: short flags with optional value (-c user.name=x), long flags (--no-pager)
+GIT_OPTS='([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*'
+
 # ============================================================
 # GATE 0: Block cd + git command chains (&&  or ;)
 # ============================================================
 # Agent should use the cwd parameter instead of cd && git
-if echo "$COMMAND" | grep -qE 'cd[[:space:]]+("[^"]*"|'\''[^'\'']*'\''|[^[:space:];]+)[[:space:]]*(&&|;)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git[[:space:]]'; then
+if echo "$COMMAND" | grep -qE 'cd[[:space:]]+("[^"]*"|'\''[^'\'']*'\''|[^[:space:];]+)[[:space:]]*(&&|;)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]+[[:space:]]+)*git[[:space:]]'; then
     _deny "🚫 Don't chain cd && git commands. Use the cwd parameter on the tool call instead — cd chains leak shell state."
 fi
 
@@ -144,7 +151,7 @@ fi
 #         (only validates -m inline messages; editor/file-based
 #          commits pass through — see README § Commit Message Validation)
 # ============================================================
-if echo "$COMMAND" | grep -qE 'git[[:space:]]+commit([[:space:]]|$)'; then
+if echo "$COMMAND" | grep -qE "git${GIT_OPTS}[[:space:]]+commit([[:space:]]|\$)"; then
     # Check current branch
     local_branch=$(git branch --show-current 2>/dev/null || echo "")
     protected=$(_protected_branches)
@@ -153,10 +160,11 @@ if echo "$COMMAND" | grep -qE 'git[[:space:]]+commit([[:space:]]|$)'; then
         _deny "🚫 Cannot commit directly to '$local_branch'. Create a feature branch first: git checkout -b ai/<type>/<description>"
     fi
 
-    # Validate commit message format (only if -m flag present)
-    if echo "$COMMAND" | grep -qE '[[:space:]]-m[[:space:]]'; then
-        # Extract message — handles both -m "msg" and -m 'msg'
-        msg=$(echo "$COMMAND" | sed -n "s/.*-m[[:space:]]*[\"']\([^\"']*\)[\"'].*/\1/p")
+    # Validate commit message format (only if -m/--message flag present)
+    # Handles: -m "msg", -m 'msg', -m"msg", --message="msg", --message "msg"
+    if echo "$COMMAND" | grep -qE "[[:space:]](-m[[:space:]]|-m[\"']|--message[=[:space:]])"; then
+        # Extract message — handles -m "msg", -m 'msg', -m"msg", --message="msg", --message 'msg'
+        msg=$(echo "$COMMAND" | sed -n "s/.*\(-m[[:space:]]*\|--message[=[:space:]]*\)[\"']\([^\"']*\)[\"'].*/\2/p")
 
         if [[ -n "$msg" ]]; then
             types=$(_commit_types)
@@ -171,7 +179,7 @@ fi
 # ============================================================
 # GATE 2: Block push safety violations
 # ============================================================
-if echo "$COMMAND" | grep -qE 'git[[:space:]]+push([[:space:]]|$)'; then
+if echo "$COMMAND" | grep -qE "git${GIT_OPTS}[[:space:]]+push([[:space:]]|\$)"; then
     # Block force-push without --force-with-lease (handles --force, -f, and combined short flags like -fu)
     if echo "$COMMAND" | grep -qE '[[:space:]](--force|-f|-[a-zA-Z]*f[a-zA-Z]*)([[:space:]]|$)' && ! echo "$COMMAND" | grep -qE '[[:space:]]--force-with-lease'; then
         _deny "🚫 Force-push without --force-with-lease is dangerous. Use --force-with-lease to protect against overwriting others' work."
@@ -193,7 +201,7 @@ fi
 # ============================================================
 # GATE 3: Block branch switch with dirty working tree
 # ============================================================
-if echo "$COMMAND" | grep -qE 'git[[:space:]]+(checkout|switch)[[:space:]]'; then
+if echo "$COMMAND" | grep -qE "git${GIT_OPTS}[[:space:]]+(checkout|switch)[[:space:]]"; then
     # Skip if it's a file restore (checkout -- file) or new branch creation (-b/-c)
     if echo "$COMMAND" | grep -qE '(checkout[[:space:]]+--[[:space:]]|checkout[[:space:]]+-b[[:space:]]|switch[[:space:]]+-c[[:space:]]|switch[[:space:]]+--create[[:space:]])'; then
         exit 0
