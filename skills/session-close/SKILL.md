@@ -15,7 +15,6 @@ Pre-flight checklist that runs before ending a coding session. Catches common "f
 
 - Before ending any session that produced code changes
 - When the user says "wrap up", "land the plane", "end session", "check before ending"
-- Automatically as part of the do-work pipeline after the final commit
 
 ---
 
@@ -182,5 +181,5 @@ The user always has final say. If they say "end anyway", comply — but make sur
 If the session is ending due to context pressure, after the report:
 
 1. Write remaining work to `working/<topic>.md`
-2. Provide the pickup command for the next session
+2. Provide the pickup command for the next session (e.g. `@working/<topic>.md --pickup <summary> --context <key points> --next-steps <specific tasks> --references <links> --files <list of relevant files> --tools <list of relevant tools> --status <current blockers or progress> --priority <high/medium/low> --skill <relevant skills>`)
 3. Follow the handoff protocol from `handoff.instructions.md`

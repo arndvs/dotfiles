@@ -263,6 +263,14 @@ _test "allows git status when echo contains git push --force" 0 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git status && echo \\\"git push --force\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
 
+_test "allows safe push when later command mentions --force" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin main && echo \\\"use --force\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
+_test "allows safe push when later command has +refspec text" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin main && echo +HEAD:main\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
 _teardown_test_repo
 
 echo ""

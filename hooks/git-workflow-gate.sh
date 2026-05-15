@@ -216,13 +216,17 @@ fi
 # GATE 2: Block push safety violations
 # ============================================================
 if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+push([[:space:]]|\$)"; then
+    # Extract the git push segment (up to the next ;, &&, ||, or end-of-string)
+    # so force-flag checks don't match tokens in later chained commands.
+    PUSH_SEG=$(echo "$COMMAND" | grep -oE 'git([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*[[:space:]]+push([[:space:]]+[^;&|][^;&|]*)*' | head -1) || true
+
     # Block force-push without --force-with-lease (handles --force, -f, combined short flags like -fu, and +refspec)
-    if echo "$COMMAND" | grep -qE '[[:space:]](--force|-f|-[a-zA-Z]*f[a-zA-Z]*)([[:space:]]|$)' && ! echo "$COMMAND" | grep -qE '[[:space:]]--force-with-lease'; then
+    if echo "$PUSH_SEG" | grep -qE '[[:space:]](--force|-f|-[a-zA-Z]*f[a-zA-Z]*)([[:space:]]|$)' && ! echo "$PUSH_SEG" | grep -qE '[[:space:]]--force-with-lease'; then
         _deny "🚫 Force-push without --force-with-lease is dangerous. Use --force-with-lease to protect against overwriting others' work."
     fi
 
     # Block +refspec force-update (e.g. git push origin +HEAD:main)
-    if echo "$COMMAND" | grep -qE '[[:space:]]\+[^[:space:]]+' && ! echo "$COMMAND" | grep -qE '[[:space:]]--force-with-lease'; then
+    if echo "$PUSH_SEG" | grep -qE '[[:space:]]\+[^[:space:]]+' && ! echo "$PUSH_SEG" | grep -qE '[[:space:]]--force-with-lease'; then
         _deny "🚫 Refspec prefixed with '+' forces the update. Use --force-with-lease instead of +refspec."
     fi
 
