@@ -102,7 +102,12 @@ Auto-detect from package.json, composer.json, Makefile, pyproject.toml:
 ```bash
 if [[ -f "package.json" ]] && grep -q '"test"' package.json; then
   # Timeout after 120s to avoid blocking on slow e2e suites
-  TEST_OUTPUT=$(timeout 120 npm test -- --passWithNoTests 2>&1) && TEST_EXIT=$? || TEST_EXIT=$?
+  # Use GNU timeout if available, fall back to running without timeout on macOS
+  if command -v timeout &>/dev/null; then
+    TEST_OUTPUT=$(timeout 120 npm test -- --passWithNoTests 2>&1) && TEST_EXIT=$? || TEST_EXIT=$?
+  else
+    TEST_OUTPUT=$(npm test -- --passWithNoTests 2>&1) && TEST_EXIT=$? || TEST_EXIT=$?
+  fi
   echo "$TEST_OUTPUT" | tail -20
   # Use $TEST_EXIT for pass/fail (124 = timeout)
 fi

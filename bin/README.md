@@ -53,5 +53,6 @@ CLI scripts and infrastructure. Bootstrap symlinks `ctrl` and `shft` to `~/.loca
 | Script | Purpose |
 |--------|---------|
 | `_lib.sh` | Shared functions — `green()`, `red()`, `yellow()`, `ensure_symlink()`, `find_python()`, `detect_os()` |
+| `drift-detect.sh` | Check if bootstrap targets have diverged from source |
 | `agent-shell.sh` | Shell wrapper for agent subprocesses |
 | `new-client.sh` | Scaffold a new client directory from `clients/_template/` |

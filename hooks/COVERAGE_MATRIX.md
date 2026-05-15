@@ -20,6 +20,9 @@ Maps failure modes to their enforcement mechanisms. Use this to identify gaps an
 | Force push without `--force-with-lease` | `git-workflow-gate.sh` Gate 2 | PreToolUse/Block | ✅ |
 | Push when behind remote | `git-workflow-gate.sh` Gate 2 | PreToolUse/Block | ✅ |
 | Branch switch with dirty tree | `git-workflow-gate.sh` Gate 3 | PreToolUse/Block | ✅ |
+| `git reset --hard` (destructive reset) | `git-workflow-gate.sh` Gate 4 | PreToolUse/Warn+Block | ⚠️ (warns HEAD/@, blocks HEAD~N/SHA) |
+| `git clean -f` (file deletion) | `git-workflow-gate.sh` Gate 5 | PreToolUse/Block | ✅ |
+| `git rebase -i` on pushed branch | `git-workflow-gate.sh` Gate 6 | PreToolUse/Warn | ⚠️ (warn only) |
 | `cd` + `git` in one command (wrong repo) | `git-workflow-gate.sh` Gate 0 | PreToolUse/Block | ✅ |
 | Push without PR | `git-post-push.sh` | PostToolUse/Info | ✅ |
 | Stale/merged branches accumulating | `stale-branches.sh` | SessionStart/Info | ✅ |

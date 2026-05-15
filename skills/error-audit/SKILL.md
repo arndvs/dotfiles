@@ -55,8 +55,8 @@ git log --oneline --since="2 weeks ago" | grep -i "test\|spec" | head -20
 #### Source D: HUD events (if available)
 
 ```bash
-if [[ -f "$HOME/.claude/hud/events.jsonl" ]]; then
-  grep -i "error\|fail\|block" "$HOME/.claude/hud/events.jsonl" | tail -30
+if [[ -f "$HOME/dotfiles/working/events.jsonl" ]]; then
+  grep -i "error\|fail\|block" "$HOME/dotfiles/working/events.jsonl" | tail -30
 fi
 ```
 

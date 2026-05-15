@@ -271,6 +271,8 @@ The benefit: ⚡ skills act as passive guardrails. You don't remember to say "us
 | `compliance-audit` ⚡     | Auto-invoked after do-work/tdd/debugging. Rule-by-rule review, violation flagging, skill gap detection. |
 | `stress-test`             | Adversarial 19-scenario protocol across 6 categories. Validates rule compliance boundaries.             |
 | `sanity-best-practices`   | Sanity schema design, GROQ, TypeGen, Visual Editing, Portable Text, framework integrations.             |
+| `session-close`           | Pre-flight checklist — quality gates before ending a coding session.                                    |
+| `error-audit`             | Analyze cross-session error patterns to surface systemic issues worth automating.                        |
 
 Add your own: `skills/_local/your-skill/SKILL.md` — auto-discovered, gitignored. See [skills/README.md](skills/README.md) for the full catalog with trigger phrases.
 
@@ -289,6 +291,8 @@ Thin launchers in `commands/` that load a skill with your arguments. Type the co
 | `/explore`  | `explore`        | Decompose a topic, spawn parallel sub-agents, synthesize.            |
 | `/test`     | `tdd`            | Red-green refactor. Failing test → implement → refactor.             |
 | `/document` | `document`       | Write, update, or audit documentation.                               |
+| `/check`    | `session-close`  | Pre-flight checklist — quality gates before session end.             |
+| `/address-review` | `review-pr-copilot` | Fetch and address Copilot review comments on active PR.     |
 
 Add your own: `commands/your-command.md` — auto-discovered. Each file is a prompt template with `$ARGUMENTS` passthrough. See [commands/README.md](commands/README.md) for the full command reference.
 

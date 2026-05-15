@@ -25,6 +25,7 @@ Bootstrap symlinks `hooks/` → `~/.claude/hooks/` and merges the configuration 
 | `typecheck.sh` | Stop | — | Runs `tsc --noEmit` on TypeScript projects; blocks stop until types pass |
 | `compaction-guard.sh` | PreCompact | auto | Blocks auto-compaction at ~95% context; directs agent to follow handoff protocol |
 | `hud-session.sh` | SessionStart, Stop | — | Emits session lifecycle events to `events.jsonl` for the HUD |
+| `hud-reads.sh` | PostToolUse, InstructionsLoaded | Read | Emits read events to the HUD — tracks which instructions/skills/rules loaded and external file reads |
 | `context-warning.sh` | UserPromptSubmit | — | ⚠️ STUB: graduated context warnings at 40/70% (pending statusLine experiment) |
 
 ## Requirements
