@@ -153,7 +153,7 @@ For each slice:
 
 1. Read affected files (±30 lines context minimum)
 2. Apply the fix — **only what Copilot flagged**. Note unrelated issues separately; do not include in these commits
-3. Run quality gates if the project defines them (typecheck, lint, tests for touched files)
+3. Run the **pr-preflight** skill (Phases 2–5) scoped to the files in this slice. Every tool failure or finding is blocking — fix before committing. This replaces inline quality gates and is the reason Copilot review becomes one-pass instead of iterative.
 4. Hand off to the **atomic-commits** skill (Commit mode) — it owns branch + message format
 
 Commit body format:
