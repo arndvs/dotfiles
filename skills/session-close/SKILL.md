@@ -41,6 +41,11 @@ git diff --cached | grep -iE 'SECRET|PASSWORD|API_KEY|TOKEN|CREDENTIAL|PRIVATE_K
 - **PASS**: no sensitive filenames staged, no credential-like patterns in diff content
 - **FAIL**: list the matches and ask user to unstage (`git reset HEAD <file>`)
 
+> **Caveat**: this is a shallow heuristic — it catches obvious key names but will miss
+> vendor-prefixed secrets (`ANTHROPIC_API_KEY`, `STRIPE_SK_LIVE_...`), format-based
+> tokens (`ghp_...`, `sk-...`), and raw secret values. Treat as a "better than nothing"
+> gate, not a comprehensive scanner.
+
 ### 3. Unpushed commits
 
 ```bash
@@ -60,6 +65,8 @@ fi
 ```bash
 BRANCH=$(git branch --show-current)
 # Skip if on a base branch
+# NOTE: if the project uses .ctrlshft protected_branches, keep this
+# list in sync. The hook reads .ctrlshft; this skill does not (yet).
 if [[ "$BRANCH" =~ ^(main|master|dev|develop)$ ]]; then
   echo "SKIP: on base branch"
 elif ! command -v gh &>/dev/null; then

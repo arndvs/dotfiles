@@ -284,8 +284,23 @@ _test "blocks env -i git push --force (env with flags)" 2 \
     "force-with-lease"
 
 # --- Gate 4: reset --hard ---
-_test "blocks git reset --hard" 2 \
+_test "warns on git reset --hard HEAD (discard working tree)" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git reset --hard HEAD\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "reset --hard HEAD"
+
+_test "warns on git reset --hard (implicit HEAD)" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git reset --hard\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "reset --hard HEAD"
+
+_test "blocks git reset --hard HEAD~1 (history rewrite)" 2 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git reset --hard HEAD~1\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "reset --hard"
+
+_test "blocks git reset --hard to a SHA" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git reset --hard abc123\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh" \
     "reset --hard"
 
@@ -297,19 +312,23 @@ _test "allows git reset (no flags)" 0 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git reset HEAD file.txt\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
 
-# --- Gate 5: clean -fd ---
+# --- Gate 5: clean -f ---
 _test "blocks git clean -fd" 2 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git clean -fd\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh" \
-    "clean"
+    "clean -f"
 
 _test "blocks git clean --force" 2 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git clean --force -d\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh" \
-    "clean"
+    "clean -f"
 
 _test "allows git clean -n (dry run)" 0 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git clean -n\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
+_test "allows git clean -d without -f (safe, git requires -f)" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git clean -d\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
 
 # --- Gate 6: rebase -i on pushed branch (warn only) ---
