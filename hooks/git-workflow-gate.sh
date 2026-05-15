@@ -151,6 +151,11 @@ fi
 # Matches: short flags with optional value (-c user.name=x), long flags (--no-pager)
 GIT_OPTS='([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*'
 
+# --- Pattern: command-boundary-anchored git (for per-gate checks) ---
+# Anchors to shell command boundaries (^, ;, &&, ||, |) so that
+# quoted git commands (e.g. echo "git push --force") don't match.
+CMD_GIT='(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git'
+
 # ============================================================
 # GATE 0: Block cd + git command chains (&&, ;, or ||)
 # ============================================================
@@ -168,7 +173,7 @@ fi
 #         (only validates -m inline messages; editor/file-based
 #          commits pass through — see README § Commit Message Validation)
 # ============================================================
-if echo "$COMMAND" | grep -qE "git${GIT_OPTS}[[:space:]]+commit([[:space:]]|\$)"; then
+if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:]]|\$)"; then
     # Check current branch
     local_branch=$(git branch --show-current 2>/dev/null || echo "")
     protected=$(_protected_branches)
@@ -210,7 +215,7 @@ fi
 # ============================================================
 # GATE 2: Block push safety violations
 # ============================================================
-if echo "$COMMAND" | grep -qE "git${GIT_OPTS}[[:space:]]+push([[:space:]]|\$)"; then
+if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+push([[:space:]]|\$)"; then
     # Block force-push without --force-with-lease (handles --force, -f, combined short flags like -fu, and +refspec)
     if echo "$COMMAND" | grep -qE '[[:space:]](--force|-f|-[a-zA-Z]*f[a-zA-Z]*)([[:space:]]|$)' && ! echo "$COMMAND" | grep -qE '[[:space:]]--force-with-lease'; then
         _deny "🚫 Force-push without --force-with-lease is dangerous. Use --force-with-lease to protect against overwriting others' work."
@@ -237,7 +242,7 @@ fi
 # ============================================================
 # GATE 3: Block branch switch with dirty working tree
 # ============================================================
-if echo "$COMMAND" | grep -qE "git${GIT_OPTS}[[:space:]]+(checkout|switch)[[:space:]]"; then
+if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+(checkout|switch)[[:space:]]"; then
     # Mask creation/restore forms so they don't count as bare switches.
     # A chained command like `git checkout -b tmp && git switch main` must still
     # trigger the dirty-tree check for the bare `switch main` portion.

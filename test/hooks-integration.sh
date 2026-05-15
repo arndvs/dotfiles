@@ -259,6 +259,10 @@ _test "allows conventional commit with apostrophe in double-quoted msg" 0 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit -m \\\"fix: handle 'quoted' value\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
 
+_test "allows git status when echo contains git push --force" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git status && echo \\\"git push --force\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
 _teardown_test_repo
 
 echo ""
@@ -373,6 +377,16 @@ _test "blocks env with assignments before printenv" 2 \
     '{"tool_name":"Bash","tool_input":{"command":"env FOO=bar printenv"}}' \
     "$HOOKS_DIR/secret-guard.sh" \
     "env/printenv"
+
+_test "blocks env cat secrets file (env prefix bypass)" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"env cat secrets/.env.secrets"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "secrets file"
+
+_test "blocks env with assignments before cat secrets file" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"env FOO=bar cat secrets/.env.secrets"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "secrets file"
 
 echo ""
 

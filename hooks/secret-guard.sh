@@ -48,8 +48,8 @@ if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_
 fi
 
 # Block cat on secrets files (covers bare name + path prefixes)
-# Handles sudo, command, builtin prefixes
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+)*cat[[:space:]]+(([^[:space:]]*/)?\.env\.secrets|([^[:space:]]*/)?secrets/\.env|~/dotfiles/secrets/)'; then
+# Handles sudo, command, builtin, env prefixes (including env with assignments)
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*cat[[:space:]]+(([^[:space:]]*/)?\.env\.secrets|([^[:space:]]*/)?secrets/\.env|~/dotfiles/secrets/)'; then
     _deny "🔒 Blocked: direct read of secrets file. Use run-with-secrets.sh for credential access."
 fi
 
