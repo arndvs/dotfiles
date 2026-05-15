@@ -11,6 +11,9 @@
 #         (only validates -m inline messages; editor/file-based commits pass through)
 #   2 — Block push when behind origin + block force-push without --force-with-lease
 #   3 — Block branch switch with dirty working tree
+#   4 — Block git reset --hard (destructive — loses uncommitted changes)
+#   5 — Block git clean -fd (irreversible removal of untracked files)
+#   6 — Warn on interactive rebase of pushed commits
 #
 # Config: reads `.ctrlshft` YAML at repo root for commit_types and
 #         protected_branches overrides.
@@ -42,7 +45,7 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 # which would false-positive on "echo git status").
 # Also matches shell wrappers: sudo git, command git, builtin git, env git.
 # env can carry assignments before the command: env FOO=bar git push.
-if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git[[:space:]]'; then
+if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[a-zA-Z]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git[[:space:]]'; then
     exit 0
 fi
 
@@ -107,6 +110,23 @@ _protected_branches() {
     echo "main|master"
 }
 
+# --- Helper: read boolean config from .ctrlshft ---
+_config_bool() {
+    local key="$1" default="$2"
+    local root
+    root=$(_repo_root)
+    local config="${root}/.ctrlshft"
+    if [[ -n "$root" && -f "$config" ]]; then
+        local val
+        val=$(awk -v k="$key" '$1 == k ":" { print $2 }' "$config" 2>/dev/null) || true
+        case "$val" in
+            true|yes|1) echo "true"; return ;;
+            false|no|0) echo "false"; return ;;
+        esac
+    fi
+    echo "$default"
+}
+
 # --- Helper: deny output (JSON-safe via jq) ---
 _deny() {
     jq -cn --arg reason "$1" '{"hookSpecificOutput":{"permissionDecision":"deny","permissionDecisionReason":$reason}}' >&2
@@ -132,7 +152,7 @@ fi
 
 # --git-dir and --work-tree are unambiguous global-only options — scan anywhere.
 # Include sudo/command/builtin/env prefixes so `sudo git --git-dir=...` is also caught.
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git[^;&|]*(--git-dir(=|[[:space:]]+)|--work-tree(=|[[:space:]]+))'; then
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[a-zA-Z]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git[^;&|]*(--git-dir(=|[[:space:]]+)|--work-tree(=|[[:space:]]+))'; then
     _deny "🚫 Don't use git --git-dir or --work-tree in commands. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
 fi
 
@@ -140,7 +160,7 @@ fi
 # Only block when -C appears in the global-options slot (before the subcommand).
 # Global options are flag-like tokens (starting with -); the subcommand is the first
 # non-flag word after 'git'. Skip non-C flags (and their optional values) to reach -C.
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git([[:space:]]+-[^C[:space:]][^[:space:]]*([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+-C[[:space:]]'; then
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[a-zA-Z]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git([[:space:]]+-[^C[:space:]][^[:space:]]*([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+-C[[:space:]]'; then
     _deny "🚫 Don't use git -C in commands. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
 fi
 
@@ -154,7 +174,7 @@ GIT_OPTS='([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-
 # --- Pattern: command-boundary-anchored git (for per-gate checks) ---
 # Anchors to shell command boundaries (^, ;, &&, ||, |) so that
 # quoted git commands (e.g. echo "git push --force") don't match.
-CMD_GIT='(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git'
+CMD_GIT='(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[a-zA-Z]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git'
 
 # ============================================================
 # GATE 0: Block cd + git command chains (&&, ;, or ||)
@@ -230,14 +250,18 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+push([[:space:]]
         _deny "🚫 Refspec prefixed with '+' forces the update. Use --force-with-lease instead of +refspec."
     fi
 
-    # Check if behind origin (only if we can reach remote)
-    local_branch=$(git branch --show-current 2>/dev/null || echo "")
-    if [[ -n "$local_branch" ]]; then
-        # Fetch to check if behind (timeout after 5s to not block on network issues)
-        if _timeout 5 git fetch origin "$local_branch" --quiet 2>/dev/null; then
-            behind=$(git rev-list --count "HEAD..origin/$local_branch" 2>/dev/null || echo "0")
-            if [[ "$behind" -gt 0 ]]; then
-                _deny "🚫 Local branch is $behind commit(s) behind origin/$local_branch. Run 'git pull --rebase' first."
+    # Check if behind origin (only if configured — opt-in via .ctrlshft)
+    # Network calls inside a pre-flight gate add latency and can fail on
+    # corporate proxies. Default: off. Enable with `pre_push_fetch: true`.
+    if [[ "$(_config_bool pre_push_fetch false)" == "true" ]]; then
+        local_branch=$(git branch --show-current 2>/dev/null || echo "")
+        if [[ -n "$local_branch" ]]; then
+            # Fetch to check if behind (timeout after 5s to not block on network issues)
+            if _timeout 5 git fetch origin "$local_branch" --quiet 2>/dev/null; then
+                behind=$(git rev-list --count "HEAD..origin/$local_branch" 2>/dev/null || echo "0")
+                if [[ "$behind" -gt 0 ]]; then
+                    _deny "🚫 Local branch is $behind commit(s) behind origin/$local_branch. Run 'git pull --rebase' first."
+                fi
             fi
         fi
     fi
@@ -263,6 +287,36 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+(checkout|switch
             if git status --porcelain 2>/dev/null | grep -qE '^[^?]'; then
                 _deny "🚫 Working tree has uncommitted changes. Commit or stash before switching branches."
             fi
+        fi
+    fi
+fi
+
+# ============================================================
+# GATE 4: Block git reset --hard (destructive)
+# ============================================================
+if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+reset([[:space:]]|\$)"; then
+    if echo "$COMMAND" | grep -qE '[[:space:]]--hard([[:space:]]|$)'; then
+        _deny "🚫 git reset --hard discards uncommitted changes irreversibly. Use git stash or git reset --soft instead."
+    fi
+fi
+
+# ============================================================
+# GATE 5: Block git clean -fd (irreversible)
+# ============================================================
+if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+clean([[:space:]]|\$)"; then
+    if echo "$COMMAND" | grep -qE '[[:space:]](-[a-zA-Z]*f[a-zA-Z]*|-[a-zA-Z]*d[a-zA-Z]*|--force)([[:space:]]|$)'; then
+        _deny "🚫 git clean with -f/-d irreversibly removes untracked files. Use git clean -n (dry-run) first to review what would be deleted."
+    fi
+fi
+
+# ============================================================
+# GATE 6: Warn on interactive rebase of already-pushed commits
+# ============================================================
+if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+rebase([[:space:]]|\$)"; then
+    if echo "$COMMAND" | grep -qE '[[:space:]](-i|--interactive)([[:space:]]|$)'; then
+        local_branch=$(git branch --show-current 2>/dev/null || echo "")
+        if [[ -n "$local_branch" ]] && git rev-parse --verify "origin/$local_branch" &>/dev/null; then
+            _warn "⚠️ Interactive rebase on a pushed branch ($local_branch) will rewrite history. You'll need --force-with-lease to push afterward. Proceed with caution."
         fi
     fi
 fi

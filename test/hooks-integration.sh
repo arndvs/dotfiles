@@ -271,6 +271,56 @@ _test "allows safe push when later command has +refspec text" 0 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin main && echo +HEAD:main\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
 
+# --- Gate 0: tight-semicolon edge case ---
+_test "blocks cd;git chain (no spaces around semicolon)" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cd /repo;git commit -m \\\"feat: x\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "cd"
+
+# --- env -i flag ---
+_test "blocks env -i git push --force (env with flags)" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"env -i git push --force origin main\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "force-with-lease"
+
+# --- Gate 4: reset --hard ---
+_test "blocks git reset --hard" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git reset --hard HEAD~1\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "reset --hard"
+
+_test "allows git reset --soft" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git reset --soft HEAD~1\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
+_test "allows git reset (no flags)" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git reset HEAD file.txt\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
+# --- Gate 5: clean -fd ---
+_test "blocks git clean -fd" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git clean -fd\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "clean"
+
+_test "blocks git clean --force" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git clean --force -d\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "clean"
+
+_test "allows git clean -n (dry run)" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git clean -n\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
+# --- Gate 6: rebase -i on pushed branch (warn only) ---
+_test "allows rebase -i (warn, not block) on local branch" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git rebase -i HEAD~3\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
+_test "allows plain rebase (non-interactive)" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git rebase main\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
 _teardown_test_repo
 
 echo ""

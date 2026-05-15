@@ -31,7 +31,17 @@ git status --porcelain
 - **PASS**: empty output (clean working tree)
 - **FAIL**: list the uncommitted files and ask user whether to commit or stash
 
-### 2. Unpushed commits
+### 2. Secrets accidentally staged
+
+```bash
+git diff --cached --name-only | grep -iE '\.env|secret|credential|password|token|apikey|api_key' || true
+git diff --cached | grep -iE 'SECRET|PASSWORD|API_KEY|TOKEN|CREDENTIAL|PRIVATE_KEY' | head -5 || true
+```
+
+- **PASS**: no sensitive filenames staged, no credential-like patterns in diff content
+- **FAIL**: list the matches and ask user to unstage (`git reset HEAD <file>`)
+
+### 3. Unpushed commits
 
 ```bash
 if git rev-parse --abbrev-ref '@{u}' &>/dev/null; then
@@ -42,26 +52,28 @@ fi
 ```
 
 - **PASS**: empty output (nothing unpushed)
-- **FAIL**: list the commits and push them
+- **FAIL**: list the commits and ask user whether to push (user may be mid-rebase or on a WIP branch)
 - **WARN**: no upstream configured — local commits may not be tracked
 
-### 3. PR exists for branch
+### 4. PR exists for branch (GitHub only)
 
 ```bash
 BRANCH=$(git branch --show-current)
 # Skip if on a base branch
 if [[ "$BRANCH" =~ ^(main|master|dev|develop)$ ]]; then
   echo "SKIP: on base branch"
+elif ! command -v gh &>/dev/null; then
+  echo "SKIP: gh CLI not installed"
 else
   gh pr list --head "$BRANCH" --state open --json number,url --jq '.[0]'
 fi
 ```
 
 - **PASS**: PR exists (show number + URL)
-- **SKIP**: on a base branch
+- **SKIP**: on a base branch, or `gh` CLI not available
 - **FAIL**: no PR — create one or remind user
 
-### 4. Type check (if TypeScript project)
+### 5. Type check (if TypeScript project)
 
 ```bash
 # Auto-detect
@@ -76,23 +88,25 @@ fi
 - **SKIP**: no tsconfig.json
 - **FAIL**: show errors, ask user whether to fix
 
-### 5. Tests (if test runner detected)
+### 6. Tests (if test runner detected)
 
 Auto-detect from package.json, composer.json, Makefile, pyproject.toml:
 
 ```bash
 if [[ -f "package.json" ]] && grep -q '"test"' package.json; then
-  TEST_OUTPUT=$(npm test 2>&1); TEST_EXIT=$?
+  # Timeout after 120s to avoid blocking on slow e2e suites
+  TEST_OUTPUT=$(timeout 120 npm test -- --passWithNoTests 2>&1) && TEST_EXIT=$? || TEST_EXIT=$?
   echo "$TEST_OUTPUT" | tail -20
-  # Use $TEST_EXIT for pass/fail
+  # Use $TEST_EXIT for pass/fail (124 = timeout)
 fi
 ```
 
 - **PASS**: TEST_EXIT == 0
 - **SKIP**: no test runner detected
 - **FAIL**: show failures, ask user whether to fix
+- **TIMEOUT**: TEST_EXIT == 124 — tests exceeded 120s, report as non-blocking warning
 
-### 6. Lint / format (if detected)
+### 7. Lint / format (if detected)
 
 ```bash
 if [[ -f "package.json" ]] && grep -q '"lint"' package.json; then
@@ -106,7 +120,7 @@ fi
 - **SKIP**: no linter detected
 - **FAIL**: show issues (non-blocking — report only)
 
-### 7. Drift check
+### 8. Drift check
 
 ```bash
 if [[ -f "$HOME/dotfiles/bin/drift-detect.sh" ]]; then
@@ -118,7 +132,7 @@ fi
 - **SKIP**: drift-detect.sh not found
 - **FAIL**: list drifted files (non-blocking — report only)
 
-### 8. Stash check
+### 9. Stash check
 
 ```bash
 STASH_COUNT=$(git stash list | wc -l)
@@ -139,6 +153,7 @@ After running all checks, output a summary table:
 | Check | Result |
 |-------|--------|
 | Uncommitted changes | ✅ Clean |
+| Secrets staged | ✅ Clean |
 | Unpushed commits | ✅ Pushed |
 | PR exists | ✅ #74 |
 | Type check | ✅ Pass |
@@ -162,6 +177,7 @@ Use these symbols:
 
 **Blocking** (must resolve before ending):
 - Uncommitted changes
+- Secrets accidentally staged
 - Unpushed commits
 
 **Non-blocking** (report but don't force resolution):
