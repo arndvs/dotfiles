@@ -340,6 +340,54 @@ _test "allows plain rebase (non-interactive)" 0 \
     "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git rebase main\"},\"cwd\":\"$TEST_REPO\"}" \
     "$HOOKS_DIR/git-workflow-gate.sh"
 
+# --- env bypass vectors ---
+_test "blocks env -- git push --force (end-of-options bypass)" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"env -- git push --force origin main\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "force-with-lease"
+
+_test "blocks env --ignore-environment git push --force (long flag bypass)" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"env --ignore-environment git push --force origin main\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "force-with-lease"
+
+_test "blocks env -0 git push --force (digit flag bypass)" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"env -0 git push --force origin main\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "force-with-lease"
+
+# --- GIT_DIR env var bypass ---
+_test "blocks GIT_DIR= env var (repo override)" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"GIT_DIR=/other/repo git status\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "GIT_DIR"
+
+_test "blocks GIT_WORK_TREE= env var (repo override)" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"GIT_WORK_TREE=/other git status\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "GIT_WORK_TREE"
+
+# --- Gate 1: commit on protected branch ---
+# Set up a temp repo on main for protected-branch test
+_teardown_test_repo
+_setup_test_repo
+git -C "$TEST_REPO" checkout -q -b main
+git -C "$TEST_REPO" commit -q --allow-empty -m "on main"
+
+_test "blocks commit on protected branch (main)" 2 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit -m \\\"feat: something\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "Cannot commit directly"
+
+_teardown_test_repo
+_setup_test_repo
+
+# --- Gate 4: @ as HEAD alias ---
+_test "warns on git reset --hard @ (HEAD alias)" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git reset --hard @\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh" \
+    "reset --hard HEAD"
+
 _teardown_test_repo
 
 echo ""
@@ -462,6 +510,38 @@ _test "blocks env cat secrets file (env prefix bypass)" 2 \
 
 _test "blocks env with assignments before cat secrets file" 2 \
     '{"tool_name":"Bash","tool_input":{"command":"env FOO=bar cat secrets/.env.secrets"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "secrets file"
+
+# --- env flag bypass vectors ---
+_test "blocks env -i echo credential (env -i bypass)" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"env -i echo $SECRET_KEY"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "credentials"
+
+_test "blocks env -0 (bare env dump with null flag)" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"env -0"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "env/printenv"
+
+_test "blocks env --null (bare env dump with long flag)" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"env --null"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "env/printenv"
+
+# --- expanded file-read commands ---
+_test "blocks less secrets file" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"less secrets/.env.secrets"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "secrets file"
+
+_test "blocks head secrets file" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"head ~/dotfiles/secrets/.env"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "secrets file"
+
+_test "blocks tail secrets file" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"tail secrets/.env.secrets"}}' \
     "$HOOKS_DIR/secret-guard.sh" \
     "secrets file"
 

@@ -44,8 +44,12 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 # Match git as a command — after ^, ;, &&, ||, | (not bare whitespace,
 # which would false-positive on "echo git status").
 # Also matches shell wrappers: sudo git, command git, builtin git, env git.
-# env can carry assignments before the command: env FOO=bar git push.
-if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[a-zA-Z]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git[[:space:]]'; then
+# env can carry flags (-i, -0, --), assignments (FOO=bar), and flag
+# arguments (-u VAR) before the command. The primary pattern handles
+# flags and assignments; the fallback catches complex env preambles
+# (e.g. env -u VARNAME git) that the primary pattern can't consume.
+if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git[[:space:]]' && \
+   ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*env[[:space:]]+((-[-a-zA-Z0-9]+|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|[^[:space:]=]+)[[:space:]]+)*git[[:space:]]'; then
     exit 0
 fi
 
@@ -152,15 +156,21 @@ fi
 
 # --git-dir and --work-tree are unambiguous global-only options — scan anywhere.
 # Include sudo/command/builtin/env prefixes so `sudo git --git-dir=...` is also caught.
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[a-zA-Z]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git[^;&|]*(--git-dir(=|[[:space:]]+)|--work-tree(=|[[:space:]]+))'; then
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git[^;&|]*(--git-dir(=|[[:space:]]+)|--work-tree(=|[[:space:]]+))'; then
     _deny "🚫 Don't use git --git-dir or --work-tree in commands. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
+fi
+
+# Also block GIT_DIR / GIT_WORK_TREE set as environment variable assignments.
+# These env vars achieve the same repo-targeting as the flag forms blocked above.
+if echo "$COMMAND" | grep -qE '(^|[[:space:]])(GIT_DIR|GIT_WORK_TREE)='; then
+    _deny "🚫 Don't set GIT_DIR or GIT_WORK_TREE as environment variables. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
 fi
 
 # -C is positional: global 'git -C <path>' vs subcommand option 'git commit -C HEAD'.
 # Only block when -C appears in the global-options slot (before the subcommand).
 # Global options are flag-like tokens (starting with -); the subcommand is the first
 # non-flag word after 'git'. Skip non-C flags (and their optional values) to reach -C.
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[a-zA-Z]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git([[:space:]]+-[^C[:space:]][^[:space:]]*([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+-C[[:space:]]'; then
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git([[:space:]]+-[^C[:space:]][^[:space:]]*([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+-C[[:space:]]'; then
     _deny "🚫 Don't use git -C in commands. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
 fi
 
@@ -174,7 +184,7 @@ GIT_OPTS='([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-
 # --- Pattern: command-boundary-anchored git (for per-gate checks) ---
 # Anchors to shell command boundaries (^, ;, &&, ||, |) so that
 # quoted git commands (e.g. echo "git push --force") don't match.
-CMD_GIT='(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[a-zA-Z]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git'
+CMD_GIT='(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git'
 
 # ============================================================
 # GATE 0: Block cd + git command chains (&&, ;, or ||)
@@ -303,7 +313,7 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+reset([[:space:]
         # Extract the target after --hard (if any). No target or bare HEAD = discard working tree (warn).
         # HEAD~N, HEAD^, SHA, branch name = history rewrite (block).
         reset_target=$(echo "$COMMAND" | grep -oE '[[:space:]]--hard[[:space:]]+[^[:space:]-][^[:space:]]*' | sed 's/.*--hard[[:space:]]*//' | head -1) || true
-        if [[ -z "$reset_target" || "$reset_target" == "HEAD" ]]; then
+        if [[ -z "$reset_target" || "$reset_target" == "HEAD" || "$reset_target" == "@" ]]; then
             _warn "⚠️ git reset --hard HEAD discards all uncommitted changes. Consider git stash if you might need them later."
         else
             _deny "🚫 git reset --hard (to a non-HEAD target) rewrites history irreversibly. Use git stash or git reset --soft instead."
