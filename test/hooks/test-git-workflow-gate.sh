@@ -145,4 +145,96 @@ REPO=$(make_tmp_repo)
 run_hook "$HOOK" "$(make_pretooluse_json 'git -C /tmp/other push' "$REPO")"
 assert_deny "git -C flag" "Don.t use git"
 
+# ============================================================
+# GATE 1 (continued): --amend warning
+# ============================================================
+
+echo ""
+echo "--- Gate 1: --amend warning ---"
+
+REPO=$(make_tmp_repo)
+git -C "$REPO" checkout -b feat/amend-test --quiet 2>/dev/null
+
+run_hook "$HOOK" "$(make_pretooluse_json 'git commit --amend -m "feat: updated"' "$REPO")"
+assert_warn "commit --amend warns" "amend"
+
+run_hook "$HOOK" "$(make_pretooluse_json 'git commit --amend --no-edit' "$REPO")"
+assert_warn "commit --amend --no-edit warns" "amend"
+
+run_hook "$HOOK" "$(make_pretooluse_json 'git commit -m "feat: normal commit"' "$REPO")"
+assert_allow "commit without --amend does not warn"
+
+# ============================================================
+# GATE 6: Interactive rebase warning
+# ============================================================
+
+echo ""
+echo "--- Gate 6: interactive rebase warn ---"
+
+REPO=$(make_tmp_repo)
+git -C "$REPO" checkout -b feat/rebase-test --quiet 2>/dev/null
+# Create a fake remote tracking branch
+git -C "$REPO" config "branch.feat/rebase-test.remote" origin
+git -C "$REPO" config "branch.feat/rebase-test.merge" refs/heads/feat/rebase-test
+# Create an origin/feat/rebase-test ref
+git -C "$REPO" update-ref refs/remotes/origin/feat/rebase-test HEAD
+
+run_hook "$HOOK" "$(make_pretooluse_json 'git rebase -i HEAD~3' "$REPO")"
+assert_warn "interactive rebase on pushed branch warns" "rebase"
+
+run_hook "$HOOK" "$(make_pretooluse_json 'git rebase --interactive HEAD~2' "$REPO")"
+assert_warn "rebase --interactive warns" "rebase"
+
+run_hook "$HOOK" "$(make_pretooluse_json 'git rebase main' "$REPO")"
+assert_allow "non-interactive rebase does not warn"
+
+# ============================================================
+# PostToolUse: post-commit nag
+# ============================================================
+
+echo ""
+echo "--- PostToolUse: post-commit nag ---"
+
+POST_COMMIT_HOOK="hooks/git-post-commit.sh"
+
+REPO=$(make_tmp_repo)
+git -C "$REPO" checkout -b feat/nag-test --quiet 2>/dev/null
+echo "change" >> "$REPO/README.md"
+git -C "$REPO" add . && git -C "$REPO" commit -m "feat: test commit" --quiet 2>/dev/null
+
+run_hook "$POST_COMMIT_HOOK" "$(make_posttooluse_json 'git commit -m "feat: test"' "$REPO" 0)"
+# No upstream configured → should exit silently
+assert_allow "post-commit no upstream → silent"
+
+# PostToolUse: non-commit command → silent
+run_hook "$POST_COMMIT_HOOK" "$(make_posttooluse_json 'git status' "$REPO" 0)"
+assert_allow "post-commit non-commit command → silent"
+
+# PostToolUse: failed commit → silent
+run_hook "$POST_COMMIT_HOOK" "$(make_posttooluse_json 'git commit -m "feat: fail"' "$REPO" 1)"
+assert_allow "post-commit failed exit code → silent"
+
+# ============================================================
+# PostToolUse: post-push PR nag
+# ============================================================
+
+echo ""
+echo "--- PostToolUse: post-push nag ---"
+
+POST_PUSH_HOOK="hooks/git-post-push.sh"
+
+REPO=$(make_tmp_repo)
+
+# Non-push command → silent
+run_hook "$POST_PUSH_HOOK" "$(make_posttooluse_json 'git status' "$REPO" 0)"
+assert_allow "post-push non-push command → silent"
+
+# Failed push → silent
+run_hook "$POST_PUSH_HOOK" "$(make_posttooluse_json 'git push' "$REPO" 1)"
+assert_allow "post-push failed exit code → silent"
+
+# Push with -C flag → silent (handled by the hook)
+run_hook "$POST_PUSH_HOOK" "$(make_posttooluse_json 'git -C /tmp/other push' "$REPO" 0)"
+assert_allow "post-push git -C → silent"
+
 report

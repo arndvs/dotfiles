@@ -240,6 +240,11 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:
             _deny "🚫 Could not parse commit message. Wrap the message in quotes: git commit -m \"type(scope): description\""
         fi
     fi
+
+    # Warn on --amend (rewrites the last commit)
+    if echo "$COMMAND" | grep -qE '[[:space:]]--amend([[:space:]]|$)'; then
+        _warn "⚠️ git commit --amend rewrites the previous commit. If already pushed, you will need --force-with-lease to push."
+    fi
 fi
 
 # ============================================================
