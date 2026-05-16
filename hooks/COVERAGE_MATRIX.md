@@ -18,7 +18,7 @@ Maps failure modes to their enforcement mechanisms. Use this to identify gaps an
 | Direct commit to protected branch | `git-workflow-gate.sh` Gate 1 | PreToolUse/Block | ✅ |
 | Non-conventional commit message | `git-workflow-gate.sh` Gate 1 | PreToolUse/Block | ⚠️ (`-m` only) |
 | Force push without `--force-with-lease` | `git-workflow-gate.sh` Gate 2 | PreToolUse/Block | ✅ |
-| Push when behind remote | `git-workflow-gate.sh` Gate 2 | PreToolUse/Block | ✅ |
+| Push when behind remote | `git-workflow-gate.sh` Gate 2 | PreToolUse/Block | ⚠️ (opt-in via `.ctrlshft` `pre_push_fetch: true`) |
 | Branch switch with dirty tree | `git-workflow-gate.sh` Gate 3 | PreToolUse/Block | ✅ |
 | `git reset --hard` (destructive reset) | `git-workflow-gate.sh` Gate 4 | PreToolUse/Warn+Block | ⚠️ (warns HEAD/@, blocks HEAD~N/SHA) |
 | `git clean -f` (file deletion) | `git-workflow-gate.sh` Gate 5 | PreToolUse/Block | ✅ |

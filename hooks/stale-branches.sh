@@ -33,7 +33,7 @@ _timeout() {
     if command -v timeout &>/dev/null; then
         timeout "$@"
     else
-        "${@:2}"
+        return 1  # Skip network calls when no timeout utility — avoid hangs
     fi
 }
 
