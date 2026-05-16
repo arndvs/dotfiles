@@ -216,7 +216,7 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:
     # Check if the command also switches to a protected branch before committing.
     # e.g. `git switch main && git commit -m "fix: x"` — the commit targets main
     # after the switch, but the hook only sees the pre-switch branch above.
-    if echo "$COMMAND" | grep -qE "(checkout|switch)([[:space:]]+-[^[:space:]]+)*[[:space:]]+(${protected})([[:space:]]|;|&&|\|\||\||$)"; then
+    if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+(checkout|switch)([[:space:]]+-[^[:space:]]+)*[[:space:]]+(${protected})([[:space:]]|;|&&|\|\||\||$)"; then
         _deny "🚫 Cannot switch to a protected branch and commit in the same command. Use separate tool calls so the commit gate can verify the target branch."
     fi
 
@@ -254,10 +254,20 @@ fi
 # GATE 2: Block push safety violations
 # ============================================================
 if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+push([[:space:]]|\$)"; then
-    # Extract ALL git push segments in the command (up to the next ;, &&, ||, or end-of-string)
-    # so force-flag checks don't match tokens in later chained commands.
-    # Check each segment independently to catch `git push origin main && git push --force origin main`.
-    ALL_PUSH_SEGS=$(echo "$COMMAND" | grep -oE 'git([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*[[:space:]]+push([[:space:]]+[^;&|][^;&|]*)*' || true)
+    # Extract ALL git push segments, anchored to command boundaries.
+    # Split on command separators first to avoid false-positives on quoted
+    # text (e.g. echo "git push --force" wouldn't match as a real command).
+    ALL_PUSH_SEGS=""
+    while IFS= read -r _seg; do
+        _seg=$(echo "$_seg" | sed 's/^[[:space:]]*//')
+        [[ -z "$_seg" ]] && continue
+        # Skip segments where git isn't the actual command (e.g. echo "git push")
+        if ! echo "$_seg" | grep -qE '^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git[[:space:]]'; then
+            continue
+        fi
+        _match=$(echo "$_seg" | grep -oE 'git([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*[[:space:]]+push([[:space:]]+[^;&|][^;&|]*)*' || true)
+        [[ -n "$_match" ]] && ALL_PUSH_SEGS="${ALL_PUSH_SEGS}${_match}"$'\n'
+    done <<< "$(echo "$COMMAND" | sed 's/;/\n/g; s/&&/\n/g; s/||/\n/g')"
     while IFS= read -r PUSH_SEG; do
         [[ -z "$PUSH_SEG" ]] && continue
 
@@ -327,14 +337,21 @@ PENDING_WARN=""
 # history and is genuinely dangerous — block those.
 if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+reset([[:space:]]|\$)"; then
     if echo "$COMMAND" | grep -qE '[[:space:]]--hard([[:space:]]|$)'; then
-        # Extract the target after --hard (if any). No target or bare HEAD = discard working tree (warn).
-        # HEAD~N, HEAD^, SHA, branch name = history rewrite (block).
-        reset_target=$(echo "$COMMAND" | grep -oE '[[:space:]]--hard[[:space:]]+[^[:space:]-][^[:space:]]*' | sed 's/.*--hard[[:space:]]*//' | head -1) || true
-        if [[ -z "$reset_target" || "$reset_target" == "HEAD" || "$reset_target" == "@" ]]; then
-            PENDING_WARN="⚠️ git reset --hard HEAD discards all uncommitted changes. Consider git stash if you might need them later."
-        else
-            _deny "🚫 git reset --hard (to a non-HEAD target) rewrites history irreversibly. Use git stash or git reset --soft instead."
-        fi
+        # Extract ALL git reset segments so chained commands are each checked.
+        # e.g. `git reset --hard HEAD && git reset --hard HEAD~1` — second must block.
+        ALL_RESET_SEGS=$(echo "$COMMAND" | grep -oE 'git([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*[[:space:]]+reset([[:space:]]+[^;&|][^;&|]*)?' || true)
+        while IFS= read -r RESET_SEG; do
+            [[ -z "$RESET_SEG" ]] && continue
+            if ! echo "$RESET_SEG" | grep -qE '[[:space:]]--hard([[:space:]]|$)'; then
+                continue
+            fi
+            reset_target=$(echo "$RESET_SEG" | grep -oE '[[:space:]]--hard[[:space:]]+[^[:space:]-][^[:space:]]*' | sed 's/.*--hard[[:space:]]*//' | head -1) || true
+            if [[ -z "$reset_target" || "$reset_target" == "HEAD" || "$reset_target" == "@" ]]; then
+                PENDING_WARN="⚠️ git reset --hard HEAD discards all uncommitted changes. Consider git stash if you might need them later."
+            else
+                _deny "🚫 git reset --hard (to a non-HEAD target) rewrites history irreversibly. Use git stash or git reset --soft instead."
+            fi
+        done <<< "$ALL_RESET_SEGS"
     fi
 fi
 
@@ -356,7 +373,7 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+rebase([[:space:
     if echo "$COMMAND" | grep -qE '[[:space:]](-i|--interactive)([[:space:]]|$)'; then
         local_branch=$(git branch --show-current 2>/dev/null || echo "")
         if [[ -n "$local_branch" ]] && git rev-parse --verify "origin/$local_branch" &>/dev/null; then
-            local msg="⚠️ Interactive rebase on a pushed branch ($local_branch) will rewrite history. You'll need --force-with-lease to push afterward. Proceed with caution."
+            msg="⚠️ Interactive rebase on a pushed branch ($local_branch) will rewrite history. You'll need --force-with-lease to push afterward. Proceed with caution."
             if [[ -n "$PENDING_WARN" ]]; then
                 PENDING_WARN="${PENDING_WARN} ${msg}"
             else

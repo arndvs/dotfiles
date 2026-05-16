@@ -68,7 +68,7 @@ _timeout() {
     if command -v timeout &>/dev/null; then
         timeout "$@"
     else
-        "${@:2}"
+        return 1  # skip: no timeout available; don't run unbounded
     fi
 }
 

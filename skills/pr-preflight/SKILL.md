@@ -57,9 +57,15 @@ ls package.json tsconfig.json pyproject.toml Cargo.toml go.mod \
 
 # Node / TypeScript / React
 if [[ -f package.json ]]; then
-  echo "=== TypeScript ===" && npx tsc --noEmit 2>&1; tsc_exit=$?; echo "(exit $tsc_exit)" | tail -20
-  echo "=== Lint ===" && npm run lint 2>&1; lint_exit=$?; echo "(exit $lint_exit)" | tail -20
-  echo "=== Tests ===" && npm test -- --passWithNoTests 2>&1; test_exit=$?; echo "(exit $test_exit)" | tail -30
+  if [[ -f tsconfig.json ]]; then
+    echo "=== TypeScript ===" && npx tsc --noEmit 2>&1; tsc_exit=$?; echo "(exit $tsc_exit)" | tail -20
+  fi
+  if jq -e '.scripts.lint' package.json &>/dev/null; then
+    echo "=== Lint ===" && npm run lint 2>&1; lint_exit=$?; echo "(exit $lint_exit)" | tail -20
+  fi
+  if jq -e '.scripts.test' package.json &>/dev/null; then
+    echo "=== Tests ===" && npm test -- --passWithNoTests 2>&1; test_exit=$?; echo "(exit $test_exit)" | tail -30
+  fi
 fi
 
 # Bash
@@ -74,8 +80,12 @@ fi
 
 # Python
 if [[ -f pyproject.toml ]] || find . -name '*.py' -not -path '*/.git/*' | grep -q .; then
-  command -v ruff &>/dev/null && ruff check . 2>&1 | tail -20 || true
-  command -v mypy &>/dev/null && mypy . 2>&1 | tail -20 || true
+  if command -v ruff &>/dev/null; then
+    echo "=== Ruff ===" && ruff check . 2>&1; ruff_exit=$?; echo "(exit $ruff_exit)" | tail -20
+  fi
+  if command -v mypy &>/dev/null; then
+    echo "=== Mypy ===" && mypy . 2>&1; mypy_exit=$?; echo "(exit $mypy_exit)" | tail -20
+  fi
 fi
 ```
 
