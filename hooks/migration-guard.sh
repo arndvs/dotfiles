@@ -44,9 +44,11 @@ if echo "$COMMAND" | grep -qiE "$MIGRATION_PATTERN"; then
         if echo "$segment" | grep -qiE "$MIGRATION_PATTERN"; then
             # Allow test database targets — only match env assignments that directly
             # prefix the migration command (VAR=val cmd), not arbitrary command text.
+            # Restrict to DATABASE_URL specifically — a generic *_test= pattern would
+            # let FOO_TEST=1 bypass the guard without changing the actual DB target.
             env_prefix=$(echo "$segment" | sed -n 's/^\(\([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]*\)*\).*/\1/p')
-            if [[ -n "$env_prefix" ]] && echo "$env_prefix" | grep -qiE '(^|[[:space:]])(DATABASE_URL=[^[:space:]]*(test|localhost:5433([^0-9]|$)|:5433([^0-9]|$))|[A-Za-z_][A-Za-z0-9_]*_test=)'; then
-                continue  # This segment targets a test database
+            if [[ -n "$env_prefix" ]] && echo "$env_prefix" | grep -qiE '(^|[[:space:]])DATABASE_URL=[^[:space:]]*(test|localhost:5433([^0-9]|$)|:5433([^0-9]|$))'; then
+                continue  # This segment explicitly targets a test database
             fi
             has_unsafe_migration=true
         fi
