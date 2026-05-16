@@ -71,6 +71,10 @@
           {
             "type": "command",
             "command": "\"$HOME/.claude/hooks/git-post-push.sh\""
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/git-post-commit.sh\""
           }
         ]
       }
