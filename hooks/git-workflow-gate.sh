@@ -360,9 +360,13 @@ fi
 # ============================================================
 # Only -f/--force triggers deletion — `-d` alone is safe because git
 # requires `-f` explicitly (or clean.requireForce=false, which is rare).
+# Allow dry-run variants (-n/--dry-run) even when combined with -f,
+# since they only preview what would be deleted without removing files.
 if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+clean([[:space:]]|\$)"; then
     if echo "$COMMAND" | grep -qE '[[:space:]](-[a-zA-Z]*f[a-zA-Z]*|--force)([[:space:]]|$)'; then
-        _deny "🚫 git clean -f irreversibly removes untracked files. Use git clean -n (dry-run) first to review what would be deleted."
+        if ! echo "$COMMAND" | grep -qE '[[:space:]](-[a-zA-Z]*n[a-zA-Z]*|--dry-run)([[:space:]]|$)'; then
+            _deny "🚫 git clean -f irreversibly removes untracked files. Use git clean -n (dry-run) first to review what would be deleted."
+        fi
     fi
 fi
 
