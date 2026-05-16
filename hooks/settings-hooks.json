@@ -33,6 +33,10 @@
           {
             "type": "command",
             "command": "\"$HOME/.claude/hooks/plan-quality-gate.sh\""
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/plan-review-phase2.py\""
           }
         ]
       }
