@@ -1,13 +1,13 @@
 ---
 name: error-audit
-description: Analyzes cross-session error patterns to surface systemic issues worth automating; invoke after sessions with repeated retry loops or before proposing new hooks.
+description: Audit errors across Claude Code session transcripts. Scans ~/.claude/projects/*.jsonl for 7 error classes (tool_error, validation_error, permission_denial, hook_block, bash_fail, retry_storm, read_before_edit), clusters by root-cause signature, and surfaces top N with suggested remediation tiers. Use when the user says "error audit", "errors across sessions", "system health errors", or "/error-audit".
 ---
 
 # Error Audit
 
 Output "Read Error Audit skill." to chat to acknowledge you read this file.
 
-Analyzes patterns of repeated errors across recent sessions to surface systemic issues that should become rules, hooks, or architectural fixes rather than per-session patches.
+Scan every Claude Code session transcript for errors, cluster by root cause, surface the top offenders with suggested remediations.
 
 ---
 
@@ -20,107 +20,100 @@ Analyzes patterns of repeated errors across recent sessions to surface systemic 
 
 ---
 
-## Method
+## Usage
+
+```bash
+# Default: all sessions, top 20 clusters, human output
+python3 error-audit.py
+
+# Last 30 days only
+python3 error-audit.py --since 30
+
+# Show fewer clusters
+python3 error-audit.py --top 10
+
+# Machine-readable (for piping into other tools)
+python3 error-audit.py --json
+
+# Override the projects dir (useful for testing)
+python3 error-audit.py --projects-dir /path/to/projects
+
+# Override or disable suppressions
+python3 error-audit.py --suppressions-path /path/to/suppressions.md
+python3 error-audit.py --no-suppressions
+python3 error-audit.py --show-suppressed
+```
+
+## Steps (when invoking via `/error-audit`)
+
+1. Run `python3 <skill-path>/error-audit.py` with any arguments the user provided.
+2. Display the output to the user exactly as printed (includes colour-coded counts and suggested remediation tiers).
+3. For the top 3 clusters, propose a concrete action:
+   - **Tier 1** (settings allowlist): show the exact `~/.claude/settings.json` entry to add, but do NOT auto-apply — user must review Bash allowlist changes.
+   - **Tier 2** (hook or script fix): locate the hook/script and propose the edit.
+   - **Tier 3** (instruction/memory): draft the feedback or mechanism memory entry.
+4. Do NOT auto-apply any remediation. This skill surfaces and proposes; the user decides.
+
+## Error Classes
+
+| Class | Signal | Example |
+|-------|--------|---------|
+| `tool_error` | `is_error:true` on a tool result (excluding denials) | Read/Write/Edit failures |
+| `validation_error` | `InputValidationError` in tool result | Wrong parameter types |
+| `permission_denial` | "The user doesn't want to proceed" | Bash command rejected |
+| `hook_block` | `hook_failure` attachment type | git-workflow-gate blocks |
+| `bash_fail` | Non-zero `exitCode` on Bash attachment | Command failures |
+| `retry_storm` | 3+ consecutive `overloaded_error` records | API overload |
+| `read_before_edit` | "File has not been read yet" | Edit without prior Read |
+
+## Remediation Tiers
+
+| Tier | Fix type | Example |
+|------|----------|---------|
+| 1 | Settings allowlist | Add `Bash(cmd:*)` to allow list (review first) |
+| 2 | Hook or script fix | Tune a hook to exclude a known-good pattern |
+| 3 | Instruction/memory | Add behavioral memory covering the failure mode |
+
+## Configuration
+
+| Env var | Purpose | Default |
+|---|---|---|
+| `CLAUDE_ERROR_AUDIT_SUPPRESSIONS` | Suppressions file path | `<skill-dir>/suppressions.md` |
+
+## Suppressions
+
+The `suppressions.md` file (ships alongside `error-audit.py`) marks known "working-as-designed" cluster keys. Default human output hides them; `--show-suppressed` re-includes them; `--json` always includes them with a `suppressed: true|false` field.
+
+## Fallback Method (when Python is unavailable)
+
+If `python3` is not available, fall back to manual analysis:
 
 ### Phase 1 — Gather error data
 
-Collect error signals from available sources:
-
-#### Source A: Git log (commit messages mentioning fixes)
-
 ```bash
-# Recent fix commits — patterns of what breaks repeatedly
+# Recent fix commits
 git log --oneline --since="2 weeks ago" --grep="fix" --grep="revert" | head -30
-```
 
-#### Source B: Session transcripts (if available)
-
-Look in `~/.claude/` or session storage for recent transcripts. Search for:
-- "Error:", "error:", "failed", "FAIL"
-- Retry patterns (same command run 2+ times)
-- Tool call failures
-
-```bash
 # Find recent session files
 find ~/.claude/projects/ -name "*.jsonl" -mtime -14 2>/dev/null | head -10
-```
 
-#### Source C: Test failures
-
-```bash
-# If test results are logged
-git log --oneline --since="2 weeks ago" | grep -i "test\|spec" | head -20
-```
-
-#### Source D: HUD events (if available)
-
-```bash
+# HUD events
 if [[ -f "$HOME/dotfiles/working/events.jsonl" ]]; then
   grep -i "error\|fail\|block" "$HOME/dotfiles/working/events.jsonl" | tail -30
 fi
 ```
 
-### Phase 2 — Classify patterns
+### Phase 2 — Classify
 
-Group errors into categories:
+Group errors into: Tooling, Convention, Environment, Architecture, External.
 
-| Category | Signal | Example |
-|----------|--------|---------|
-| **Tooling** | Same CLI command fails repeatedly | `npx tsc` fails due to missing types |
-| **Convention** | Same rule violation in multiple sessions | Committing to main directly |
-| **Environment** | Setup/config errors | Missing env vars, wrong Node version |
-| **Architecture** | Design flaws surfacing as runtime errors | Circular imports, wrong module boundary |
-| **External** | Third-party API/service failures | Rate limits, auth expiry |
+### Phase 3 — Score
 
-### Phase 3 — Score and prioritize
+Frequency × Cost × Fixability. Minimum 3 occurrences before calling "systemic."
 
-For each pattern found, assign:
+### Phase 4 — Recommend
 
-- **Frequency**: How many sessions did this appear in? (1 = fluke, 3+ = systemic)
-- **Cost**: How much time was wasted per occurrence? (minutes of retry loops)
-- **Fixability**: Can this become a hook, rule, or architectural fix?
-
-Priority = Frequency × Cost × Fixability
-
-### Phase 4 — Recommend actions
-
-For each high-priority pattern, recommend ONE specific action:
-
-| Action Type | When to use | Example |
-|-------------|-------------|---------|
-| **New hook** | Repeated mechanical error that can be detected before it happens | "Add a hook that checks Node version on SessionStart" |
-| **New rule** | Convention violation that the model keeps forgetting | "Add a rule that requires test file for every new module" |
-| **Architecture fix** | Structural issue causing cascading failures | "Extract shared types to a package" |
-| **Documentation** | Misunderstanding of how something works | "Document the auth flow in README" |
-| **Ignore** | External/transient issue not worth automating | "GH API rate limits during peak hours" |
-
----
-
-## Report Format
-
-```
-## Error Audit Report
-
-**Period**: Last 2 weeks (N sessions analyzed)
-**Patterns found**: M
-
-### High Priority
-
-| # | Pattern | Freq | Cost | Action |
-|---|---------|------|------|--------|
-| 1 | TypeScript path alias misconfigured | 4 sessions | ~10 min each | Rule: verify tsconfig paths on project start |
-| 2 | Commit to main without PR | 2 sessions | 5 min each | Hook: ✅ already fixed (git-workflow-gate) |
-
-### Medium Priority
-...
-
-### Resolved by existing mechanisms
-- [pattern] → resolved by [hook/rule name]
-
-### Recommendations
-1. [Specific action with a one-liner justification]
-2. ...
-```
+One specific action per pattern: new hook, new rule, architecture fix, documentation, or ignore.
 
 ---
 
