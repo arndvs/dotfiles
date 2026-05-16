@@ -25,6 +25,8 @@ Maps failure modes to their enforcement mechanisms. Use this to identify gaps an
 | `git rebase -i` on pushed branch | `git-workflow-gate.sh` Gate 6 | PreToolUse/Warn | ⚠️ (warn only) |
 | `cd` + `git` in one command (wrong repo) | `git-workflow-gate.sh` Gate 0 | PreToolUse/Block | ✅ |
 | Push without PR | `git-post-push.sh` | PostToolUse/Info | ✅ |
+| Push to merged-PR branch | `git-workflow-gate.sh` Gate 2 | PreToolUse/Block | ✅ |
+| Unpushed commits accumulating | `git-post-commit.sh` | PostToolUse/Warn | ✅ |
 | Stale/merged branches accumulating | `stale-branches.sh` | SessionStart/Info | ✅ |
 | Work stranded (not pushed) | `global.instructions.md` | Instruction | 📋 |
 
@@ -53,6 +55,7 @@ Maps failure modes to their enforcement mechanisms. Use this to identify gaps an
 | TypeScript type errors on stop | `typecheck.sh` | Stop/Block | ✅ |
 | Formatting drift on stop | `format-check.sh` | Stop/Info | ✅ |
 | Scaffolding without a plan | `plan-quality-gate.sh` | PreToolUse/Info | ✅ |
+| Plan missing required sections | `plan-quality-gate.sh` | PreToolUse/Warn | ✅ |
 | Over-engineering / gold-plating | `global.instructions.md` | Instruction | 📋 |
 
 ## Context Management
@@ -63,10 +66,19 @@ Maps failure modes to their enforcement mechanisms. Use this to identify gaps an
 | Context warning at capacity | `context-warning.sh` | UserPromptSubmit | ⚠️ (stub) |
 | No handoff on session end | `handoff.instructions.md` | Instruction | 📋 |
 
+## Session & Analysis
+
+| Failure Mode | Mechanism | Type | Coverage |
+|---|---|---|---|
+| Session ends without quality check | `session-close` skill | Skill (manual invocation) | ✅ |
+| Cross-session errors repeating | `error-audit.py` scanner | Skill (Python scanner) | ✅ |
+| Permission approval overhead | `audit-permissions.py` scanner | Skill (Python scanner) | ✅ |
+| Plan files accumulating after PR merge | `plan-archive.py` | Skill (Python archiver) | ✅ |
+
 ## Gaps (Identified, Not Yet Addressed)
 
 | Failure Mode | Proposed Mechanism | Status |
 |---|---|---|
-| Session ends without quality check | Session Close Skill (`/check`) | Skill added — integration/automation pending |
-| Cross-session errors repeating | Error Audit Skill | Skill added — integration/automation pending |
-| Tests not run before push | QA integration hook | Slice 12 — planned |
+| Plan-to-PR file drift (Phase 2) | `plan-quality-gate` Phase 2 diff comparison | Deferred — Phase 1 section validation shipped |
+| Worktree edit outside plan scope | Worktree edit gate (PreToolUse on Edit/Write) | Deferred — optional |
+| Tests not run before push | QA integration hook | Planned |
