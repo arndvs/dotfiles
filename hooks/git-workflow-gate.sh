@@ -337,11 +337,16 @@ PENDING_WARN=""
 # history and is genuinely dangerous — block those.
 if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+reset([[:space:]]|\$)"; then
     if echo "$COMMAND" | grep -qE '[[:space:]]--hard([[:space:]]|$)'; then
-        # Extract ALL git reset segments so chained commands are each checked.
-        # e.g. `git reset --hard HEAD && git reset --hard HEAD~1` — second must block.
-        ALL_RESET_SEGS=$(echo "$COMMAND" | grep -oE 'git([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*[[:space:]]+reset([[:space:]]+[^;&|][^;&|]*)?' || true)
+        # Split on command boundaries so quoted text (e.g. echo "git reset --hard")
+        # stays within its segment and doesn't trigger a false positive.
+        ALL_RESET_SEGS=$(echo "$COMMAND" | sed 's/&&/\n/g; s/;/\n/g; s/||/\n/g')
         while IFS= read -r RESET_SEG; do
+            RESET_SEG=$(echo "$RESET_SEG" | sed 's/^[[:space:]]*//')
             [[ -z "$RESET_SEG" ]] && continue
+            # Only inspect segments that actually contain a reset command
+            if ! echo "$RESET_SEG" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+reset([[:space:]]|$)"; then
+                continue
+            fi
             if ! echo "$RESET_SEG" | grep -qE '[[:space:]]--hard([[:space:]]|$)'; then
                 continue
             fi
