@@ -275,11 +275,19 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+push([[:space:]]
             fi
         fi
     fi
-fi
 
-# ============================================================
-# GATE 3: Block branch switch with dirty working tree
-# ============================================================
+    # Frozen-branch detection: deny push if branch has a merged PR
+    # Requires gh CLI and network — fail-open on missing gh or timeout.
+    if command -v gh &>/dev/null; then
+        local_branch=$(git branch --show-current 2>/dev/null || echo "")
+        if [[ -n "$local_branch" ]]; then
+            merged_url=$(_timeout 2 gh pr list --head "$local_branch" --state merged --json url --jq '.[0].url' 2>/dev/null || true)
+            if [[ -n "$merged_url" ]]; then
+                _deny "🚫 Branch '$local_branch' is frozen — PR already merged ($merged_url). Create a new branch for further work."
+            fi
+        fi
+    fi
+fi
 if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+(checkout|switch)[[:space:]]"; then
     # Mask creation/restore forms so they don't count as bare switches.
     # A chained command like `git checkout -b tmp && git switch main` must still
