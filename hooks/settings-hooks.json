@@ -77,6 +77,15 @@
             "command": "\"$HOME/.claude/hooks/git-post-commit.sh\""
           }
         ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/feedback-memory-gate.py\""
+          }
+        ]
       }
     ],
     "InstructionsLoaded": [
