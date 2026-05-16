@@ -192,7 +192,7 @@ def phase2_check(plan_text, cwd, diff_files=None):
     # Compare plan files against diff
     missing = []
     for path_str in repo_files:
-        relative = normalize_to_repo_relative(path_str, None)
+        relative = normalize_to_repo_relative(path_str)
         if relative not in diff_files:
             missing.append(path_str)
 
@@ -210,7 +210,7 @@ def format_phase2_checklist(plan_text, missing, warnings):
     lines = ["PRE-PR AUDIT:"]
 
     for path_str in repo_files:
-        relative = normalize_to_repo_relative(path_str, "")
+        relative = normalize_to_repo_relative(path_str)
         if path_str in missing:
             lines.append(f"  [FAIL] {relative} -- not in diff")
         else:
@@ -220,7 +220,7 @@ def format_phase2_checklist(plan_text, missing, warnings):
         lines.append(f"  [WARN] {path_str} (external -- verify manually)")
 
     for path_str in conditional_files:
-        relative = normalize_to_repo_relative(path_str, "")
+        relative = normalize_to_repo_relative(path_str)
         lines.append(f"  [SKIP] {relative} (conditional)")
 
     fail_count = sum(1 for line in lines if "[FAIL]" in line)
