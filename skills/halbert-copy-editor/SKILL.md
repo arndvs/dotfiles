@@ -1,14 +1,6 @@
 ---
 name: halbert-copy-editor
-description: >
-  Edit and punch up sales copy, marketing emails, landing pages, ads, and any
-  persuasive writing using the Halbert Copywriting Method. Use this skill
-  whenever the user asks to edit, improve, review, or rewrite copy, sales
-  letters, email campaigns, ad copy, product descriptions, landing pages, or
-  any text meant to sell or persuade. Also trigger when the user asks to "make
-  this more compelling," "punch up my copy," "improve conversions," "make this
-  easier to read," or "edit my sales page." Apply even if the user just pastes
-  copy and says "what do you think?" — treat it as an editing request.
+description: Edit and punch up sales copy, marketing emails, landing pages, ads, and any persuasive writing using the Halbert Copywriting Method.
 ---
 
 # Halbert Copy Editor

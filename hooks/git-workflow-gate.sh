@@ -44,12 +44,12 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 # Match git as a command — after ^, ;, &&, ||, | (not bare whitespace,
 # which would false-positive on "echo git status").
 # Also matches shell wrappers: sudo git, command git, builtin git, env git.
-# env can carry flags (-i, -0, --), assignments (FOO=bar), and flag
-# arguments (-u VAR) before the command. The primary pattern handles
-# flags and assignments; the fallback catches complex env preambles
-# (e.g. env -u VARNAME git) that the primary pattern can't consume.
-if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git[[:space:]]' && \
-   ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*env[[:space:]]+((-[-a-zA-Z0-9]+|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|[^[:space:]=]+)[[:space:]]+)*git[[:space:]]'; then
+# sudo and env can carry flags with optional arguments (e.g. sudo -E,
+# sudo -u root, env -u VARNAME FOO=bar) before the wrapped command.
+# The regex allows optional non-flag tokens after each flag so the engine
+# backtracks to correctly match the target command.
+WRAPPER_PREFIX='(sudo([[:space:]]+-[-a-zA-Z0-9]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+([[:space:]]+[^-[:space:]=][^[:space:]]*)?)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*'
+if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git[[:space:]]'; then
     exit 0
 fi
 
@@ -155,8 +155,8 @@ fi
 # a different repository than the one that was validated.
 
 # --git-dir and --work-tree are unambiguous global-only options — scan anywhere.
-# Include sudo/command/builtin/env prefixes so `sudo git --git-dir=...` is also caught.
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git[^;&|]*(--git-dir(=|[[:space:]]+)|--work-tree(=|[[:space:]]+))'; then
+# Include wrapper prefixes so `sudo -E git --git-dir=...` is also caught.
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git[^;&|]*(--git-dir(=|[[:space:]]+)|--work-tree(=|[[:space:]]+))'; then
     _deny "🚫 Don't use git --git-dir or --work-tree in commands. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
 fi
 
@@ -170,7 +170,7 @@ fi
 # Only block when -C appears in the global-options slot (before the subcommand).
 # Global options are flag-like tokens (starting with -); the subcommand is the first
 # non-flag word after 'git'. Skip non-C flags (and their optional values) to reach -C.
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git([[:space:]]+-[^C[:space:]][^[:space:]]*([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+-C[[:space:]]'; then
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git([[:space:]]+-[^C[:space:]][^[:space:]]*([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+-C[[:space:]]'; then
     _deny "🚫 Don't use git -C in commands. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
 fi
 
@@ -184,7 +184,8 @@ GIT_OPTS='([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-
 # --- Pattern: command-boundary-anchored git (for per-gate checks) ---
 # Anchors to shell command boundaries (^, ;, &&, ||, |) so that
 # quoted git commands (e.g. echo "git push --force") don't match.
-CMD_GIT='(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(sudo[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*git'
+# Uses the same WRAPPER_PREFIX as the initial detector for consistency.
+CMD_GIT="(^|;|&&|\\|\\||\\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*${WRAPPER_PREFIX}git"
 
 # ============================================================
 # GATE 0: Block cd + git command chains (&&, ;, or ||)
@@ -210,6 +211,13 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:
 
     if [[ -n "$local_branch" ]] && echo "$local_branch" | grep -qxE "$protected"; then
         _deny "🚫 Cannot commit directly to '$local_branch'. Create a feature branch first: git checkout -b ai/<type>/<description>"
+    fi
+
+    # Check if the command also switches to a protected branch before committing.
+    # e.g. `git switch main && git commit -m "fix: x"` — the commit targets main
+    # after the switch, but the hook only sees the pre-switch branch above.
+    if echo "$COMMAND" | grep -qE "(checkout|switch)([[:space:]]+-[^[:space:]]+)*[[:space:]]+(${protected})([[:space:]]|;|&&|\|\||\||$)"; then
+        _deny "🚫 Cannot switch to a protected branch and commit in the same command. Use separate tool calls so the commit gate can verify the target branch."
     fi
 
     # Validate commit message format (only if -m/--message flag present)
@@ -246,19 +254,23 @@ fi
 # GATE 2: Block push safety violations
 # ============================================================
 if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+push([[:space:]]|\$)"; then
-    # Extract the git push segment (up to the next ;, &&, ||, or end-of-string)
+    # Extract ALL git push segments in the command (up to the next ;, &&, ||, or end-of-string)
     # so force-flag checks don't match tokens in later chained commands.
-    PUSH_SEG=$(echo "$COMMAND" | grep -oE 'git([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*[[:space:]]+push([[:space:]]+[^;&|][^;&|]*)*' | head -1) || true
+    # Check each segment independently to catch `git push origin main && git push --force origin main`.
+    ALL_PUSH_SEGS=$(echo "$COMMAND" | grep -oE 'git([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*[[:space:]]+push([[:space:]]+[^;&|][^;&|]*)*' || true)
+    while IFS= read -r PUSH_SEG; do
+        [[ -z "$PUSH_SEG" ]] && continue
 
-    # Block force-push without --force-with-lease (handles --force, -f, combined short flags like -fu, and +refspec)
-    if echo "$PUSH_SEG" | grep -qE '[[:space:]](--force|-f|-[a-zA-Z]*f[a-zA-Z]*)([[:space:]]|$)' && ! echo "$PUSH_SEG" | grep -qE '[[:space:]]--force-with-lease'; then
-        _deny "🚫 Force-push without --force-with-lease is dangerous. Use --force-with-lease to protect against overwriting others' work."
-    fi
+        # Block force-push without --force-with-lease (handles --force, -f, combined short flags like -fu, and +refspec)
+        if echo "$PUSH_SEG" | grep -qE '[[:space:]](--force|-f|-[a-zA-Z]*f[a-zA-Z]*)([[:space:]]|$)' && ! echo "$PUSH_SEG" | grep -qE '[[:space:]]--force-with-lease'; then
+            _deny "🚫 Force-push without --force-with-lease is dangerous. Use --force-with-lease to protect against overwriting others' work."
+        fi
 
-    # Block +refspec force-update (e.g. git push origin +HEAD:main)
-    if echo "$PUSH_SEG" | grep -qE '[[:space:]]\+[^[:space:]]+' && ! echo "$PUSH_SEG" | grep -qE '[[:space:]]--force-with-lease'; then
-        _deny "🚫 Refspec prefixed with '+' forces the update. Use --force-with-lease instead of +refspec."
-    fi
+        # Block +refspec force-update (e.g. git push origin +HEAD:main)
+        if echo "$PUSH_SEG" | grep -qE '[[:space:]]\+[^[:space:]]+' && ! echo "$PUSH_SEG" | grep -qE '[[:space:]]--force-with-lease'; then
+            _deny "🚫 Refspec prefixed with '+' forces the update. Use --force-with-lease instead of +refspec."
+        fi
+    done <<< "$ALL_PUSH_SEGS"
 
     # Check if behind origin (only if configured — opt-in via .ctrlshft)
     # Network calls inside a pre-flight gate add latency and can fail on
@@ -302,8 +314,13 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+(checkout|switch
 fi
 
 # ============================================================
-# GATE 4: Block git reset --hard (destructive)
+# GATES 4–6: Destructive operation checks
 # ============================================================
+# Warning-only gates (4, 6) must not exit before blocking gates (5).
+# Collect warnings and emit them after all blocking gates have run.
+PENDING_WARN=""
+
+# GATE 4: Block git reset --hard (destructive)
 # reset --hard HEAD (no ~N) is a common "discard working tree" idiom,
 # roughly equivalent to `git checkout -- .`. Warn instead of block.
 # reset --hard with a different target (HEAD~N, a SHA, a branch) rewrites
@@ -314,7 +331,7 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+reset([[:space:]
         # HEAD~N, HEAD^, SHA, branch name = history rewrite (block).
         reset_target=$(echo "$COMMAND" | grep -oE '[[:space:]]--hard[[:space:]]+[^[:space:]-][^[:space:]]*' | sed 's/.*--hard[[:space:]]*//' | head -1) || true
         if [[ -z "$reset_target" || "$reset_target" == "HEAD" || "$reset_target" == "@" ]]; then
-            _warn "⚠️ git reset --hard HEAD discards all uncommitted changes. Consider git stash if you might need them later."
+            PENDING_WARN="⚠️ git reset --hard HEAD discards all uncommitted changes. Consider git stash if you might need them later."
         else
             _deny "🚫 git reset --hard (to a non-HEAD target) rewrites history irreversibly. Use git stash or git reset --soft instead."
         fi
@@ -339,9 +356,19 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+rebase([[:space:
     if echo "$COMMAND" | grep -qE '[[:space:]](-i|--interactive)([[:space:]]|$)'; then
         local_branch=$(git branch --show-current 2>/dev/null || echo "")
         if [[ -n "$local_branch" ]] && git rev-parse --verify "origin/$local_branch" &>/dev/null; then
-            _warn "⚠️ Interactive rebase on a pushed branch ($local_branch) will rewrite history. You'll need --force-with-lease to push afterward. Proceed with caution."
+            local msg="⚠️ Interactive rebase on a pushed branch ($local_branch) will rewrite history. You'll need --force-with-lease to push afterward. Proceed with caution."
+            if [[ -n "$PENDING_WARN" ]]; then
+                PENDING_WARN="${PENDING_WARN} ${msg}"
+            else
+                PENDING_WARN="$msg"
+            fi
         fi
     fi
+fi
+
+# Emit deferred warnings (after all blocking gates have run)
+if [[ -n "$PENDING_WARN" ]]; then
+    _warn "$PENDING_WARN"
 fi
 
 # --- All gates passed ---

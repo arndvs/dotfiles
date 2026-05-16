@@ -1,6 +1,6 @@
 ---
 name: pr-preflight
-description: Exhaustive pre-PR audit that front-runs code review tools. Run before opening or updating a PR. Catches the same class of issues that Copilot/reviewers find iteratively, so review is one pass instead of many. Works across React, bash, Python, or any codebase — detects the stack and adapts.
+description: Exhaustive pre-PR audit that front-runs code review tools by catching the same issues Copilot/reviewers find iteratively, across any stack.
 ---
 
 # PR Preflight (`/preflight`)
@@ -57,17 +57,19 @@ ls package.json tsconfig.json pyproject.toml Cargo.toml go.mod \
 
 # Node / TypeScript / React
 if [[ -f package.json ]]; then
-  echo "=== TypeScript ===" && npx tsc --noEmit 2>&1 | tail -20 || true
-  echo "=== Lint ===" && npm run lint 2>&1 | tail -20 || true
-  echo "=== Tests ===" && npm test -- --passWithNoTests 2>&1 | tail -30 || true
+  echo "=== TypeScript ===" && npx tsc --noEmit 2>&1; tsc_exit=$?; echo "(exit $tsc_exit)" | tail -20
+  echo "=== Lint ===" && npm run lint 2>&1; lint_exit=$?; echo "(exit $lint_exit)" | tail -20
+  echo "=== Tests ===" && npm test -- --passWithNoTests 2>&1; test_exit=$?; echo "(exit $test_exit)" | tail -30
 fi
 
 # Bash
 if find . -name '*.sh' -not -path '*/.git/*' | grep -q .; then
-  command -v shellcheck &>/dev/null && \
-    find . -name '*.sh' -not -path '*/.git/*' | \
-    xargs shellcheck --severity=warning 2>&1 || \
+  if ! command -v shellcheck &>/dev/null; then
     echo "SKIP: shellcheck not installed"
+  else
+    find . -name '*.sh' -not -path '*/.git/*' | \
+    xargs shellcheck --severity=warning 2>&1; sc_exit=$?; echo "(exit $sc_exit)"
+  fi
 fi
 
 # Python

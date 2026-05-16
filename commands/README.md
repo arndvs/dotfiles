@@ -19,10 +19,14 @@ User types /work → commands/work.md → loads skills/do-work/SKILL.md → exec
 | `/address-review` | `review-pr-copilot` | Fetch and address Copilot review comments on active PR |
 | `/audit` | `codebase-audit` | Ruthless audit reporting only real problems |
 | `/check` | `session-close` | Pre-flight checklist before ending a coding session |
+| `/commit` | `atomic-commits` | Checkpoint work with atomic conventional commits |
+| `/compliance-audit` | `compliance-audit` | Review diff against active rules, flag violations |
 | `/document` | `document` | Write, update, or audit documentation |
 | `/explore` | `explore` | Deep codebase exploration via parallel subagents |
 | `/plan` | `architect` | Implementation plan with vertical slices |
+| `/preflight` | `pr-preflight` | Exhaustive pre-PR audit that front-runs review tools |
 | `/review` | `code-review` | Focused review of staged or recent changes |
+| `/ship` | `atomic-commits` | Ship work to remote with PR creation |
 | `/test` | `tdd` | Red-green-refactor workflow |
 | `/work` | `do-work` | Core execution loop — understand, plan, implement, validate, commit |
 

@@ -21,9 +21,11 @@ Skills are auto-discovered from `skills/*/SKILL.md`. The agent reads each skill'
 | `explore` | "explore", "understand", "investigate", "how does X work" | Deep codebase exploration via parallel subagents |
 | `frontend-component-style` | "build a component", "scaffold this", "extract this into" | Component file structure, naming, and layer separation |
 | `grill-me` | "grill me", "interview me", "ask me questions" | Relentless interrogation until shared understanding |
+| `halbert-copy-editor` | "punch up my copy", "edit sales page", "improve conversions" | Edit persuasive writing using the Halbert Copywriting Method |
 | `improve-architecture` | "improve architecture", "find shallow modules" | Deep module analysis for architectural improvements |
 | `npm-security-audit` | "is this package safe", "audit this project" | Layered security audit before npm install |
 | `prd-to-issues` | "break this PRD into issues", "create a kanban" | PRD → vertical slices → GitHub issues (AFK/HITL labeled) |
+| `pr-preflight` | "/preflight", "pre-PR audit" | Exhaustive pre-PR audit that front-runs review tools |
 | `research` | "research", "investigate before building", "flush unknowns" | Cache exploration into a research document |
 | `review-pr-copilot` | "address review comments", "fix PR comments" | Triage Copilot review comments, fix, resolve threads |
 | `sanity-best-practices` | Working with Sanity CMS content, schemas, GROQ | Sanity development patterns and framework integrations |
