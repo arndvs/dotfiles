@@ -27,6 +27,7 @@ User types /work → commands/work.md → loads skills/do-work/SKILL.md → exec
 | `/preflight` | `pr-preflight` | Exhaustive pre-PR audit that front-runs review tools |
 | `/review` | `code-review` | Focused review of staged or recent changes |
 | `/ship` | `atomic-commits` | Ship work to remote with PR creation |
+| `/stress-test` | `stress-test` | Adversarial rule compliance stress test |
 | `/test` | `tdd` | Red-green-refactor workflow |
 | `/work` | `do-work` | Core execution loop — understand, plan, implement, validate, commit |
 
