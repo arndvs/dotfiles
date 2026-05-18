@@ -68,11 +68,21 @@ fi
 # Block any command that references protected secrets paths (covers relative, nested, and home paths)
 # Handles leading env assignments, sudo, command, builtin, env prefixes
 # Covers .env.secrets, any file under secrets/, and ~/dotfiles/secrets/
-# Blocks all commands (not just cat/less/more/head/tail) so grep, sed, awk, cp, etc. are also caught.
+# Blocks read/copy/exfiltration commands so grep, sed, awk, cp, cat, etc. are caught.
 # Protected secrets paths are denied even when passed through wrapper scripts.
+# Exempts safe git operations (add, status, diff, log, show, commit, rm) and
+# tracked documentation/templates (README*, CONTRIBUTING*, *.md, *.template)
+# so contributors can commit allowed non-secret files under secrets/.
 SECRETS_PATH_PATTERN='(([^[:space:]]*/)?\.env\.secrets|([^[:space:]]*/)?secrets/[^[:space:]]+|~/dotfiles/secrets/[^[:space:]]+)'
+SAFE_SECRETS_FILE='secrets/(README[^[:space:]]*|CONTRIBUTING[^[:space:]]*|[^[:space:]]+\.(md|template|example))([[:space:]]|$)'
 if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'[^[:space:];|&(){}]+([[:space:]]+[^;|&(){}[:space:]]+)*[[:space:]]+'"$SECRETS_PATH_PATTERN"; then
-    _deny "🔒 Blocked: command references protected secrets path."
+    # Allow git repo operations on non-sensitive tracked files
+    if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git[[:space:]]+(add|status|diff|log|show|commit|rm)[[:space:]]' && \
+       echo "$COMMAND" | grep -qE "$SAFE_SECRETS_FILE"; then
+        : # Safe git operation on tracked documentation/template — allow
+    else
+        _deny "🔒 Blocked: command references protected secrets path."
+    fi
 fi
 
 # Block nested shell invocations that reference credential variables or secrets paths
