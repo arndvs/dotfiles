@@ -320,6 +320,14 @@ if [[ -f "$DOTFILES/hooks/settings-hooks.json" ]]; then
             jq -s '.[0] * .[1]' "$CLAUDE_DIR/settings.json" "$DOTFILES/hooks/settings-hooks.json" > "$CLAUDE_DIR/settings.json.tmp"
             mv "$CLAUDE_DIR/settings.json.tmp" "$CLAUDE_DIR/settings.json"
             green "  Merged hook config into ~/.claude/settings.json"
+
+            # Ensure dangerouslyDisableSandbox is in permissions.deny
+            _deny_pattern="Bash(dangerouslyDisableSandbox*)"
+            if ! jq -e --arg p "$_deny_pattern" '(.permissions.deny // []) | index($p)' "$CLAUDE_DIR/settings.json" >/dev/null 2>&1; then
+                jq --arg p "$_deny_pattern" '.permissions.deny = ((.permissions.deny // []) + [$p])' "$CLAUDE_DIR/settings.json" > "$CLAUDE_DIR/settings.json.tmp"
+                mv "$CLAUDE_DIR/settings.json.tmp" "$CLAUDE_DIR/settings.json"
+                green "  Added dangerouslyDisableSandbox guard to permissions.deny"
+            fi
         else
             yellow "  jq not found — cannot merge hooks into settings.json"
             yellow "  Install jq and re-run, or manually merge hooks/settings-hooks.json"
@@ -328,6 +336,60 @@ if [[ -f "$DOTFILES/hooks/settings-hooks.json" ]]; then
         cp "$DOTFILES/hooks/settings-hooks.json" "$CLAUDE_DIR/settings.json"
         green "  Created ~/.claude/settings.json with hook configuration"
     fi
+fi
+
+# ── 7.5. Gemini CLI safety defaults ──────────────────────────────────────────
+echo
+green "[7.5/13] Gemini CLI safety defaults"
+GEMINI_DIR="$HOME/.gemini"
+GEMINI_SAFETY="$DOTFILES/agents/gemini-safety.json"
+
+if [[ -f "$GEMINI_SAFETY" ]]; then
+    mkdir -p "$GEMINI_DIR"
+    if [[ -f "$GEMINI_DIR/settings.json" ]]; then
+        if command -v jq &>/dev/null; then
+            jq -s '.[0] * .[1]' "$GEMINI_DIR/settings.json" "$GEMINI_SAFETY" > "$GEMINI_DIR/settings.json.tmp"
+            mv "$GEMINI_DIR/settings.json.tmp" "$GEMINI_DIR/settings.json"
+            green "  Merged Gemini safety defaults into ~/.gemini/settings.json"
+        else
+            yellow "  jq not found — cannot merge Gemini safety defaults"
+        fi
+    else
+        cp "$GEMINI_SAFETY" "$GEMINI_DIR/settings.json"
+        green "  Created ~/.gemini/settings.json with safety defaults"
+    fi
+fi
+
+# ── 7.6. Codex CLI safety defaults ───────────────────────────────────────────
+echo
+green "[7.6/13] Codex CLI safety defaults"
+CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"
+
+if [[ -d "$CODEX_DIR" ]] || command -v codex &>/dev/null; then
+    mkdir -p "$CODEX_DIR"
+
+    # Ensure [features] codex_hooks = true in config.toml
+    if [[ -f "$CODEX_DIR/config.toml" ]]; then
+        if ! grep -qF "codex_hooks" "$CODEX_DIR/config.toml"; then
+            printf '\n[features]\ncodex_hooks = true\n' >> "$CODEX_DIR/config.toml"
+            green "  Added [features] codex_hooks = true to ~/.codex/config.toml"
+        else
+            yellow "  codex_hooks feature flag already set — skipping"
+        fi
+    fi
+
+    # Codex hooks require sandshell's hook scripts — suggest if not installed
+    if [[ ! -f "$CODEX_DIR/hooks.json" ]]; then
+        if command -v sandshell &>/dev/null; then
+            yellow "  Run 'sandshell apply codex' to install Codex Pre/PostToolUse hooks"
+        else
+            yellow "  Install sandshell and run 'sandshell apply codex' for Codex hooks"
+        fi
+    else
+        yellow "  ~/.codex/hooks.json already exists — skipping"
+    fi
+else
+    yellow "  Codex not detected — skipping"
 fi
 
 # ── 8. Symlink ~/.copilot/skills/ ────────────────────────────────────────────

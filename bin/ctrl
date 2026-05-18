@@ -328,6 +328,144 @@ except:
         esac
         ;;
 
+    # ── bridge ─────────────────────────────────────────────────────────────────
+    bridge)
+        _bridge_root="${BRIDGE_ROOT:-$HOME/bridge}"
+        _bridge_cmd="${1:-status}"
+        shift 2>/dev/null || true
+
+        case "$_bridge_cmd" in
+            start)
+                systemctl --user start bridge-webhook.service
+                _wcount="${WORKER_COUNT:-1}"
+                for _i in $(seq 1 "$_wcount"); do
+                    systemctl --user start "bridge-worker@${_i}.service"
+                done
+                green "Bridge started ($_wcount worker$([ "$_wcount" -gt 1 ] && echo s))"
+                ;;
+            stop)
+                systemctl --user stop 'bridge-worker@*.service' bridge-webhook.service 2>/dev/null || true
+                green "Bridge stopped"
+                ;;
+            restart)
+                systemctl --user stop 'bridge-worker@*.service' bridge-webhook.service 2>/dev/null || true
+                systemctl --user start bridge-webhook.service
+                _wcount="${WORKER_COUNT:-1}"
+                for _i in $(seq 1 "$_wcount"); do
+                    systemctl --user start "bridge-worker@${_i}.service"
+                done
+                green "Bridge restarted ($_wcount worker$([ "$_wcount" -gt 1 ] && echo s))"
+                ;;
+            status)
+                echo ""
+                green "Bridge status"
+                echo ""
+                systemctl --user status bridge-webhook.service --no-pager 2>/dev/null || yellow "  webhook: not installed"
+                echo ""
+                systemctl --user list-units 'bridge-worker@*.service' --no-pager 2>/dev/null || yellow "  workers: none"
+                echo ""
+                if [[ -f "$_bridge_root/state.db" ]]; then
+                    echo "  Queue:"
+                    sqlite3 "$_bridge_root/state.db" \
+                        "SELECT status, COUNT(*) as count FROM jobs GROUP BY status;" 2>/dev/null || echo "  (no jobs)"
+                else
+                    dim "  No state.db found — bridge not installed?"
+                    dim "  Run: ctrl bridge validate"
+                fi
+                echo ""
+                ;;
+            logs)
+                _logfile="$_bridge_root/logs/bridge.log"
+                if [[ ! -f "$_logfile" ]]; then
+                    yellow "No log file found at $_logfile"
+                    exit 0
+                fi
+                if [[ "${1:-}" == "-f" ]] || [[ "${1:-}" == "--follow" ]]; then
+                    tail -f "$_logfile"
+                else
+                    tail -50 "$_logfile"
+                    echo ""
+                    dim "  Run 'ctrl bridge logs -f' to follow"
+                fi
+                ;;
+            queue)
+                if [[ ! -f "$_bridge_root/state.db" ]]; then
+                    yellow "No state.db found at $_bridge_root"
+                    exit 1
+                fi
+                sqlite3 -header -column "$_bridge_root/state.db" \
+                    "SELECT id, status, repo_full_name, pr_number, iteration,
+                            enqueued_at
+                     FROM jobs ORDER BY id DESC LIMIT 20;"
+                ;;
+            workers)
+                systemctl --user list-units 'bridge-worker@*.service' --no-pager 2>/dev/null || true
+                if [[ -f "$_bridge_root/state.db" ]]; then
+                    echo ""
+                    sqlite3 -header -column "$_bridge_root/state.db" \
+                        "SELECT worker_id, COUNT(*) as active
+                         FROM jobs WHERE status='claimed' GROUP BY worker_id;" 2>/dev/null || true
+                fi
+                ;;
+            workspaces)
+                ls -la "$_bridge_root/workspaces/" 2>/dev/null || echo "  (none)"
+                ;;
+            replay)
+                _job_id="${1:-}"
+                if [[ -z "$_job_id" ]]; then
+                    red "usage: ctrl bridge replay <job-id>"
+                    exit 1
+                fi
+                if [[ ! -f "$_bridge_root/state.db" ]]; then
+                    red "No state.db found"
+                    exit 1
+                fi
+                sqlite3 "$_bridge_root/state.db" \
+                    "UPDATE jobs SET status='queued', claimed_at=NULL,
+                                     finished_at=NULL, error=NULL,
+                                     worker_id=NULL
+                     WHERE id=$_job_id;"
+                green "Job $_job_id re-queued."
+                ;;
+            mint)
+                if [[ -f "$DOTFILES/bin/verify-github-app-token.sh" ]]; then
+                    bash "$DOTFILES/bin/verify-github-app-token.sh" "$@"
+                else
+                    red "verify-github-app-token.sh not found."
+                    exit 1
+                fi
+                ;;
+            validate)
+                if [[ -f "$DOTFILES/bin/bridge-install.sh" ]]; then
+                    bash "$DOTFILES/bin/bridge-install.sh" --validate "$@"
+                else
+                    red "bridge-install.sh not found. Run: ctrl bootstrap"
+                    exit 1
+                fi
+                ;;
+            url)
+                echo "  Webhook endpoint: http://127.0.0.1:${BRIDGE_PORT:-8765}/webhook"
+                echo "  Health check:     http://127.0.0.1:${BRIDGE_PORT:-8765}/healthz"
+                dim "  Configure your reverse proxy to forward to this address."
+                ;;
+            --fg|foreground)
+                _venv="$DOTFILES/secrets/.venv"
+                if [[ ! -x "$_venv/bin/uvicorn" ]]; then
+                    red "uvicorn not found in $_venv. Run: ctrl bridge validate"
+                    exit 1
+                fi
+                cd "$DOTFILES" && "$_venv/bin/uvicorn" \
+                    bridge.webhook:app --host 127.0.0.1 \
+                    --port "${BRIDGE_PORT:-8765}" --reload
+                ;;
+            *)
+                red "Unknown bridge subcommand: $_bridge_cmd"
+                echo "  Usage: ctrl bridge [start|stop|restart|status|logs|queue|workers|workspaces|replay|mint|validate|url|--fg]"
+                exit 1
+                ;;
+        esac
+        ;;
+
     # ── sync-settings ──────────────────────────────────────────────────────────
     sync-settings)
         if [[ ! -f "$DOTFILES/bin/sync-settings.sh" ]]; then
@@ -482,6 +620,22 @@ except:
         echo "  ctrl hud --fg          run HUD in foreground (debug mode)"
         echo "  ctrl hud open          open HUD in browser"
         echo "  ctrl hud url           print the HUD URL"
+        echo ""
+        echo "  Copilot Review Bridge"
+        echo "  ──────────────────────────────────────────────────────────────"
+        echo "  ctrl bridge            show bridge status"
+        echo "  ctrl bridge start      start webhook + worker(s)"
+        echo "  ctrl bridge stop       stop all bridge services"
+        echo "  ctrl bridge restart    restart bridge services"
+        echo "  ctrl bridge logs       show bridge log (add -f to follow)"
+        echo "  ctrl bridge queue      show recent jobs"
+        echo "  ctrl bridge workers    list active workers"
+        echo "  ctrl bridge workspaces list PR workspaces"
+        echo "  ctrl bridge replay <id> re-queue a failed job"
+        echo "  ctrl bridge mint       test GitHub App token"
+        echo "  ctrl bridge validate   run install checks"
+        echo "  ctrl bridge url        show webhook endpoint"
+        echo "  ctrl bridge --fg       run webhook in foreground"
         echo ""
         echo "  Settings"
         echo "  ──────────────────────────────────────────────────────────────"

@@ -1,0 +1,13 @@
+{
+  "tools": {
+    "sandbox": true,
+    "sandboxNetworkAccess": false
+  },
+  "security": {
+    "folderTrust": {
+      "enabled": true
+    },
+    "disableYoloMode": true,
+    "disableAlwaysAllow": true
+  }
+}
