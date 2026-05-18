@@ -37,6 +37,9 @@ if echo "$COMMAND" | grep -qiE "$MIGRATION_PATTERN"; then
     # Check each command segment independently to prevent chained bypasses.
     # e.g. DATABASE_URL=test npx prisma migrate deploy && npx prisma migrate deploy
     # — the first segment has a test prefix but the second does not.
+    # Also split on pipes (|) because env assignments only apply to the first
+    # pipeline component: `DATABASE_URL=test echo ok | npx prisma migrate deploy`
+    # gives the test URL only to `echo`, not to the migration on the pipe's RHS.
     has_unsafe_migration=false
     while IFS= read -r segment; do
         segment=$(echo "$segment" | sed 's/^[[:space:]]*//')
@@ -52,7 +55,7 @@ if echo "$COMMAND" | grep -qiE "$MIGRATION_PATTERN"; then
             fi
             has_unsafe_migration=true
         fi
-    done <<< "$(echo "$COMMAND" | sed 's/&&/\n/g; s/;/\n/g; s/||/\n/g')"
+    done <<< "$(echo "$COMMAND" | sed 's/&&/\n/g; s/;/\n/g; s/||/\n/g; s/|/\n/g')"
 
     if [[ "$has_unsafe_migration" == "true" ]]; then
         _deny "⚠️ Migration detected. Confirm this targets the correct database before proceeding."

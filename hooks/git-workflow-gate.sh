@@ -54,12 +54,14 @@ if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-
 fi
 
 # --- Helper: portable timeout (macOS may lack timeout) ---
+# When no timeout utility is available, return failure so callers that
+# use `if _timeout ...` gracefully skip the bounded operation rather
+# than running it unbounded (which could hang a PreToolUse gate).
 _timeout() {
     if command -v timeout &>/dev/null; then
         timeout "$@"
     else
-        # Skip timeout wrapper — run command directly
-        "${@:2}"
+        return 1
     fi
 }
 
