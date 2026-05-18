@@ -33,9 +33,9 @@ ctrl bridge logs
 
 ## Required Environment Variables
 
-### Non-sensitive (`secrets/.env.agent` or `secrets/.env.bridge`)
+### Non-sensitive (`secrets/.env.agent`)
 
-These are sourced into shells or loaded via systemd EnvironmentFile. No secrets.
+Sourced into shells or loaded via systemd EnvironmentFile. No secrets.
 
 | Variable | Description |
 |---|---|
@@ -44,20 +44,28 @@ These are sourced into shells or loaded via systemd EnvironmentFile. No secrets.
 | `BRIDGE_REPO_ALLOWLIST` | Comma-separated `owner/repo` list |
 | `BRIDGE_MAX_ITERATIONS` | Loop cap per PR (default: 3) |
 
-### Secrets (`secrets/.env.secrets`)
+### Webhook secret (`secrets/.env.bridge`)
 
-Process-scoped only — injected via systemd EnvironmentFile or `run-with-secrets.sh`.
-Never sourced into interactive shells.
+Process-scoped only — loaded as a required systemd EnvironmentFile by
+`bridge-webhook.service`. Never sourced into interactive shells.
 
 | Variable | Description |
 |---|---|
 | `WEBHOOK_SECRET` | GitHub webhook secret (≥32 chars entropy) |
-| `GITHUB_APP_ID` | GitHub App ID for token minting (worker only) |
-| `GITHUB_APP_PRIVATE_KEY_B64` | Base64-encoded private key (worker only, used by mint script) |
-| `GITHUB_APP_INSTALLATION_ID` | Installation ID (worker only) |
 
-> **Note:** The webhook receiver only needs `WEBHOOK_SECRET`. GitHub App
-> credentials are required only by the worker process for token minting.
+### Worker secrets (`secrets/.env.secrets`)
+
+Process-scoped only — loaded by `bridge-worker@.service` via EnvironmentFile.
+Never sourced into interactive shells.
+
+| Variable | Description |
+|---|---|
+| `GITHUB_APP_ID` | GitHub App ID for token minting |
+| `GITHUB_APP_PRIVATE_KEY_B64` | Base64-encoded private key (used by mint script) |
+| `GITHUB_APP_INSTALLATION_ID` | Installation ID |
+
+> **Note:** The webhook receiver only needs `WEBHOOK_SECRET` (from `.env.bridge`).
+> GitHub App credentials are required only by the worker (from `.env.secrets`).
 
 ## MVP Constraints (Accepted)
 

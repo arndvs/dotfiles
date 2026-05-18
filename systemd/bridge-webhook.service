@@ -8,9 +8,8 @@ Type=simple
 EnvironmentFile=%h/dotfiles/secrets/.env.agent
 # NOTE: .env.secrets deliberately NOT loaded here — the webhook process
 # only needs WEBHOOK_SECRET, not the full secrets file (GitHub App key,
-# API keys, etc.). WEBHOOK_SECRET is set below or via a dedicated
-# bridge-specific env file to reduce blast radius.
-EnvironmentFile=-%h/dotfiles/secrets/.env.bridge
+# API keys, etc.). WEBHOOK_SECRET lives in .env.bridge (required).
+EnvironmentFile=%h/dotfiles/secrets/.env.bridge
 Environment=BRIDGE_PORT=8765
 WorkingDirectory=%h/dotfiles
 ExecStart=%h/dotfiles/secrets/.venv/bin/uvicorn bridge.webhook:app --host 127.0.0.1 --port ${BRIDGE_PORT}
