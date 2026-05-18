@@ -15,6 +15,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from .git_creds import git_credential_env
 from .github import Token
 
 logger = logging.getLogger(__name__)
@@ -32,19 +33,8 @@ def workspace_path(workspaces_root: Path, claim_key: str) -> Path:
 
 
 def _git_env(token: Token) -> dict[str, str]:
-    """Build env dict with ephemeral git credential injection.
-
-    Uses GIT_CONFIG_COUNT/GIT_CONFIG_KEY_N/GIT_CONFIG_VALUE_N to inject
-    credentials without ever writing them to .git/config or the remote URL.
-    """
-    return {
-        **os.environ,
-        "GIT_CONFIG_COUNT": "1",
-        "GIT_CONFIG_KEY_0": "url.https://x-access-token:{}@github.com/.insteadOf".format(
-            token.value
-        ),
-        "GIT_CONFIG_VALUE_0": "https://github.com/",
-    }
+    """Build env dict with ephemeral git credential injection."""
+    return git_credential_env(token)
 
 
 def prepare(

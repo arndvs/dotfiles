@@ -21,6 +21,7 @@ import traceback
 
 from . import db, github, hud, issue, workspace
 from .config import Config
+from .git_creds import git_credential_env
 
 logger = logging.getLogger("bridge.worker")
 
@@ -176,15 +177,9 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
 
     # 6. Exec shft afk 1 inside the workspace.
     emit("bridge.job.shft_invoked")
-    env = os.environ.copy()
+    env = git_credential_env(token)
     env["BRIDGE_WORKSPACE"] = str(ws_path)
     env["GH_TOKEN"] = token.value  # shft uses gh CLI internally
-    # Inject git credentials via env (matches workspace.py pattern)
-    env["GIT_CONFIG_COUNT"] = "1"
-    env["GIT_CONFIG_KEY_0"] = (
-        f"url.https://x-access-token:{token.value}@github.com/.insteadOf"
-    )
-    env["GIT_CONFIG_VALUE_0"] = "https://github.com/"
 
     try:
         proc = subprocess.run(
