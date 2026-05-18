@@ -16,7 +16,7 @@ graph TB
         INST["instructions/<br/>8 context/service/task files"]
         SKILLS["skills/<br/>26 public workflows"]
         AGENTS["agents/<br/>6 subagent personas"]
-        CMDS["commands/<br/>13 slash dispatchers"]
+        CMDS["commands/<br/>14 slash dispatchers"]
         HOOKS["hooks/<br/>12 lifecycle guards"]
         BIN["bin/<br/>25 scripts"]
         SHFT["shft/<br/>autonomous loop"]
@@ -47,7 +47,7 @@ graph TB
 | [instructions/](../instructions/README.md) | Context, service, and task-triggered knowledge (T1–T2) | 8 files + `_local/`, tiered loading |
 | [skills/](../skills/README.md) | Multi-step workflow definitions (T4) | 26 public skills, triggered by task description |
 | [agents/](../agents/README.md) | Read-only subagent personas | 6 agents across 3 model tiers (Haiku/Sonnet/Opus) |
-| [commands/](../commands/README.md) | `/slash` command dispatchers | 13 commands, each loads one skill |
+| [commands/](../commands/README.md) | `/slash` command dispatchers | 14 commands, each loads one skill |
 | [hooks/](../hooks/README.md) | Claude Code lifecycle guards | Block secrets, migrations, auto-compaction; format on stop |
 | [bin/](../bin/README.md) | CLI scripts and infrastructure | Bootstrap, context detection, HUD daemon, secret management |
 | [shft/](../shft/README.md) | Autonomous execution loop | HITL and AFK modes, `srt`-sandboxed, issue-driven |

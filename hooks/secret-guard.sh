@@ -58,6 +58,12 @@ if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:spa
     _deny "🔒 Blocked: bare env/printenv dumps all variables. Use echo \$SPECIFIC_VAR instead."
 fi
 
+# Block printenv with credential-named arguments (e.g. printenv SECRET_KEY)
+# This prevents targeted disclosure via printenv of individual sensitive vars.
+if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'(printenv|env)[[:space:]]+[A-Za-z_]*(_)?(SECRET|KEY|TOKEN|PASSWORD|CREDENTIAL|AUTH|PRIVATE)[A-Za-z_0-9]*([[:space:]]*($|;|&&|\|\||\|))'; then
+    _deny "🔒 Blocked: printenv with credential variable name. Use approved credential access methods."
+fi
+
 # Block reads of secrets files (covers bare name + path prefixes)
 # Handles leading env assignments, sudo, command, builtin, env prefixes
 if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'(cat|less|more|head|tail)[[:space:]]+(([^[:space:]]*/)?\.env\.secrets|([^[:space:]]*/)?secrets/\.env|~/dotfiles/secrets/)'; then
@@ -69,7 +75,7 @@ fi
 # Handles sudo, command, builtin, env prefixes before the executed curl.
 # Allows leading VAR=value assignments before wrapper prefixes.
 # Shell control keywords (then/do/else) are treated as command boundaries.
-if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'curl([[:space:]]+[^|;]+)?[[:space:]]*\|[[:space:]]*(ba)?sh([[:space:]]*($|;|&&|\|\||\|))'; then
+if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'curl([[:space:]]+[^|;]+)?[[:space:]]*\|[[:space:]]*(ba)?sh([[:space:]]+[^;|&[:space:]][^;|&]*)?[[:space:]]*($|;|&&|\|\||\|)'; then
     _deny "🔒 Blocked: piped install detected. Download first, inspect, then execute."
 fi
 
