@@ -47,7 +47,10 @@ WRAPPER_PREFIX='(sudo([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^
 # --- Deny nested shell migration invocations outright ---
 # A nested shell like `bash -c 'npx prisma migrate deploy'` cannot be reliably
 # parsed for per-segment env-prefix checks. Deny and require direct invocation.
-NESTED_SHELL_MIGRATION='(bash|sh|dash|ksh|zsh)([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?)*[[:space:]]+-[[:alnum:]]*c[[:alnum:]]*[[:space:]]+'
+# Anchored to command boundaries so mere mentions in echo/grep don't false-positive.
+COMMAND_BOUNDARY='((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)'
+ASSIGNMENT_PREFIX='([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'
+NESTED_SHELL_MIGRATION="${COMMAND_BOUNDARY}${ASSIGNMENT_PREFIX}${WRAPPER_PREFIX}(bash|sh|dash|ksh|zsh)([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?)*[[:space:]]+-[[:alnum:]]*c[[:alnum:]]*[[:space:]]+"
 if echo "$COMMAND" | grep -qiE "${NESTED_SHELL_MIGRATION}.*${MIGRATION_PATTERN}"; then
     _deny "⚠️ Blocked: don't wrap migration commands in nested shells (bash -c, sh -c). Invoke the migration tool directly so the guard can validate the target database."
 fi

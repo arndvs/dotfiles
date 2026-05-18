@@ -69,11 +69,10 @@ fi
 # Handles leading env assignments, sudo, command, builtin, env prefixes
 # Covers .env.secrets, any file under secrets/, and ~/dotfiles/secrets/
 # Blocks all commands (not just cat/less/more/head/tail) so grep, sed, awk, cp, etc. are also caught.
-# Exempts run-with-secrets.sh which is the approved access method.
+# Protected secrets paths are denied even when passed through wrapper scripts.
 SECRETS_PATH_PATTERN='(([^[:space:]]*/)?\.env\.secrets|([^[:space:]]*/)?secrets/[^[:space:]]+|~/dotfiles/secrets/[^[:space:]]+)'
-if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'[^[:space:];|&(){}]+([[:space:]]+[^;|&(){}[:space:]]+)*[[:space:]]+'"$SECRETS_PATH_PATTERN" && \
-   ! echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'run-with-secrets\.sh([[:space:]]|$)'; then
-    _deny "🔒 Blocked: command references protected secrets path. Use run-with-secrets.sh for credential access."
+if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'[^[:space:];|&(){}]+([[:space:]]+[^;|&(){}[:space:]]+)*[[:space:]]+'"$SECRETS_PATH_PATTERN"; then
+    _deny "🔒 Blocked: command references protected secrets path."
 fi
 
 # Block nested shell invocations that reference credential variables or secrets paths

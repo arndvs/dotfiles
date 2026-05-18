@@ -61,6 +61,13 @@ if ! echo "$COMMAND" | grep -qE "$TOP_LEVEL_GIT|$NESTED_SHELL_GIT"; then
     exit 0
 fi
 
+# --- Helper: deny output (JSON-safe via jq) ---
+# Defined early so the nested-shell denial below can use it.
+_deny() {
+    jq -cn --arg reason "$1" '{"hookSpecificOutput":{"permissionDecision":"deny","permissionDecisionReason":$reason}}' >&2
+    exit 2
+}
+
 # --- Deny nested shell git invocations outright ---
 # If the command contains NESTED_SHELL_GIT, the child shell string cannot be
 # reliably parsed for per-gate checks (commit message validation, force-push
@@ -151,11 +158,8 @@ _config_bool() {
     echo "$default"
 }
 
-# --- Helper: deny output (JSON-safe via jq) ---
-_deny() {
-    jq -cn --arg reason "$1" '{"hookSpecificOutput":{"permissionDecision":"deny","permissionDecisionReason":$reason}}' >&2
-    exit 2
-}
+# (NOTE: _deny is defined earlier, near line 63, so the nested-shell
+# denial can use it before this point in the file.)
 
 # --- Helper: warn output (allow with context, JSON-safe via jq) ---
 _warn() {
