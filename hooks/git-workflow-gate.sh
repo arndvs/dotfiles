@@ -159,7 +159,9 @@ fi
 
 # --git-dir and --work-tree are unambiguous global-only options — scan anywhere.
 # Include wrapper prefixes so `sudo -E git --git-dir=...` is also caught.
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git[^;&|]*(--git-dir(=|[[:space:]]+)|--work-tree(=|[[:space:]]+))'; then
+# Also treat shell control keywords as command boundaries, so
+# `if true; then git --git-dir=/other status; fi` is detected.
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\||[[:space:]]+(then|do|else))[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git[^;&|]*(--git-dir(=|[[:space:]]+)|--work-tree(=|[[:space:]]+))'; then
     _deny "🚫 Don't use git --git-dir or --work-tree in commands. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
 fi
 
@@ -173,7 +175,7 @@ fi
 # Only block when -C appears in the global-options slot (before the subcommand).
 # Global options are flag-like tokens (starting with -); the subcommand is the first
 # non-flag word after 'git'. Skip non-C flags (and their optional values) to reach -C.
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git([[:space:]]+-[^C[:space:]][^[:space:]]*([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+-C[[:space:]]'; then
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\||[[:space:]]+(then|do|else))[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git([[:space:]]+-[^C[:space:]][^[:space:]]*([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+-C[[:space:]]'; then
     _deny "🚫 Don't use git -C in commands. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
 fi
 
@@ -197,8 +199,8 @@ CMD_GIT="((^|;|&&|\\|\\||\\|)[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:
 # Catches cd anywhere before a later git in the same chain,
 # not just immediately adjacent (e.g. cd /repo && true && git commit).
 # Anchored to command boundaries so 'echo cd /tmp' doesn't false-positive.
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*cd[[:space:]]+("[^"]*"|'\''[^'\'']*'\''|[^[:space:];|&]+)' && \
-   echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*cd[[:space:]].*([;&]|\|\||&&).*git[[:space:]]'; then
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\||[[:space:]]+(then|do|else))[[:space:]]*cd[[:space:]]+("[^"]*"|'\''[^'\'']*'\''|[^[:space:];|&]+)' && \
+   echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\||[[:space:]]+(then|do|else))[[:space:]]*cd[[:space:]].*([;&]|\|\||&&).*git[[:space:]]'; then
     _deny "🚫 Don't chain cd && git commands. Use the cwd parameter on the tool call instead — cd chains leak shell state."
 fi
 
@@ -277,6 +279,9 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+push([[:space:]]
     while IFS= read -r _seg; do
         _seg=$(echo "$_seg" | sed 's/^[[:space:]]*//')
         [[ -z "$_seg" ]] && continue
+        # Strip leading shell control keywords so anchored check works on
+        # segments like "then git push --force" after splitting on ;/&&/||.
+        _seg=$(echo "$_seg" | sed -E 's/^(then|do|else)[[:space:]]+//')
         # Skip segments where git isn't the actual command (e.g. echo "git push")
         if ! echo "$_seg" | grep -qE '^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git[[:space:]]'; then
             continue
