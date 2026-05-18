@@ -53,7 +53,8 @@ if echo "$COMMAND" | grep -qiE "$MIGRATION_PATTERN"; then
         [[ -z "$segment" ]] && continue
         # Shell control keywords (then/do/else) can start a segment after splitting
         # on ;/&&/||/|. Strip them so the anchored check sees the actual command.
-        segment=$(echo "$segment" | sed -E 's/^(then|do|else)[[:space:]]+//')
+        # Also strip shell grouping tokens: ( { $(
+        segment=$(echo "$segment" | sed -E 's/^(\(|[{]|\$\()[[:space:]]*//; s/^(then|do|else)[[:space:]]+//')
         if echo "$segment" | grep -qiE "^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*${WRAPPER_PREFIX}${RUNNER_PREFIX}${MIGRATION_PATTERN}"; then
             # Allow test database targets — only match env assignments that directly
             # prefix the migration command (VAR=val cmd), not arbitrary command text.
