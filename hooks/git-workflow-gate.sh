@@ -239,8 +239,10 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:
     while IFS= read -r _commit_seg; do
         _commit_seg=$(echo "$_commit_seg" | sed 's/^[[:space:]]*//')
         [[ -z "$_commit_seg" ]] && continue
-        # Only check segments that actually contain a git commit command
-        if ! echo "$_commit_seg" | grep -qE 'git([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*[[:space:]]+commit([[:space:]]|$)'; then
+        # Only check segments that actually execute a git commit command.
+        # Reuse the boundary-anchored pattern so quoted text like
+        # echo 'git commit -m "msg"' is not treated as a real commit segment.
+        if ! echo "$_commit_seg" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:]]|\$)"; then
             continue
         fi
         if echo "$_commit_seg" | grep -qE "[[:space:]](-m[[:space:]]|-m[\"']|--message[=[:space:]])"; then
@@ -411,7 +413,7 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+clean([[:space:]
     while IFS= read -r CLEAN_SEG; do
         CLEAN_SEG=$(echo "$CLEAN_SEG" | sed 's/^[[:space:]]*//')
         [[ -z "$CLEAN_SEG" ]] && continue
-        if ! echo "$CLEAN_SEG" | grep -qE 'git[^;&|]*clean([[:space:]]|$)'; then
+        if ! echo "$CLEAN_SEG" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+clean([[:space:]]|\$)"; then
             continue
         fi
         if echo "$CLEAN_SEG" | grep -qE '[[:space:]](-[a-zA-Z]*f[a-zA-Z]*|--force)([[:space:]]|$)'; then
