@@ -74,11 +74,40 @@ fi
 # tracked documentation/templates (README*, CONTRIBUTING*, *.md, *.template)
 # so contributors can commit allowed non-secret files under secrets/.
 SECRETS_PATH_PATTERN='(([^[:space:]]*/)?\.env\.secrets|([^[:space:]]*/)?secrets/[^[:space:]]+|~/dotfiles/secrets/[^[:space:]]+)'
-SAFE_SECRETS_FILE='secrets/(README[^[:space:]]*|CONTRIBUTING[^[:space:]]*|[^[:space:]]+\.(md|template|example))([[:space:]]|$)'
+SAFE_SECRETS_PATH='^secrets/(README[^[:space:]]*|CONTRIBUTING[^[:space:]]*|[^[:space:]]+\.(md|template|example))$'
+# Per-segment helper: checks every protected-path reference in a segment is a safe file
+_segment_references_only_safe_secret_files() {
+    local segment="$1"
+    local protected_path
+    while IFS= read -r protected_path; do
+        [[ -z "$protected_path" ]] && continue
+        if [[ ! "$protected_path" =~ $SAFE_SECRETS_PATH ]]; then
+            return 1
+        fi
+    done < <(printf '%s\n' "$segment" | grep -oE "$SECRETS_PATH_PATTERN" || true)
+    return 0
+}
+# Splits command on ;, &&, ||, | and verifies each segment that references a
+# protected path is (a) a safe git operation and (b) only references safe files.
+_command_secret_refs_are_safe() {
+    local command="$1"
+    local segment
+    while IFS= read -r segment; do
+        [[ -z "${segment//[[:space:]]/}" ]] && continue
+        if echo "$segment" | grep -qE "$SECRETS_PATH_PATTERN"; then
+            if ! echo "$segment" | grep -qE '^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git[[:space:]]+(add|status|diff|log|show|commit|rm)([[:space:]]|$)'; then
+                return 1
+            fi
+            if ! _segment_references_only_safe_secret_files "$segment"; then
+                return 1
+            fi
+        fi
+    done < <(printf '%s\n' "$command" | sed -E 's/(&&|\|\||;|\|)/\n/g')
+    return 0
+}
 if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'[^[:space:];|&(){}]+([[:space:]]+[^;|&(){}[:space:]]+)*[[:space:]]+'"$SECRETS_PATH_PATTERN"; then
-    # Allow git repo operations on non-sensitive tracked files
-    if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git[[:space:]]+(add|status|diff|log|show|commit|rm)[[:space:]]' && \
-       echo "$COMMAND" | grep -qE "$SAFE_SECRETS_FILE"; then
+    # Allow only when every segment referencing a protected path is a safe git op on safe files
+    if _command_secret_refs_are_safe "$COMMAND"; then
         : # Safe git operation on tracked documentation/template — allow
     else
         _deny "🔒 Blocked: command references protected secrets path."
