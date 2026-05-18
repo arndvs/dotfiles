@@ -337,7 +337,9 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+(checkout|switch
         -e 's/switch[[:space:]]*-c[[:space:]]/NEWBRANCH /g' \
         -e 's/switch[[:space:]]*--create[[:space:]]/NEWBRANCH /g')
 
-    if echo "$masked_cmd" | grep -qE '(checkout|switch)[[:space:]]'; then
+    # Scope to git invocations so non-git occurrences of 'checkout'/'switch'
+    # (e.g. `echo switch` in a chained command) don't false-positive.
+    if echo "$masked_cmd" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+(checkout|switch)[[:space:]]"; then
         # Non-creation checkout/switch remains — check dirty working tree
         if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
             # Allow if only untracked files (no modified/staged)
