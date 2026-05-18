@@ -95,6 +95,11 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
     # Iteration cap (uses claim_keys table — fixes H-4).
     with db.connect(cfg.db_path) as conn:
         iteration_num = db.bump_iteration(conn, job.claim_key)
+        # Keep the job row's iteration in sync for observability
+        conn.execute(
+            "UPDATE jobs SET iteration = ? WHERE id = ?",
+            (iteration_num, job.id),
+        )
     emit("bridge.job.iteration", iteration=iteration_num)
 
     if iteration_num > cfg.max_iterations:
