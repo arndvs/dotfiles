@@ -5,6 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+# Default BRIDGE_PORT — overridable via .env.agent if set there.
+Environment=BRIDGE_PORT=8765
 EnvironmentFile=%h/dotfiles/secrets/.env.agent
 # NOTE: .env.secrets deliberately NOT loaded here — the webhook process
 # only needs WEBHOOK_SECRET, not the full secrets file (GitHub App key,
