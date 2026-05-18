@@ -21,7 +21,6 @@ import traceback
 
 from . import db, github, hud, issue, workspace
 from .config import Config
-from .git_creds import git_credential_env
 
 logger = logging.getLogger("bridge.worker")
 
@@ -177,22 +176,46 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
 
     # 6. Exec shft afk 1 inside the workspace.
     emit("bridge.job.shft_invoked")
-    env = git_credential_env(token)
-    env["BRIDGE_WORKSPACE"] = str(ws_path)
-    env["GH_TOKEN"] = token.value  # shft uses gh CLI internally
+    shft_bin = str(cfg.dotfiles_root / "shft" / "shft")
+    # Build a scrubbed environment for shft — only pass what it needs.
+    # Do NOT forward the full os.environ (which includes .env.secrets).
+    env = {
+        "HOME": os.environ.get("HOME", ""),
+        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+        "TERM": os.environ.get("TERM", "dumb"),
+        "LANG": os.environ.get("LANG", "en_US.UTF-8"),
+        "USER": os.environ.get("USER", ""),
+        "BRIDGE_WORKSPACE": str(ws_path),
+        "GH_TOKEN": token.value,
+        # Git credential injection (ephemeral, same pattern as workspace.py)
+        "GIT_CONFIG_COUNT": "1",
+        "GIT_CONFIG_KEY_0": (
+            f"url.https://x-access-token:{token.value}@github.com/.insteadOf"
+        ),
+        "GIT_CONFIG_VALUE_0": "https://github.com/",
+    }
+    # Pass repo context so gh CLI targets the correct base repo (fork-safe)
+    env["GH_REPO"] = repo
 
     try:
-        proc = subprocess.run(
-            ["shft", "afk", "1"],
+        proc = subprocess.Popen(
+            [shft_bin, "afk", "1"],
             cwd=str(ws_path),
             env=env,
-            timeout=SHFT_RUN_TIMEOUT_SECONDS,
-            check=False,
+            start_new_session=True,
         )
+        proc.wait(timeout=SHFT_RUN_TIMEOUT_SECONDS)
         emit("bridge.job.shft_completed", exit_code=proc.returncode)
         if proc.returncode != 0:
             raise RuntimeError(f"shft afk exited {proc.returncode}")
     except subprocess.TimeoutExpired:
+        # Kill the entire process group to avoid orphaned agents/stale locks
+        import signal
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        except (ProcessLookupError, OSError):
+            pass
+        proc.wait(timeout=10)  # Allow graceful shutdown
         emit("bridge.job.failed", reason="shft_timeout")
         raise RuntimeError("shft afk timed out")
 

@@ -86,7 +86,11 @@ def prepare(
         logger.info("Fetching %s in %s", head_ref, path)
         try:
             subprocess.run(
-                ["git", "-C", str(path), "fetch", "origin", head_ref],
+                [
+                    "git", "-C", str(path),
+                    "fetch", "origin",
+                    f"refs/heads/{head_ref}:refs/remotes/origin/{head_ref}",
+                ],
                 check=True,
                 capture_output=True,
                 text=True,
