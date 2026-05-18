@@ -105,13 +105,16 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
     if iteration_num > cfg.max_iterations:
         emit("bridge.loop.cap_exceeded", iteration=iteration_num)
         if existing:
-            github.add_label(
-                token,
-                owner=owner,
-                repo=repo_name,
-                issue_number=existing["number"],
-                label="agent-loop-exceeded",
-            )
+            try:
+                github.add_label(
+                    token,
+                    owner=owner,
+                    repo=repo_name,
+                    issue_number=existing["number"],
+                    label="agent-loop-exceeded",
+                )
+            except Exception:
+                logger.warning("Failed to add agent-loop-exceeded label (may not exist)")
             github.comment_on_issue(
                 token,
                 owner=owner,
@@ -162,14 +165,26 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
         tracking_number = existing["number"]
         emit("bridge.job.issue_updated", tracking_issue_number=tracking_number)
     else:
-        tracking_number = github.create_issue(
-            token,
-            owner=owner,
-            repo=repo_name,
-            title=title_str,
-            body=body_str,
-            labels=issue.ISSUE_LABELS,
-        )
+        try:
+            tracking_number = github.create_issue(
+                token,
+                owner=owner,
+                repo=repo_name,
+                title=title_str,
+                body=body_str,
+                labels=issue.ISSUE_LABELS,
+            )
+        except Exception:
+            # Labels may not exist in repo — retry without them
+            logger.warning("create_issue with labels failed; retrying without labels")
+            tracking_number = github.create_issue(
+                token,
+                owner=owner,
+                repo=repo_name,
+                title=title_str,
+                body=body_str,
+                labels=[],
+            )
         emit("bridge.job.issue_created", tracking_issue_number=tracking_number)
 
     with db.connect(cfg.db_path) as conn:
