@@ -32,7 +32,8 @@ def emit(
     HUD ignores them today, will use them later.
     """
     payload = {
-        "event": event,
+        "type": event,
+        "message": event,
         "project": project,
         **({"workspace_id": workspace_id} if workspace_id else {}),
         **({"worker_id": worker_id} if worker_id else {}),
