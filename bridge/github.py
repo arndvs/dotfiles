@@ -112,10 +112,14 @@ def fetch_pr_metadata(
 
 
 GRAPHQL_UNRESOLVED_THREADS = """
-query($owner:String!,$repo:String!,$num:Int!){
+query($owner:String!,$repo:String!,$num:Int!,$cursor:String){
   repository(owner:$owner, name:$repo){
     pullRequest(number:$num){
-      reviewThreads(first:100){
+      reviewThreads(first:100, after:$cursor){
+        pageInfo{
+          hasNextPage
+          endCursor
+        }
         nodes{
           id
           isResolved
@@ -161,25 +165,39 @@ def fetch_unresolved_copilot_threads(
     # Strip [bot] suffix for GraphQL — GraphQL surfaces logins without it.
     copilot_bare = copilot_login.removesuffix("[bot]")
 
+    all_thread_nodes: list[dict] = []
+    cursor: str | None = None
+
     with _client(token) as client:
-        r = client.post(
-            "/graphql",
-            json={
-                "query": GRAPHQL_UNRESOLVED_THREADS,
-                "variables": {"owner": owner, "repo": repo, "num": pr_number},
-            },
-        )
-        r.raise_for_status()
-        data = r.json()
+        while True:
+            r = client.post(
+                "/graphql",
+                json={
+                    "query": GRAPHQL_UNRESOLVED_THREADS,
+                    "variables": {
+                        "owner": owner,
+                        "repo": repo,
+                        "num": pr_number,
+                        "cursor": cursor,
+                    },
+                },
+            )
+            r.raise_for_status()
+            data = r.json()
 
-    if "errors" in data:
-        raise GitHubError(f"GraphQL errors: {data['errors']}")
+            if "errors" in data:
+                raise GitHubError(f"GraphQL errors: {data['errors']}")
 
-    threads = (
-        data["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
-    )
+            threads_data = data["data"]["repository"]["pullRequest"]["reviewThreads"]
+            all_thread_nodes.extend(threads_data["nodes"])
+
+            page_info = threads_data["pageInfo"]
+            if not page_info["hasNextPage"]:
+                break
+            cursor = page_info["endCursor"]
+
     out: list[UnresolvedThread] = []
-    for t in threads:
+    for t in all_thread_nodes:
         if t["isResolved"]:
             continue
         comments = t["comments"]["nodes"]
