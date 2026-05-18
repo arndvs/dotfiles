@@ -62,11 +62,12 @@ if ! echo "$COMMAND" | grep -qE "$TOP_LEVEL_GIT|$NESTED_SHELL_GIT"; then
 fi
 
 # --- Deny nested shell git invocations outright ---
-# If the command matched NESTED_SHELL_GIT (but not TOP_LEVEL_GIT), the child
-# shell string cannot be reliably parsed for per-gate checks (commit message
-# validation, force-push detection, etc). Deny the entire command and require
-# the agent to invoke git directly so each gate can inspect the arguments.
-if ! echo "$COMMAND" | grep -qE "$TOP_LEVEL_GIT"; then
+# If the command contains NESTED_SHELL_GIT, the child shell string cannot be
+# reliably parsed for per-gate checks (commit message validation, force-push
+# detection, etc). Deny regardless of whether TOP_LEVEL_GIT also matched,
+# because a chain like `git status && bash -c 'git push --force'` would skip
+# force-push inspection on the nested portion.
+if echo "$COMMAND" | grep -qE "$NESTED_SHELL_GIT"; then
     _deny "🚫 Don't wrap git commands in nested shells (bash -c, sh -c). Invoke git directly so safety gates can inspect the arguments."
 fi
 

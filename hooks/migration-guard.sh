@@ -44,6 +44,14 @@ RUNNER_PREFIX="(npx${RUNNER_OPTS}[[:space:]]+|yarn(${RUNNER_OPT})*([[:space:]]+(
 # Wrapper prefix (simplified) — sudo, env, command, builtin with GNU-style options
 WRAPPER_PREFIX='(sudo([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]=][^[:space:]]*)?)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*'
 
+# --- Deny nested shell migration invocations outright ---
+# A nested shell like `bash -c 'npx prisma migrate deploy'` cannot be reliably
+# parsed for per-segment env-prefix checks. Deny and require direct invocation.
+NESTED_SHELL_MIGRATION='(bash|sh|dash|ksh|zsh)([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?)*[[:space:]]+-[[:alnum:]]*c[[:alnum:]]*[[:space:]]+'
+if echo "$COMMAND" | grep -qiE "${NESTED_SHELL_MIGRATION}.*${MIGRATION_PATTERN}"; then
+    _deny "⚠️ Blocked: don't wrap migration commands in nested shells (bash -c, sh -c). Invoke the migration tool directly so the guard can validate the target database."
+fi
+
 # Detect migration commands across common ORMs
 # Quick-reject: skip early if no migration keyword anywhere in the command
 if echo "$COMMAND" | grep -qiE "$MIGRATION_PATTERN"; then
