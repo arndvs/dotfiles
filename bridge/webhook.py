@@ -21,6 +21,7 @@ from .config import Config
 
 logger = logging.getLogger("bridge.webhook")
 config = Config.from_env()
+_webhook_secret = config.require_webhook_secret()
 config.ensure_dirs()
 db.init_db(config.db_path)
 
@@ -36,7 +37,7 @@ def _verify_signature(body: bytes, header: str | None) -> bool:
     expected = (
         "sha256="
         + hmac.new(
-            config.webhook_secret.encode(), body, hashlib.sha256
+            _webhook_secret.encode(), body, hashlib.sha256
         ).hexdigest()
     )
     return hmac.compare_digest(expected, header)

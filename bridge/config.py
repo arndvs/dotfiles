@@ -26,8 +26,9 @@ class Config:
     # Note: GITHUB_APP_PRIVATE_KEY_B64 is NOT read here — mint script
     # reads it directly. Bridge processes never touch the private key.
 
-    # Webhook
-    webhook_secret: str
+    # Webhook — optional for worker-only mode (worker never verifies signatures).
+    # Webhook must call require_webhook_secret() at startup.
+    webhook_secret: str | None
     webhook_port: int
     copilot_bot_login: str
 
@@ -78,7 +79,7 @@ class Config:
         return cls(
             github_app_id=os.environ.get("GITHUB_APP_ID") or None,
             github_app_installation_id=os.environ.get("GITHUB_APP_INSTALLATION_ID") or None,
-            webhook_secret=req("WEBHOOK_SECRET"),
+            webhook_secret=os.environ.get("WEBHOOK_SECRET") or None,
             webhook_port=int(opt("BRIDGE_PORT", "8765")),
             copilot_bot_login=bot_login,
             repo_allowlist=allowlist,
@@ -93,6 +94,15 @@ class Config:
             mint_script=dotfiles / "bin" / "mint_github_app_token.py",
             hud_script=dotfiles / "bin" / "write-hud-state.sh",
         )
+
+    def require_webhook_secret(self) -> str:
+        """Validate WEBHOOK_SECRET is present. Call from webhook startup."""
+        if not self.webhook_secret:
+            raise ConfigError(
+                "WEBHOOK_SECRET is required for the webhook receiver. "
+                "Ensure secrets/.env.bridge is loaded."
+            )
+        return self.webhook_secret
 
     def require_github_app(self) -> tuple[str, str]:
         """Validate GitHub App credentials are present. Call from worker startup."""
