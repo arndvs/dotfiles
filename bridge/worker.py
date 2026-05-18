@@ -245,6 +245,13 @@ def run(worker_id: str) -> None:
     cfg.ensure_dirs()
     db.init_db(cfg.db_path)
 
+    # On startup, requeue any jobs left in 'claimed' state from a previous
+    # crash (lease expired — prevents permanently stuck jobs).
+    with db.connect(cfg.db_path) as conn:
+        requeued = db.requeue_stale_claims(conn)
+        if requeued:
+            logger.info("Requeued %d stale claimed job(s)", requeued)
+
     logger.info(
         "Worker %s started, polling every %.1fs",
         worker_id,
