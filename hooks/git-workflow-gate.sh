@@ -165,9 +165,11 @@ if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\||[[:space:]]+(then|do|else))[[:spa
     _deny "🚫 Don't use git --git-dir or --work-tree in commands. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
 fi
 
-# Also block GIT_DIR / GIT_WORK_TREE set as environment variable assignments.
-# These env vars achieve the same repo-targeting as the flag forms blocked above.
-if echo "$COMMAND" | grep -qE '(^|[[:space:]])(GIT_DIR|GIT_WORK_TREE)='; then
+# Also block GIT_DIR / GIT_WORK_TREE when set as environment assignments for the
+# git invocation itself. Anchor to a real command boundary plus optional env
+# assignments before the wrapper/git token so harmless mentions in other commands
+# (for example `echo GIT_DIR=/tmp && git status`) are not falsely denied.
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\||[[:space:]]+(then|do|else))[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(GIT_DIR|GIT_WORK_TREE)=[^[:space:]]*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+'"$WRAPPER_PREFIX"'git([[:space:]]|$)'; then
     _deny "🚫 Don't set GIT_DIR or GIT_WORK_TREE as environment variables. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
 fi
 
@@ -221,10 +223,12 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:
     # Check if the command switches to a protected branch BEFORE committing.
     # e.g. `git switch main && git commit -m "fix: x"` — the commit targets main
     # after the switch, but the hook only sees the pre-switch branch above.
+    # Reuse CMD_GIT/GIT_OPTS here so command boundaries are handled consistently
+    # with the main detector, including shell control keywords like then/do/else.
     # Only deny when the switch appears before the commit in the command string,
     # so `git commit -m "feat: x" && git switch main` is allowed (commit runs first
     # on the current feature branch).
-    if echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*${WRAPPER_PREFIX}git${GIT_OPTS}[[:space:]]+(checkout|switch)([[:space:]]+-[^[:space:]]+)*[[:space:]]+(${protected})([[:space:]]|;|&&|\|\||\||$).*${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:]]|$)"; then
+    if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+(checkout|switch)([[:space:]]+-[^[:space:]]+)*[[:space:]]+(${protected})([[:space:]]|;|&&|\|\||\||$).*${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:]]|$)"; then
         _deny "🚫 Cannot switch to a protected branch and commit in the same command. Use separate tool calls so the commit gate can verify the target branch."
     fi
 

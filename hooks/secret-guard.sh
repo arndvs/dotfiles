@@ -39,10 +39,11 @@ _deny() {
 }
 
 # Block commands that print credentials to stdout
-# Handles sudo, command, builtin prefixes (e.g. command echo $SECRET_KEY)
+# Handles leading env assignments plus sudo/command/builtin prefixes
+# (e.g. FOO=bar command echo $SECRET_KEY)
 # Also handles env prefix with flags and assignments (e.g. env -u FOO sudo -u root echo $SECRET_KEY)
 # Shell control keywords (then/do/else) are treated as command boundaries.
-if echo "$COMMAND" | grep -qiE '((^|;|&&|\|\||\|)[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)'"$WRAPPER_PREFIX"'(echo|printf|cat)[[:space:]]+.*\$\{?[A-Za-z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)'; then
+if echo "$COMMAND" | grep -qiE '((^|;|&&|\|\||\|)[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'(echo|printf|cat)[[:space:]]+.*\$\{?[A-Za-z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)'; then
     _deny "🔒 Blocked: command would expose credentials. Use run-with-secrets.sh for credential injection."
 fi
 
@@ -58,16 +59,17 @@ if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\|)[[:space:]]*|(^|[[:space:]])(the
 fi
 
 # Block reads of secrets files (covers bare name + path prefixes)
-# Handles sudo, command, builtin, env prefixes (including env with flags and assignments)
-if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\|)[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)'"$WRAPPER_PREFIX"'(cat|less|more|head|tail)[[:space:]]+(([^[:space:]]*/)?\.env\.secrets|([^[:space:]]*/)?secrets/\.env|~/dotfiles/secrets/)'; then
+# Handles leading env assignments, sudo, command, builtin, env prefixes
+if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\|)[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'(cat|less|more|head|tail)[[:space:]]+(([^[:space:]]*/)?\.\.env\.secrets|([^[:space:]]*/)?secrets/\.env|~/dotfiles/secrets/)'; then
     _deny "🔒 Blocked: direct read of secrets file. Use run-with-secrets.sh for credential access."
 fi
 
 # Block piped installs without inspection
 # Anchored to command boundaries so harmless mentions in echo/grep/docs do not match.
 # Handles sudo, command, builtin, env prefixes before the executed curl.
+# Allows leading VAR=value assignments before wrapper prefixes.
 # Shell control keywords (then/do/else) are treated as command boundaries.
-if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\|)[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)'"$WRAPPER_PREFIX"'curl([[:space:]]+[^|;]+)?[[:space:]]*\|[[:space:]]*(ba)?sh([[:space:]]*($|;|&&|\|\||\|))'; then
+if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\|)[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'curl([[:space:]]+[^|;]+)?[[:space:]]*\|[[:space:]]*(ba)?sh([[:space:]]*($|;|&&|\|\||\|))'; then
     _deny "🔒 Blocked: piped install detected. Download first, inspect, then execute."
 fi
 
