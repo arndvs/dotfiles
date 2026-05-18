@@ -109,7 +109,7 @@ For each high-priority pattern, recommend ONE specific action:
 | # | Pattern | Freq | Cost | Action |
 |---|---------|------|------|--------|
 | 1 | TypeScript path alias misconfigured | 4 sessions | ~10 min each | Rule: verify tsconfig paths on project start |
-| 2 | Commit to main without PR | 2 sessions | 5 min each | Hook: ✅ already fixed (git-workflow-gate) |
+| 2 | Commit to main without PR | 3 sessions | 5 min each | Hook: ✅ already fixed (git-workflow-gate) |
 
 ### Medium Priority
 ...
