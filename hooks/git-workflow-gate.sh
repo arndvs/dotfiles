@@ -272,7 +272,7 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:
                 _deny "🚫 Could not parse commit message. Wrap the message in quotes: git commit -m \"type(scope): description\""
             fi
         fi
-    done <<< "$(echo "$COMMAND" | sed 's/&&/\n/g; s/;/\n/g; s/||/\n/g')"
+    done <<< "$(echo "$COMMAND" | sed 's/||/\n/g; s/&&/\n/g; s/;/\n/g; s/|/\n/g')"
 fi
 
 # ============================================================
@@ -295,7 +295,7 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+push([[:space:]]
         fi
         _match=$(echo "$_seg" | grep -oE 'git([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*[[:space:]]+push([[:space:]]+[^;&|][^;&|]*)*' || true)
         [[ -n "$_match" ]] && ALL_PUSH_SEGS="${ALL_PUSH_SEGS}${_match}"$'\n'
-    done <<< "$(echo "$COMMAND" | sed 's/;/\n/g; s/&&/\n/g; s/||/\n/g')"
+    done <<< "$(echo "$COMMAND" | sed 's/||/\n/g; s/&&/\n/g; s/;/\n/g; s/|/\n/g')"
     while IFS= read -r PUSH_SEG; do
         [[ -z "$PUSH_SEG" ]] && continue
 
@@ -422,7 +422,7 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+clean([[:space:]
                 _deny "🚫 git clean -f irreversibly removes untracked files. Use git clean -n (dry-run) first to review what would be deleted."
             fi
         fi
-    done <<< "$(echo "$COMMAND" | sed 's/&&/\n/g; s/;/\n/g; s/||/\n/g')"
+    done <<< "$(echo "$COMMAND" | sed 's/||/\n/g; s/&&/\n/g; s/;/\n/g; s/|/\n/g')"
 fi
 
 # ============================================================
