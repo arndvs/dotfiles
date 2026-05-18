@@ -41,15 +41,16 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 [[ -z "$COMMAND" ]] && exit 0
 
 # Only process git commands (POSIX ERE: [[:space:]] not \s)
-# Match git as a command — after ^, ;, &&, ||, | (not bare whitespace,
-# which would false-positive on "echo git status").
+# Match git as a command — after ^, ;, &&, ||, |, or shell control
+# keywords that introduce command lists such as then/do/else (not bare
+# whitespace, which would false-positive on "echo git status").
 # Also matches shell wrappers: sudo git, command git, builtin git, env git.
 # sudo -u root, env -u VARNAME, env --unset=VARNAME, FOO=bar) before the
 # wrapped command. The regex allows optional non-flag tokens after each
 # flag so the engine backtracks to correctly match the target command.
 # GNU-style long options with inline =value (--opt=val) are also consumed.
 WRAPPER_PREFIX='(sudo([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]=][^[:space:]]*)?)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*'
-if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git[[:space:]]'; then
+if ! echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\|)[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git[[:space:]]'; then
     exit 0
 fi
 
@@ -184,10 +185,10 @@ fi
 GIT_OPTS='([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*'
 
 # --- Pattern: command-boundary-anchored git (for per-gate checks) ---
-# Anchors to shell command boundaries (^, ;, &&, ||, |) so that
-# quoted git commands (e.g. echo "git push --force") don't match.
+# Anchors to shell command boundaries (^, ;, &&, ||, |) and shell control
+# keywords (then/do/else) so that quoted git commands don't match.
 # Uses the same WRAPPER_PREFIX as the initial detector for consistency.
-CMD_GIT="(^|;|&&|\\|\\||\\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*${WRAPPER_PREFIX}git"
+CMD_GIT="((^|;|&&|\\|\\||\\|)[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*${WRAPPER_PREFIX}git"
 
 # ============================================================
 # GATE 0: Block cd + git command chains (&&, ;, or ||)
