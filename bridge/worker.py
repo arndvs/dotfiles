@@ -145,7 +145,6 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
     body_str = issue.body(
         repo_full_name=repo,
         pr_number=job.pr_number,
-        pr_title=pr_meta.title,
         pr_url=pr_meta.html_url,
         branch=pr_meta.head_ref,
         review_event_url=review_event_url,
