@@ -86,6 +86,9 @@ def prepare(
                 env=env,
             )
         except subprocess.CalledProcessError as e:
+            # Clean up partial clone directory to avoid stale state
+            if path.exists():
+                shutil.rmtree(path, ignore_errors=True)
             raise WorkspaceError(
                 f"git clone failed for {repo_full_name} (exit {e.returncode})"
             )
