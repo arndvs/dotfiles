@@ -204,6 +204,7 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
 
 def run(worker_id: str) -> None:
     cfg = Config.from_env()
+    cfg.require_github_app()  # Worker needs GitHub App credentials — fail fast
     cfg.ensure_dirs()
     db.init_db(cfg.db_path)
 

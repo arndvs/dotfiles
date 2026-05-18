@@ -19,9 +19,10 @@ class ConfigError(RuntimeError):
 
 @dataclass(frozen=True)
 class Config:
-    # GitHub App
-    github_app_id: str
-    github_app_installation_id: str
+    # GitHub App — optional for webhook-only mode (webhook never mints tokens).
+    # Worker must call require_github_app() before using these.
+    github_app_id: str | None
+    github_app_installation_id: str | None
     # Note: GITHUB_APP_PRIVATE_KEY_B64 is NOT read here — mint script
     # reads it directly. Bridge processes never touch the private key.
 
@@ -75,8 +76,8 @@ class Config:
             )
 
         return cls(
-            github_app_id=req("GITHUB_APP_ID"),
-            github_app_installation_id=req("GITHUB_APP_INSTALLATION_ID"),
+            github_app_id=os.environ.get("GITHUB_APP_ID") or None,
+            github_app_installation_id=os.environ.get("GITHUB_APP_INSTALLATION_ID") or None,
             webhook_secret=req("WEBHOOK_SECRET"),
             webhook_port=int(opt("BRIDGE_PORT", "8765")),
             copilot_bot_login=bot_login,
@@ -92,6 +93,15 @@ class Config:
             mint_script=dotfiles / "bin" / "mint_github_app_token.py",
             hud_script=dotfiles / "bin" / "write-hud-state.sh",
         )
+
+    def require_github_app(self) -> tuple[str, str]:
+        """Validate GitHub App credentials are present. Call from worker startup."""
+        if not self.github_app_id or not self.github_app_installation_id:
+            raise ConfigError(
+                "GITHUB_APP_ID and GITHUB_APP_INSTALLATION_ID are required "
+                "for the worker process (set in secrets/.env.secrets)"
+            )
+        return self.github_app_id, self.github_app_installation_id
 
     def ensure_dirs(self) -> None:
         self.workspaces_root.mkdir(parents=True, exist_ok=True)
