@@ -213,10 +213,13 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:
         _deny "🚫 Cannot commit directly to '$local_branch'. Create a feature branch first: git checkout -b ai/<type>/<description>"
     fi
 
-    # Check if the command also switches to a protected branch before committing.
+    # Check if the command switches to a protected branch BEFORE committing.
     # e.g. `git switch main && git commit -m "fix: x"` — the commit targets main
     # after the switch, but the hook only sees the pre-switch branch above.
-    if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+(checkout|switch)([[:space:]]+-[^[:space:]]+)*[[:space:]]+(${protected})([[:space:]]|;|&&|\|\||\||$)"; then
+    # Only deny when the switch appears before the commit in the command string,
+    # so `git commit -m "feat: x" && git switch main` is allowed (commit runs first
+    # on the current feature branch).
+    if echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*${WRAPPER_PREFIX}git${GIT_OPTS}[[:space:]]+(checkout|switch)([[:space:]]+-[^[:space:]]+)*[[:space:]]+(${protected})([[:space:]]|;|&&|\|\||\||$).*${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:]]|$)"; then
         _deny "🚫 Cannot switch to a protected branch and commit in the same command. Use separate tool calls so the commit gate can verify the target branch."
     fi
 
@@ -350,7 +353,17 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+reset([[:space:]
             if ! echo "$RESET_SEG" | grep -qE '[[:space:]]--hard([[:space:]]|$)'; then
                 continue
             fi
-            reset_target=$(echo "$RESET_SEG" | grep -oE '[[:space:]]--hard[[:space:]]+[^[:space:]-][^[:space:]]*' | sed 's/.*--hard[[:space:]]*//' | head -1) || true
+            # Extract the reset target, skipping any options (--quiet, -q, etc.) between --hard and the target.
+            # Strip everything up to and including --hard, then skip flag-like tokens to find the target.
+            after_hard=$(echo "$RESET_SEG" | sed 's/.*--hard//' | sed 's/^[[:space:]]*//')
+            reset_target=""
+            for _tok in $after_hard; do
+                if [[ "$_tok" == -* ]]; then
+                    continue  # skip options like --quiet, -q
+                fi
+                reset_target="$_tok"
+                break
+            done
             if [[ -z "$reset_target" || "$reset_target" == "HEAD" || "$reset_target" == "@" ]]; then
                 PENDING_WARN="⚠️ git reset --hard HEAD discards all uncommitted changes. Consider git stash if you might need them later."
             else
@@ -368,11 +381,21 @@ fi
 # Allow dry-run variants (-n/--dry-run) even when combined with -f,
 # since they only preview what would be deleted without removing files.
 if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+clean([[:space:]]|\$)"; then
-    if echo "$COMMAND" | grep -qE '[[:space:]](-[a-zA-Z]*f[a-zA-Z]*|--force)([[:space:]]|$)'; then
-        if ! echo "$COMMAND" | grep -qE '[[:space:]](-[a-zA-Z]*n[a-zA-Z]*|--dry-run)([[:space:]]|$)'; then
-            _deny "🚫 git clean -f irreversibly removes untracked files. Use git clean -n (dry-run) first to review what would be deleted."
+    # Extract each git clean segment independently so flags in unrelated
+    # chained commands don't satisfy the dry-run exemption.
+    # e.g. `git clean -fd && echo -n done` — the -n is in echo, not clean.
+    while IFS= read -r CLEAN_SEG; do
+        CLEAN_SEG=$(echo "$CLEAN_SEG" | sed 's/^[[:space:]]*//')
+        [[ -z "$CLEAN_SEG" ]] && continue
+        if ! echo "$CLEAN_SEG" | grep -qE 'git[^;&|]*clean([[:space:]]|$)'; then
+            continue
         fi
-    fi
+        if echo "$CLEAN_SEG" | grep -qE '[[:space:]](-[a-zA-Z]*f[a-zA-Z]*|--force)([[:space:]]|$)'; then
+            if ! echo "$CLEAN_SEG" | grep -qE '[[:space:]](-[a-zA-Z]*n[a-zA-Z]*|--dry-run)([[:space:]]|$)'; then
+                _deny "🚫 git clean -f irreversibly removes untracked files. Use git clean -n (dry-run) first to review what would be deleted."
+            fi
+        fi
+    done <<< "$(echo "$COMMAND" | sed 's/&&/\n/g; s/;/\n/g; s/||/\n/g')"
 fi
 
 # ============================================================
