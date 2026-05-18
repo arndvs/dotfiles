@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# FAIL_MODE: open
 # typecheck.sh — Stop hook: run TypeScript type checker.
 #
 # Receives Claude Code Stop JSON on stdin.
@@ -6,6 +7,7 @@
 # Skips silently if no tsconfig.json or no modified .ts/.tsx files.
 
 set -euo pipefail
+trap 'exit 0' ERR  # fail-open: any error → allow
 
 if ! command -v jq &>/dev/null; then
     exit 0

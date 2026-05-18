@@ -14,7 +14,8 @@ __pycache__/
 *.pyc
 
 # Secrets — NEVER commit
-secrets/
+secrets/*
+!secrets/README.md
 .env
 .env.*
 !.env.agent.example
@@ -62,3 +63,4 @@ clients/*
 !clients/README.md
 !clients/_template/
 !clients/_template/**
+mechanisms/

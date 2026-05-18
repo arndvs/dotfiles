@@ -15,7 +15,7 @@ Every developer using Claude Code or Copilot hits the same walls. Context degrad
 
 ctrl+shft fixes all four. Clone it once, `bootstrap.sh` symlinks your instructions, skills, agents, and rules into `~/.claude/`, and `git pull` updates every machine. `detect-context.sh` loads only the rules that match your current stack. Secrets split into three tiers — config the agent can see, credentials that exist only inside a child process and vanish when it exits (`run-with-secrets.sh`), and AFK iteration tokens (short-lived GitHub App installation tokens) minted per loop. When context gets high, the agent persists its plan to `working/` so a fresh conversation continues exactly where the old one left off.
 
-**Source of truth:** `~/dotfiles/` is canonical. `~/.claude/`, `~/.copilot/`, and `~/.agents/` are consumer targets populated from dotfiles (symlinked where possible, Windows fallback copy when needed). Make all edits in `~/dotfiles/` only.
+**Source of truth:** `~/dotfiles/` is canonical. `~/.claude/`, `~/.copilot/`, and `~/.agents/` are consumer targets populated from dotfiles (symlinked where possible, Windows fallback copy when needed). Make all edits in `~/dotfiles/` only. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the internal system map.
 
 ```bash
 # Fork at github.com/arndvs/ctrlshft/fork, then:
@@ -138,7 +138,7 @@ All agents use read-only tools (Read, Grep, Glob, Bash) and `memory: user` for p
 | `framer-motion`               | `**/*.{tsx,jsx}`                                |
 | `server-vs-client-components` | `**/app/**/*.{tsx,jsx}`                         |
 
-Rules without `paths:` load every session. Add your own: `rules/your-rule.md` — auto-discovered.
+Rules without `paths:` load every session. Add your own: `rules/your-rule.md` — auto-discovered. See [rules/README.md](rules/README.md) for the full inventory.
 
 ### Four-tier disclosure model
 
@@ -152,7 +152,7 @@ Instructions are organized so the always-on payload stays small and conditional 
 | **T3 path-gated** | edited file matches `paths:` glob | `rules/*.md` |
 | **T4 skill-triggered** | task description matches | `skills/*/SKILL.md` |
 
-Re-shelve aggressively: if a rule applies only to `.tsx` files, it belongs in `rules/`, not `global.instructions.md`.
+Re-shelve aggressively: if a rule applies only to `.tsx` files, it belongs in `rules/`, not `global.instructions.md`. See [instructions/README.md](instructions/README.md) for the full instruction inventory and loading conditions.
 
 ### Hardened secrets
 
@@ -164,7 +164,7 @@ Three tiers. Agents see config, never credentials — and AFK loops use AFK iter
 | `secrets/.env.secrets` | No        | No             | API keys, tokens, passwords  |
 | AFK iteration token    | No        | No             | Minted per loop, expires ~1h |
 
-`run-with-secrets.sh` injects credentials into a child process only — they vanish when it exits. Claude Code deny rules block `env`, `printenv`, `cat secrets/*`, and `echo $*KEY*` at the agent level. Agents can't accidentally inherit what they can't see.
+`run-with-secrets.sh` injects credentials into a child process only — they vanish when it exits. Claude Code deny rules block `env`, `printenv`, `cat secrets/*`, and `echo $*KEY*` at the agent level. Agents can't accidentally inherit what they can't see. See [secrets/README.md](secrets/README.md) for the full tier model.
 
 ### AFK Docker credential rotation (strong defense)
 
@@ -271,8 +271,10 @@ The benefit: ⚡ skills act as passive guardrails. You don't remember to say "us
 | `compliance-audit` ⚡     | Auto-invoked after do-work/tdd/debugging. Rule-by-rule review, violation flagging, skill gap detection. |
 | `stress-test`             | Adversarial 19-scenario protocol across 6 categories. Validates rule compliance boundaries.             |
 | `sanity-best-practices`   | Sanity schema design, GROQ, TypeGen, Visual Editing, Portable Text, framework integrations.             |
+| `session-close`           | Pre-flight checklist — quality gates before ending a coding session.                                    |
+| `error-audit`             | Analyze cross-session error patterns to surface systemic issues worth automating.                        |
 
-Add your own: `skills/_local/your-skill/SKILL.md` — auto-discovered, gitignored.
+Add your own: `skills/_local/your-skill/SKILL.md` — auto-discovered, gitignored. See [skills/README.md](skills/README.md) for the full catalog with trigger phrases.
 
 ---
 
@@ -289,8 +291,10 @@ Thin launchers in `commands/` that load a skill with your arguments. Type the co
 | `/explore`  | `explore`        | Decompose a topic, spawn parallel sub-agents, synthesize.            |
 | `/test`     | `tdd`            | Red-green refactor. Failing test → implement → refactor.             |
 | `/document` | `document`       | Write, update, or audit documentation.                               |
+| `/check`    | `session-close`  | Pre-flight checklist — quality gates before session end.             |
+| `/address-review` | `review-pr-copilot` | Fetch and address Copilot review comments on active PR.     |
 
-Add your own: `commands/your-command.md` — auto-discovered. Each file is a prompt template with `$ARGUMENTS` passthrough.
+Add your own: `commands/your-command.md` — auto-discovered. Each file is a prompt template with `$ARGUMENTS` passthrough. See [commands/README.md](commands/README.md) for the full command reference.
 
 ---
 
@@ -378,7 +382,7 @@ Claude Code lifecycle hooks — shell scripts that fire on tool use and session 
 | `typecheck.sh`        | Stop             | Runs `tsc --noEmit` on TypeScript projects; blocks stop until types pass                       |
 | `context-warning.sh`  | UserPromptSubmit | Stub: graduated warnings at 40/70% context (pending statusLine experiment)                     |
 
-Hooks communicate via exit codes: **0** = allow, **2** = block. See `hooks/README.md` for full documentation, customization, and the `experiments/` directory for in-progress prototypes.
+Hooks communicate via exit codes: **0** = allow, **2** = block. See [hooks/README.md](hooks/README.md) for full documentation, customization, and the `experiments/` directory for in-progress prototypes.
 
 ---
 
@@ -386,7 +390,7 @@ Hooks communicate via exit codes: **0** = allow, **2** = block. See `hooks/READM
 
 > `ctrl` is the structure — instructions, skills, rules, secrets, context. `shft` is the autonomous loop — it picks issues, implements, commits, repeats. **ctrl+shft** — you define the rules, shft executes them.
 
-shft is not a framework. It's a bash loop that runs Claude against your GitHub issues backlog — sandboxed in Docker for Away From Keyboard (AFK) mode, direct on host for Human In The Loop (HITL).
+shft is not a framework. It's a bash loop that runs Claude against your GitHub issues backlog — sandboxed in Docker for Away From Keyboard (AFK) mode, direct on host for Human In The Loop (HITL). See [shft/README.md](shft/README.md) for the full command reference.
 
 ### Two modes
 
@@ -430,7 +434,7 @@ srt claude .
 
 ## CLI — `ctrl` & `shft`
 
-After bootstrap, two commands are available system-wide. `ctrl` manages your environment, `shft` manages your work queue. Both are symlinked to `~/.local/bin/` by bootstrap.
+After bootstrap, two commands are available system-wide. `ctrl` manages your environment, `shft` manages your work queue. Both are symlinked to `~/.local/bin/` by bootstrap. See [bin/README.md](bin/README.md) for the full script inventory.
 
 ```bash
 ctrl help     # infrastructure commands

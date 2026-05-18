@@ -153,7 +153,7 @@ For each slice:
 
 1. Read affected files (±30 lines context minimum)
 2. Apply the fix — **only what Copilot flagged**. Note unrelated issues separately; do not include in these commits
-3. Run quality gates if the project defines them (typecheck, lint, tests for touched files)
+3. Run the **pr-preflight** skill (Phases 2–5) scoped to the files in this slice. Every tool failure or finding is blocking — fix before committing. This replaces inline quality gates and is the reason Copilot review becomes one-pass instead of iterative.
 4. Hand off to the **atomic-commits** skill (Commit mode) — it owns branch + message format
 
 Commit body format:
@@ -165,21 +165,11 @@ Addresses Copilot review on PR #<N>:
 - <file>:<line> — "<short quote of the comment>"
 ```
 
-### 5. Acknowledge + resolve threads
+### 5. Track addressed threads
 
-After each commit is pushed, for every Copilot thread fully addressed by an Auto or Confirm fix:
+As you commit each slice, track which threads were fully addressed so Step 6 can reply on and resolve them in bulk. Do **not** reply or resolve threads during this step — that happens in Step 6 after all fixes are pushed.
 
-1. **Post an acknowledgment reply** via `mcp_github_add_reply_to_pull_request_comment` with this shape:
-
-   ```
-   Fixed in <sha[:7]>: <one-line summary of the change>.
-   ```
-
-   This leaves a paper trail in the thread before it closes — reviewers (human or bot) can see what was done without diffing against the PR.
-
-2. **Resolve the thread** via `mcp_github_pull_request_review_write` (method `resolve_thread`, `threadId` from step 1).
-
-If a fix only partially addresses a thread, post the acknowledgment but **do not resolve** — leave the thread open and note it in the final summary.
+If a fix only partially addresses a thread, note it separately — Step 6 will post the acknowledgment but leave the thread open.
 
 ### 5b. HITL comments — file an issue, don't strand the thread
 
@@ -265,11 +255,46 @@ Reply with guidance and I'll address in a follow-up commit.
 - **PR #50 round 5** posted `(confidence: 10)` with no arithmetic, then deferred a normal test-coverage ask into HITL using effort-based reasoning ("bundling risks another re-review round"). Both wrong: the score must show signals, and "this is a lot of work" is not a HITL signal — file an issue and move on.
 - **PR #50 round 5** also stranded the deferral in a PR thread that nobody came back to. The HITL-deferrable flow above prevents that — the issue is the durable artifact.
 
-### 6. Push + re-request review
+### 6. Close the round — push, resolve, re-request (MANDATORY)
 
-After the final slice, hand off to **atomic-commits** (Ship mode) for rebase + push.
+After the final slice, complete **all four** of the following. None are optional. Do not consider the round complete until every item is verified.
 
-Then call `mcp_github_request_copilot_review` on the PR. If it fails, surface the PR URL so the user can re-request manually.
+#### 6a. Push
+
+Hand off to **atomic-commits** (Ship mode) for rebase + push.
+
+#### 6b. Reply on every thread
+
+For every Copilot thread addressed by an Auto or Confirm fix, post an acknowledgment reply via `mcp_github_add_reply_to_pull_request_comment`:
+
+```
+Fixed in <sha[:7]>: <one-line summary of the change>.
+```
+
+This is the paper trail — reviewers can see what was done without diffing commit-by-commit.
+
+#### 6c. Resolve every replied thread
+
+For every thread that received a "Fixed in ..." reply, resolve it via `mcp_github_pull_request_review_write` (method `resolve_thread`, `threadId` from step 1's map).
+
+**Verify resolution** — after resolving, re-fetch review threads and confirm `isResolved == true` for every thread you replied to. If any thread failed to resolve (e.g. missing thread ID in degraded mode), note it in the summary.
+
+#### 6d. Re-request review
+
+1. **Re-request the review** — call `mcp_github_request_copilot_review` on the PR. If it fails, surface the PR URL so the user can re-request manually.
+2. **Verify the request landed** — query the PR's `requested_reviewers` (via `gh api repos/<owner>/<repo>/pulls/<N> --jq '.requested_reviewers[].login'` or equivalent MCP call) and confirm `Copilot` appears. If it does not, retry once; if still missing, surface to the user.
+
+#### Completion gate
+
+The round is **not done** until all four sub-steps are verified:
+- [ ] Fixes pushed to remote
+- [ ] Every addressed thread has a "Fixed in ..." reply
+- [ ] Every replied thread is resolved (`isResolved == true`)
+- [ ] Copilot appears in `requested_reviewers`
+
+If any item is missing, complete it before moving to Step 7. Skipping any item leaves the PR in a dead state — threads without replies lose the paper trail, unresolved threads clutter the next review, and a missing re-request means Copilot never re-runs.
+
+**Failure mode caught in dogfooding (PR #75):** The agent pushed fixes across 34+ commits but never posted thread replies, resolved threads, or re-requested review — all three closing actions were skipped. A follow-up session had to catch the gap and complete them manually. This happened because steps 5 and 6 were treated as "nice to have" rather than mandatory, and context compaction across a large PR caused the agent to lose track of the closing sequence.
 
 ### 7. Summary report
 
@@ -318,6 +343,7 @@ The bracketed `(cap=<cap> overridden by user on round <R_override>)` segment in 
 - **Stale comment** (file changed since) — re-read current file, rebase the fix mentally, flag if the comment no longer applies
 - **MCP tool naming differs** — use `tool_search` to find the actual GitHub MCP tools available; common variants: `get_pull_request`, `pull_request_read`, `mcp_github_pull_request_read`
 - **"Outdated" ≠ "Resolved" in the GitHub UI** — when your fix changes the line a comment was anchored to, GitHub labels the thread `Outdated` in the conversation tab and collapses it. This is independent of resolution. A thread can be both Outdated *and* Resolved; the UI only surfaces "Outdated". Verify resolution via `currentActivePullRequest` `reviewThreads[].isResolved`, or expand the thread in the **Files changed** tab to see the green ✅ Resolved badge. If a user reports "the threads aren't resolved", check the data, not the conversation tab.
+- **Session ends before re-requesting review** — if the round spans multiple sessions (large PRs, context compaction), the review re-request in step 6 can get lost. Each session that pushes Copilot-review fixes must end by verifying `requested_reviewers` includes Copilot. If it doesn't, re-request before closing.
 
 ---
 

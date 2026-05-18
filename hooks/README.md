@@ -17,15 +17,20 @@ Bootstrap symlinks `hooks/` → `~/.claude/hooks/` and merges the configuration 
 |--------|-------|---------|----------|
 | `secret-guard.sh` | PreToolUse | Bash | Blocks commands that expose credentials (echo $TOKEN, bare env/printenv, cat secrets/) |
 | `migration-guard.sh` | PreToolUse | Bash | Blocks database migration commands targeting non-test databases |
+| `git-workflow-gate.sh` | PreToolUse | Bash | Enforces git safety: no commit to main, conventional messages, no force-push, no dirty-tree switch, no cd+git chains |
+| `plan-quality-gate.sh` | PreToolUse | Bash | Info warning when scaffolding (mkdir, npx create-, etc.) without a plan file present |
+| `git-post-push.sh` | PostToolUse | Bash | Info nag when no PR exists after pushing to a feature branch |
+| `stale-branches.sh` | SessionStart | — | Reports merged or stale (>14d) local branches at session start |
 | `format-check.sh` | Stop | — | Detects Biome/Prettier/ESLint and formats modified files (non-blocking) |
 | `typecheck.sh` | Stop | — | Runs `tsc --noEmit` on TypeScript projects; blocks stop until types pass |
 | `compaction-guard.sh` | PreCompact | auto | Blocks auto-compaction at ~95% context; directs agent to follow handoff protocol |
 | `hud-session.sh` | SessionStart, Stop | — | Emits session lifecycle events to `events.jsonl` for the HUD |
+| `hud-reads.sh` | PostToolUse, InstructionsLoaded | Read | Emits read events to the HUD — tracks which instructions/skills/rules loaded and external file reads |
 | `context-warning.sh` | UserPromptSubmit | — | ⚠️ STUB: graduated context warnings at 40/70% (pending statusLine experiment) |
 
 ## Requirements
 
-- **jq** — all scripts parse JSON from stdin via jq. Scripts skip gracefully if jq is missing.
+- **jq** — all fail-closed hooks (secret-guard, migration-guard, git-workflow-gate) **require** jq and deny if missing. Fail-open hooks (stale-branches, plan-quality-gate, git-post-push) skip gracefully if jq is missing.
 - **npx** — format-check and typecheck use npx to run project-local tools.
 
 ## Editor Compatibility
@@ -51,3 +56,46 @@ Edit the scripts in `~/dotfiles/hooks/` (source of truth). Changes propagate via
 3. Re-run `ctrl bootstrap` (or `bash ~/dotfiles/bin/bootstrap.sh`) to merge the updated config
 
 To disable a hook, remove its entry from `~/.claude/settings.json` (or from `settings-hooks.json` and re-run bootstrap with a fresh `~/.claude/settings.json`).
+
+## Fail Modes
+
+Every hook declares its fail mode on line 2 as `# FAIL_MODE: closed|open`.
+
+| Mode | Meaning | When to use |
+|------|---------|-------------|
+| `closed` | Unhandled errors produce deny JSON — if the hook crashes, the operation is blocked | Security/correctness (secret-guard, migration-guard, git-workflow-gate) |
+| `open` | Unhandled errors exit 0 — if the hook crashes, the operation proceeds | Quality/convenience (format-check, typecheck, hud-session) |
+
+**Principle:** Hooks that prevent irreversible damage fail closed. Hooks that improve quality fail open.
+
+**Implementation:** Fail-closed PreToolUse hooks use `trap '_fail_closed' ERR` to emit deny JSON on any error. Other fail-closed hooks (e.g., `compaction-guard.sh`) exit 2 with plain stderr text. Fail-open hooks use `trap 'exit 0' ERR` to ensure any unhandled error exits cleanly without blocking.
+
+## Per-Repo Config
+
+The `git-workflow-gate.sh` hook reads an optional `.ctrlshft` YAML file at the repo root for per-repo overrides:
+
+```yaml
+# .ctrlshft — per-repo hook configuration (block-list format)
+commit_types:
+  - feat
+  - fix
+  - refactor
+  - chore
+  - docs
+  - test
+  - perf
+  - ci
+
+protected_branches:
+  - main
+  - master
+  - production
+```
+
+> **Note:** Use YAML block-list format (one `- item` per line). Inline arrays (`[feat, fix, ...]`) are not supported by the parser.
+
+If the file doesn't exist, defaults apply. If parsing fails, defaults apply (fail-open for config).
+
+### Commit Message Validation
+
+The conventional commit check in `git-workflow-gate.sh` only validates messages passed inline via the `-m` flag (e.g., `git commit -m "feat: ..."`). Editor-based commits (no `-m` flag) or commits using `-F`/`--file` are **not** validated — the message content isn't visible in the command string. This is a known limitation; linting all commit messages requires a native `commit-msg` git hook.

@@ -417,7 +417,7 @@ nslookup suspicious-domain.xyz
 Run this before `npm install` on any unfamiliar repo:
 
 ```bash
-find . -name "package.json" -not -path "*/node_modules/*" -print0 | sort -z | while IFS= read -r -d '' pkg; do
+find . -name "package.json" -not -path "*/node_modules/*" -print0 | while IFS= read -r -d '' pkg; do
   python3 - "$pkg" <<'PY'
 import json, sys
 path = sys.argv[1]
