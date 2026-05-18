@@ -33,18 +33,31 @@ ctrl bridge logs
 
 ## Required Environment Variables
 
-Set in `secrets/.env.agent` and `secrets/.env.secrets`:
+### Non-sensitive (`secrets/.env.agent` or `secrets/.env.bridge`)
+
+These are sourced into shells or loaded via systemd EnvironmentFile. No secrets.
+
+| Variable | Description |
+|---|---|
+| `BRIDGE_PORT` | Port for webhook receiver (default: 8765) |
+| `COPILOT_BOT_LOGIN` | Bot login, e.g. `copilot-swe-agent[bot]` |
+| `BRIDGE_REPO_ALLOWLIST` | Comma-separated `owner/repo` list |
+| `BRIDGE_MAX_ITERATIONS` | Loop cap per PR (default: 3) |
+
+### Secrets (`secrets/.env.secrets`)
+
+Process-scoped only — injected via systemd EnvironmentFile or `run-with-secrets.sh`.
+Never sourced into interactive shells.
 
 | Variable | Description |
 |---|---|
 | `WEBHOOK_SECRET` | GitHub webhook secret (≥32 chars entropy) |
-| `BRIDGE_PORT` | Port for webhook receiver (default: 8765) |
-| `COPILOT_BOT_LOGIN` | Bot login, e.g. `copilot-swe-agent[bot]` |
-| `BRIDGE_REPO_ALLOWLIST` | Comma-separated `owner/repo` list |
-| `GITHUB_APP_ID` | GitHub App ID for token minting |
-| `GITHUB_APP_PRIVATE_KEY_B64` | Base64-encoded private key (used by mint script) |
-| `GITHUB_APP_INSTALLATION_ID` | Installation ID |
-| `BRIDGE_MAX_ITERATIONS` | Loop cap per PR (default: 3) |
+| `GITHUB_APP_ID` | GitHub App ID for token minting (worker only) |
+| `GITHUB_APP_PRIVATE_KEY_B64` | Base64-encoded private key (worker only, used by mint script) |
+| `GITHUB_APP_INSTALLATION_ID` | Installation ID (worker only) |
+
+> **Note:** The webhook receiver only needs `WEBHOOK_SECRET`. GitHub App
+> credentials are required only by the worker process for token minting.
 
 ## MVP Constraints (Accepted)
 
