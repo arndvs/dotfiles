@@ -64,9 +64,10 @@ if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:spa
     _deny "🔒 Blocked: printenv with credential variable name. Use approved credential access methods."
 fi
 
-# Block reads of secrets files (covers bare name + path prefixes)
+# Block reads of secrets files and directories (covers relative, nested, and home paths)
 # Handles leading env assignments, sudo, command, builtin, env prefixes
-if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'(cat|less|more|head|tail)[[:space:]]+(([^[:space:]]*/)?\.env\.secrets|([^[:space:]]*/)?secrets/\.env|~/dotfiles/secrets/)'; then
+# Covers .env.secrets, any file under secrets/, and ~/dotfiles/secrets/
+if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'(cat|less|more|head|tail)[[:space:]]+(([^[:space:]]*/)?\.env\.secrets|([^[:space:]]*/)?secrets/[^[:space:]]+|~/dotfiles/secrets/[^[:space:]]+)'; then
     _deny "🔒 Blocked: direct read of secrets file. Use run-with-secrets.sh for credential access."
 fi
 
