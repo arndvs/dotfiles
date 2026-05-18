@@ -166,10 +166,11 @@ if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\||[[:space:]]+(then|do|else))[[:spa
 fi
 
 # Also block GIT_DIR / GIT_WORK_TREE when set as environment assignments for the
-# git invocation itself. Anchor to a real command boundary plus optional env
-# assignments before the wrapper/git token so harmless mentions in other commands
-# (for example `echo GIT_DIR=/tmp && git status`) are not falsely denied.
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\||[[:space:]]+(then|do|else))[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(GIT_DIR|GIT_WORK_TREE)=[^[:space:]]*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+'"$WRAPPER_PREFIX"'git([[:space:]]|$)'; then
+# git invocation itself. Cover both leading shell assignments before wrapper/git
+# and assignment-bearing `env ... git` wrappers, so harmless mentions in other
+# commands (for example `echo GIT_DIR=/tmp && git status`) are not falsely denied
+# while repo-override forms like `env GIT_DIR=/other git status` are blocked.
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\||[[:space:]]+(then|do|else))[[:space:]]*(([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(GIT_DIR|GIT_WORK_TREE)=[^[:space:]]*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+'"$WRAPPER_PREFIX"'git([[:space:]]|$)|([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'env([[:space:]]+-[^[:space:]]+)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+(GIT_DIR|GIT_WORK_TREE)=[^[:space:]]*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+git([[:space:]]|$))'; then
     _deny "🚫 Don't set GIT_DIR or GIT_WORK_TREE as environment variables. Use the tool call's cwd field so git-workflow-gate can validate the correct repository."
 fi
 
