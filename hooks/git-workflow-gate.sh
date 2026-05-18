@@ -44,11 +44,11 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 # Match git as a command — after ^, ;, &&, ||, | (not bare whitespace,
 # which would false-positive on "echo git status").
 # Also matches shell wrappers: sudo git, command git, builtin git, env git.
-# sudo and env can carry flags with optional arguments (e.g. sudo -E,
-# sudo -u root, env -u VARNAME FOO=bar) before the wrapped command.
-# The regex allows optional non-flag tokens after each flag so the engine
-# backtracks to correctly match the target command.
-WRAPPER_PREFIX='(sudo([[:space:]]+-[-a-zA-Z0-9]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+([[:space:]]+[^-[:space:]=][^[:space:]]*)?)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*'
+# sudo -u root, env -u VARNAME, env --unset=VARNAME, FOO=bar) before the
+# wrapped command. The regex allows optional non-flag tokens after each
+# flag so the engine backtracks to correctly match the target command.
+# GNU-style long options with inline =value (--opt=val) are also consumed.
+WRAPPER_PREFIX='(sudo([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]=][^[:space:]]*)?)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*'
 if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git[[:space:]]'; then
     exit 0
 fi
@@ -227,32 +227,42 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:
 
     # Validate commit message format (only if -m/--message flag present)
     # Handles: -m "msg", -m 'msg', -m"msg", --message="msg", --message "msg"
-    if echo "$COMMAND" | grep -qE "[[:space:]](-m[[:space:]]|-m[\"']|--message[=[:space:]])"; then
-        # Extract FIRST -m/--message value (the commit subject for multi-paragraph commits).
-        # grep -oE returns matches left-to-right; head -1 takes the first (= subject line).
-        # || true: grep exits 1 when no match; suppress to avoid ERR trap with -Eeuo pipefail.
-        # Use separate patterns for double-quoted and single-quoted messages to avoid
-        # mismatched delimiter truncation (e.g. -m "fix: 'quoted' value").
-        first_match=$(echo "$COMMAND" | grep -oE "(-m[[:space:]]*|--message[=[:space:]]*)\"[^\"]*\"" | head -1) || true
-        if [[ -z "$first_match" ]]; then
-            first_match=$(echo "$COMMAND" | grep -oE "(-m[[:space:]]*|--message[=[:space:]]*)'[^']*'" | head -1) || true
+    # Validates EACH git commit segment independently to catch chained bypasses
+    # (e.g. git commit -m "feat: x" && git commit -m "updated stuff").
+    while IFS= read -r _commit_seg; do
+        _commit_seg=$(echo "$_commit_seg" | sed 's/^[[:space:]]*//')
+        [[ -z "$_commit_seg" ]] && continue
+        # Only check segments that actually contain a git commit command
+        if ! echo "$_commit_seg" | grep -qE 'git([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*[[:space:]]+commit([[:space:]]|$)'; then
+            continue
         fi
-        msg=""
-        if [[ -n "$first_match" ]]; then
-            msg=$(echo "$first_match" | sed "s/^-m[[:space:]]*//;s/^--message[=[:space:]]*//;s/^[\"']//;s/[\"']$//")
-        fi
-
-        if [[ -n "$msg" ]]; then
-            types=$(_commit_types)
-            # Pattern: type(scope): description  OR  type: description
-            if ! echo "$msg" | grep -qE "^($types)(\([a-z0-9._-]+\))?!?: .+"; then
-                _deny "🚫 Commit message doesn't follow conventional format. Expected: <type>(<scope>): <description>. Allowed types: ${types//|/, }"
+        if echo "$_commit_seg" | grep -qE "[[:space:]](-m[[:space:]]|-m[\"']|--message[=[:space:]])"; then
+            # Extract FIRST -m/--message value from this segment.
+            # grep -oE returns matches left-to-right; head -1 takes the first (= subject line).
+            # || true: grep exits 1 when no match; suppress to avoid ERR trap with -Eeuo pipefail.
+            # Use separate patterns for double-quoted and single-quoted messages to avoid
+            # mismatched delimiter truncation (e.g. -m "fix: 'quoted' value").
+            first_match=$(echo "$_commit_seg" | grep -oE "(-m[[:space:]]*|--message[=[:space:]]*)\"[^\"]*\"" | head -1) || true
+            if [[ -z "$first_match" ]]; then
+                first_match=$(echo "$_commit_seg" | grep -oE "(-m[[:space:]]*|--message[=[:space:]]*)'[^']*'" | head -1) || true
             fi
-        else
-            # -m/--message flag present but message could not be parsed (e.g. unquoted: git commit -m updated)
-            _deny "🚫 Could not parse commit message. Wrap the message in quotes: git commit -m \"type(scope): description\""
+            msg=""
+            if [[ -n "$first_match" ]]; then
+                msg=$(echo "$first_match" | sed "s/^-m[[:space:]]*//;s/^--message[=[:space:]]*//;s/^[\"']//;s/[\"']$//")
+            fi
+
+            if [[ -n "$msg" ]]; then
+                types=$(_commit_types)
+                # Pattern: type(scope): description  OR  type: description
+                if ! echo "$msg" | grep -qE "^($types)(\([a-z0-9._-]+\))?!?: .+"; then
+                    _deny "🚫 Commit message doesn't follow conventional format. Expected: <type>(<scope>): <description>. Allowed types: ${types//|/, }"
+                fi
+            else
+                # -m/--message flag present but message could not be parsed (e.g. unquoted: git commit -m updated)
+                _deny "🚫 Could not parse commit message. Wrap the message in quotes: git commit -m \"type(scope): description\""
+            fi
         fi
-    fi
+    done <<< "$(echo "$COMMAND" | sed 's/&&/\n/g; s/;/\n/g; s/||/\n/g')"
 fi
 
 # ============================================================

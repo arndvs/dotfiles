@@ -32,7 +32,14 @@ _deny() {
 
 MIGRATION_PATTERN='(prisma[[:space:]]+migrate[[:space:]]+(deploy|dev)|prisma[[:space:]]+db[[:space:]]+push|artisan[[:space:]]+migrate|knex[[:space:]]+migrate|db-migrate[[:space:]]+up|typeorm[[:space:]]+migration:run|drizzle-kit[[:space:]]+push)'
 
+# Runner prefix — package managers that invoke migration tools
+RUNNER_PREFIX='(npx[[:space:]]+|yarn([[:space:]]+(dlx|run))?[[:space:]]+|pnpm([[:space:]]+(dlx|exec|run))?[[:space:]]+|bunx[[:space:]]+|php[[:space:]]+)?'
+
+# Wrapper prefix (simplified) — sudo, env, command, builtin with GNU-style options
+WRAPPER_PREFIX='(sudo([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]=][^[:space:]]*)?)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*'
+
 # Detect migration commands across common ORMs
+# Quick-reject: skip early if no migration keyword anywhere in the command
 if echo "$COMMAND" | grep -qiE "$MIGRATION_PATTERN"; then
     # Check each command segment independently to prevent chained bypasses.
     # e.g. DATABASE_URL=test npx prisma migrate deploy && npx prisma migrate deploy
@@ -44,7 +51,7 @@ if echo "$COMMAND" | grep -qiE "$MIGRATION_PATTERN"; then
     while IFS= read -r segment; do
         segment=$(echo "$segment" | sed 's/^[[:space:]]*//')
         [[ -z "$segment" ]] && continue
-        if echo "$segment" | grep -qiE "$MIGRATION_PATTERN"; then
+        if echo "$segment" | grep -qiE "^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*${WRAPPER_PREFIX}${RUNNER_PREFIX}${MIGRATION_PATTERN}"; then
             # Allow test database targets — only match env assignments that directly
             # prefix the migration command (VAR=val cmd), not arbitrary command text.
             # Restrict to DATABASE_URL specifically — a generic *_test= pattern would

@@ -28,8 +28,9 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
 # --- Pattern: wrapper command prefix (sudo, env, command, builtin) ---
 # sudo and env can carry flags with optional arguments (e.g. sudo -u root,
-# env -u VARNAME FOO=bar) before the wrapped command.
-WRAPPER_PREFIX='(sudo([[:space:]]+-[-a-zA-Z0-9]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+([[:space:]]+[^-[:space:]=][^[:space:]]*)?)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*'
+# env -u VARNAME FOO=bar, env --unset=VARNAME) before the wrapped command.
+# GNU-style long options with inline =value (--opt=val) are also consumed.
+WRAPPER_PREFIX='(sudo([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]=][^[:space:]]*)?)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*'
 
 # --- Helper: deny output (JSON-safe via jq) ---
 _deny() {
@@ -62,7 +63,9 @@ if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*'"$WRAPPER_PREFIX"'(c
 fi
 
 # Block piped installs without inspection
-if echo "$COMMAND" | grep -qE 'curl[[:space:]].*\|[[:space:]]*(ba)?sh'; then
+# Anchored to command boundaries so harmless mentions in echo/grep/docs do not match.
+# Handles sudo, command, builtin, env prefixes before the executed curl.
+if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*'"$WRAPPER_PREFIX"'curl([[:space:]]+[^|;]+)?[[:space:]]*\|[[:space:]]*(ba)?sh([[:space:]]*($|;|&&|\|\||\|))'; then
     _deny "🔒 Blocked: piped install detected. Download first, inspect, then execute."
 fi
 

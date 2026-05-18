@@ -46,15 +46,17 @@ Run the project's feedback loops until they pass cleanly. Auto-detect from the w
 
 If no feedback loops are detected, tell the user and ask what validation commands to run.
 
-### 5. Preflight (Ship mode only)
+### 5. Commit
 
-Before shipping (pushing + opening/updating a PR), run the **pr-preflight** skill end-to-end. This catches the class of issues that iterative Copilot reviews find one-at-a-time, so review is one pass instead of many.
+Once validation passes, commit the work using the atomic-commits skill (one logical change per commit, conventional commit message).
+
+### 6. Preflight (Ship mode only)
+
+If this is the final slice and the work is ready for review, run the **pr-preflight** skill end-to-end before pushing. Preflight audits `main..HEAD`, so the commit must exist before it can inspect the diff. This catches the class of issues that iterative Copilot reviews find one-at-a-time, so review is one pass instead of many.
 
 Skip this step when using Commit mode for intermediate checkpoints — preflight runs once before the final push, not on every checkpoint.
 
-### 6. Commit
-
-Once validation passes (and preflight passes, if shipping), commit the work using the atomic-commits skill (one logical change per commit, conventional commit message). If this is the final slice and the work is ready for review, use **Ship** mode — push and open a PR.
+After preflight passes, use the atomic-commits skill in **Ship** mode — push and open a PR.
 
 ### 7. Context Check
 
