@@ -21,7 +21,6 @@ import traceback
 
 from . import db, github, hud, issue, workspace
 from .config import Config
-from .git_creds import git_credential_env
 
 logger = logging.getLogger("bridge.worker")
 
@@ -96,18 +95,26 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
     # Iteration cap (uses claim_keys table — fixes H-4).
     with db.connect(cfg.db_path) as conn:
         iteration_num = db.bump_iteration(conn, job.claim_key)
+        # Keep the job row's iteration in sync for observability
+        conn.execute(
+            "UPDATE jobs SET iteration = ? WHERE id = ?",
+            (iteration_num, job.id),
+        )
     emit("bridge.job.iteration", iteration=iteration_num)
 
     if iteration_num > cfg.max_iterations:
         emit("bridge.loop.cap_exceeded", iteration=iteration_num)
         if existing:
-            github.add_label(
-                token,
-                owner=owner,
-                repo=repo_name,
-                issue_number=existing["number"],
-                label="agent-loop-exceeded",
-            )
+            try:
+                github.add_label(
+                    token,
+                    owner=owner,
+                    repo=repo_name,
+                    issue_number=existing["number"],
+                    label="agent-loop-exceeded",
+                )
+            except Exception:
+                logger.warning("Failed to add agent-loop-exceeded label (may not exist)")
             github.comment_on_issue(
                 token,
                 owner=owner,
@@ -141,7 +148,6 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
     body_str = issue.body(
         repo_full_name=repo,
         pr_number=job.pr_number,
-        pr_title=pr_meta.title,
         pr_url=pr_meta.html_url,
         branch=pr_meta.head_ref,
         review_event_url=review_event_url,
@@ -159,14 +165,26 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
         tracking_number = existing["number"]
         emit("bridge.job.issue_updated", tracking_issue_number=tracking_number)
     else:
-        tracking_number = github.create_issue(
-            token,
-            owner=owner,
-            repo=repo_name,
-            title=title_str,
-            body=body_str,
-            labels=issue.ISSUE_LABELS,
-        )
+        try:
+            tracking_number = github.create_issue(
+                token,
+                owner=owner,
+                repo=repo_name,
+                title=title_str,
+                body=body_str,
+                labels=issue.ISSUE_LABELS,
+            )
+        except Exception:
+            # Labels may not exist in repo — retry without them
+            logger.warning("create_issue with labels failed; retrying without labels")
+            tracking_number = github.create_issue(
+                token,
+                owner=owner,
+                repo=repo_name,
+                title=title_str,
+                body=body_str,
+                labels=[],
+            )
         emit("bridge.job.issue_created", tracking_issue_number=tracking_number)
 
     with db.connect(cfg.db_path) as conn:
@@ -177,22 +195,46 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
 
     # 6. Exec shft afk 1 inside the workspace.
     emit("bridge.job.shft_invoked")
-    env = git_credential_env(token)
-    env["BRIDGE_WORKSPACE"] = str(ws_path)
-    env["GH_TOKEN"] = token.value  # shft uses gh CLI internally
+    shft_bin = str(cfg.dotfiles_root / "shft" / "shft")
+    # Build a scrubbed environment for shft — only pass what it needs.
+    # Do NOT forward the full os.environ (which includes .env.secrets).
+    env = {
+        "HOME": os.environ.get("HOME", ""),
+        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+        "TERM": os.environ.get("TERM", "dumb"),
+        "LANG": os.environ.get("LANG", "en_US.UTF-8"),
+        "USER": os.environ.get("USER", ""),
+        "BRIDGE_WORKSPACE": str(ws_path),
+        "GH_TOKEN": token.value,
+        # Git credential injection (ephemeral, same pattern as workspace.py)
+        "GIT_CONFIG_COUNT": "1",
+        "GIT_CONFIG_KEY_0": (
+            f"url.https://x-access-token:{token.value}@github.com/.insteadOf"
+        ),
+        "GIT_CONFIG_VALUE_0": "https://github.com/",
+    }
+    # Pass repo context so gh CLI targets the correct base repo (fork-safe)
+    env["GH_REPO"] = repo
 
     try:
-        proc = subprocess.run(
-            ["shft", "afk", "1"],
+        proc = subprocess.Popen(
+            [shft_bin, "afk", "1"],
             cwd=str(ws_path),
             env=env,
-            timeout=SHFT_RUN_TIMEOUT_SECONDS,
-            check=False,
+            start_new_session=True,
         )
+        proc.wait(timeout=SHFT_RUN_TIMEOUT_SECONDS)
         emit("bridge.job.shft_completed", exit_code=proc.returncode)
         if proc.returncode != 0:
             raise RuntimeError(f"shft afk exited {proc.returncode}")
     except subprocess.TimeoutExpired:
+        # Kill the entire process group to avoid orphaned agents/stale locks
+        import signal
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        except (ProcessLookupError, OSError):
+            pass
+        proc.wait(timeout=10)  # Allow graceful shutdown
         emit("bridge.job.failed", reason="shft_timeout")
         raise RuntimeError("shft afk timed out")
 
@@ -202,6 +244,13 @@ def run(worker_id: str) -> None:
     cfg.require_github_app()  # Worker needs GitHub App credentials — fail fast
     cfg.ensure_dirs()
     db.init_db(cfg.db_path)
+
+    # On startup, requeue any jobs left in 'claimed' state from a previous
+    # crash (lease expired — prevents permanently stuck jobs).
+    with db.connect(cfg.db_path) as conn:
+        requeued = db.requeue_stale_claims(conn)
+        if requeued:
+            logger.info("Requeued %d stale claimed job(s)", requeued)
 
     logger.info(
         "Worker %s started, polling every %.1fs",

@@ -255,3 +255,25 @@ def bump_iteration(conn: sqlite3.Connection, claim_key: str) -> int:
         (claim_key,),
     ).fetchone()
     return row["current_iteration"]
+
+
+def requeue_stale_claims(
+    conn: sqlite3.Connection,
+    timeout_seconds: int = 1800,
+) -> int:
+    """Requeue jobs stuck in 'claimed' state beyond the lease timeout.
+
+    Returns the number of requeued jobs.
+    """
+    cursor = conn.execute(
+        """
+        UPDATE jobs
+          SET status='queued',
+              claimed_at=NULL,
+              worker_id=NULL
+          WHERE status='claimed'
+            AND claimed_at < datetime('now', ? || ' seconds')
+        """,
+        (f"-{timeout_seconds}",),
+    )
+    return cursor.rowcount

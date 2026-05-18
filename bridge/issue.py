@@ -15,15 +15,21 @@ def marker(repo_full_name: str, pr_number: int) -> str:
     return f"<!-- copilot-bridge:pr-{repo_full_name}#{pr_number} -->"
 
 
+MAX_TITLE_LEN = 256
+MAX_BODY_LEN = 65000
+
+
 def title(pr_number: int, pr_title: str) -> str:
-    return f"[copilot-review] PR #{pr_number}: {pr_title}"
+    raw = f"[copilot-review] PR #{pr_number}: {pr_title}"
+    if len(raw) > MAX_TITLE_LEN:
+        return raw[: MAX_TITLE_LEN - 1] + "\u2026"
+    return raw
 
 
 def body(
     *,
     repo_full_name: str,
     pr_number: int,
-    pr_title: str,
     pr_url: str,
     branch: str,
     review_event_url: str,
@@ -74,4 +80,7 @@ def body(
             marker(repo_full_name, pr_number),
         ]
     )
-    return "\n".join(parts)
+    result = "\n".join(parts)
+    if len(result) > MAX_BODY_LEN:
+        result = result[: MAX_BODY_LEN - 100] + "\n\n---\n*Body truncated (GitHub limit).*"
+    return result
