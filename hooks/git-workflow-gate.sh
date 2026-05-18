@@ -61,6 +61,15 @@ if ! echo "$COMMAND" | grep -qE "$TOP_LEVEL_GIT|$NESTED_SHELL_GIT"; then
     exit 0
 fi
 
+# --- Deny nested shell git invocations outright ---
+# If the command matched NESTED_SHELL_GIT (but not TOP_LEVEL_GIT), the child
+# shell string cannot be reliably parsed for per-gate checks (commit message
+# validation, force-push detection, etc). Deny the entire command and require
+# the agent to invoke git directly so each gate can inspect the arguments.
+if ! echo "$COMMAND" | grep -qE "$TOP_LEVEL_GIT"; then
+    _deny "🚫 Don't wrap git commands in nested shells (bash -c, sh -c). Invoke git directly so safety gates can inspect the arguments."
+fi
+
 # --- Helper: portable timeout (macOS may lack timeout) ---
 # When no timeout utility is available, return failure so callers that
 # use `if _timeout ...` gracefully skip the bounded operation rather
