@@ -24,16 +24,60 @@ Before generating any files, ask the user these questions to determine which pat
 
 1. **Skill name** — kebab-case name (e.g., `repo-portfolio`, `competitor-scraper`)
 2. **What it does** — one-sentence summary of the pipeline
-3. **Work unit** — What does each iteration process? (a URL, a file, a repo, a feature, a page)
-4. **Phases** — What are the major steps? (user describes in plain language, you formalize into phases)
-5. **Browser needed?** — Does the skill need to navigate web pages?
-6. **State tracking?** — Does the user want Google Sheets tracking, local JSON, or SQLite?
-7. **Authentication?** — Does the skill need to create/manage accounts on external services?
-8. **Evidence capture?** — Does the skill need screenshots or video?
-9. **Execution environment** — Local VS Code only, VPS only, or dual-mode?
-10. **Data source** — What's the input data? (JSON file, CSV, Google Sheet, git repo, URL list)
+3. **Skill type** — Is this an **automation pipeline** (browser, state, orchestrator) or a **knowledge/workflow skill** (instructions + optional references)?
+
+If skill type = **knowledge/workflow**, skip to the [Lightweight Skill Path](#lightweight-skill-path) section below.
+
+If skill type = **automation pipeline**, continue:
+
+4. **Work unit** — What does each iteration process? (a URL, a file, a repo, a feature, a page)
+5. **Phases** — What are the major steps? (user describes in plain language, you formalize into phases)
+6. **Browser needed?** — Does the skill need to navigate web pages?
+7. **State tracking?** — Does the user want Google Sheets tracking, local JSON, or SQLite?
+8. **Authentication?** — Does the skill need to create/manage accounts on external services?
+9. **Evidence capture?** — Does the skill need screenshots or video?
+10. **Execution environment** — Local VS Code only, VPS only, or dual-mode?
+11. **Data source** — What's the input data? (JSON file, CSV, Google Sheet, git repo, URL list)
 
 Skip questions where the answer is obvious from context. For example, if the user says "scrape these 50 URLs and screenshot each", you know: work unit = URL, browser = yes, evidence = yes.
+
+---
+
+## Lightweight Skill Path
+
+For knowledge/workflow skills that don't need scripts, state stores, or orchestrators. Use this path when:
+
+- The skill encodes **process knowledge** (how to do X)
+- Operations are **non-deterministic** (require agent judgment)
+- There's no iteration loop or batch processing
+- The same code would NOT be generated repeatedly
+
+**Structure:**
+
+```
+{skill-name}/
+├── SKILL.md           # Main instructions (required, ≤100 lines)
+├── REFERENCE.md       # Detailed docs (if SKILL.md would exceed 100 lines)
+├── EXAMPLES.md        # Usage examples (if patterns are complex)
+└── scripts/           # Only if deterministic operations exist
+    └── helper.js
+```
+
+**When to add scripts** (even in lightweight skills):
+
+- Operation is deterministic (validation, formatting, linting)
+- Same code would be generated repeatedly without it
+- Errors need explicit handling that the agent shouldn't improvise
+
+Scripts save tokens and improve reliability vs. regenerated code.
+
+**When to split into separate files:**
+
+- SKILL.md exceeds 100 lines
+- Content has distinct domains (different audiences or contexts)
+- Advanced features are rarely needed by the agent
+
+After generating a lightweight skill, proceed to the [Quality Checklist](#quality-checklist) section.
 
 ---
 
@@ -243,12 +287,20 @@ This is the most important generated file. The orchestrator follows the **Patter
 
 The most critical file. This is what the agent reads to understand how to operate the skill. Follow this structure:
 
+**Description formatting rules** (the description is the ONLY thing the agent sees when choosing skills):
+
+- Max 1024 characters
+- Write in third person
+- First sentence: what the skill does
+- Second sentence: "Use when [specific triggers, keywords, file types]"
+- Be specific enough to distinguish from other skills with similar domains
+
 ```markdown
 ---
 name: { skill-name }
 description: >
-  {One paragraph description. Include trigger phrases:
-  "Use when the user wants to...", "Triggers on: phrase1, phrase2, phrase3".}
+  {First sentence: what it does. Second sentence: Use when [specific triggers].
+  Max 1024 chars. Third person. Specific enough to distinguish from similar skills.}
 ---
 
 # {Skill Title}
@@ -314,6 +366,8 @@ description: >
 
 {Delays, cooldowns, session limits}
 ```
+
+**SKILL.md line budget:** If the generated SKILL.md exceeds 100 lines, move advanced sections (Error Recovery, Rate Limiting, State Store Schema) into `references/` and link to them from SKILL.md.
 
 ### Step 13: `references/setup.md`
 
@@ -417,6 +471,16 @@ if MODE == "playwright":
 ## Quality Checklist
 
 After generating all files, run through `references/skill-checklist.md` — it contains the full 50+ item QA checklist covering structure, SKILL.md completeness, Python code quality, config/secrets, state management, error handling, browser automation, Google Sheets, and evidence/logging.
+
+**Quick review (verify these regardless of skill type):**
+
+- [ ] Description includes triggers ("Use when...")
+- [ ] Description is ≤1024 chars, third person, distinguishable from similar skills
+- [ ] SKILL.md is ≤100 lines (split to references/ if over)
+- [ ] No time-sensitive info (dates, versions that will age)
+- [ ] Consistent terminology (same noun for same concept throughout)
+- [ ] Concrete examples included (not just abstract descriptions)
+- [ ] References are one level deep (no reference chains)
 
 ---
 

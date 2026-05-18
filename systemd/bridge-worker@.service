@@ -5,6 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+Environment=BRIDGE_ROOT=%h/bridge
 EnvironmentFile=%h/dotfiles/secrets/.env.agent
 EnvironmentFile=%h/dotfiles/secrets/.env.secrets
 Environment=WORKER_ID=%i
@@ -12,15 +13,15 @@ WorkingDirectory=%h/dotfiles
 ExecStart=%h/dotfiles/secrets/.venv/bin/python -m bridge.worker
 Restart=on-failure
 RestartSec=10
-StandardOutput=append:%h/bridge/logs/bridge.log
-StandardError=append:%h/bridge/logs/bridge.log
+StandardOutput=append:${BRIDGE_ROOT}/logs/bridge.log
+StandardError=append:${BRIDGE_ROOT}/logs/bridge.log
 
 # Hardening
 NoNewPrivileges=yes
 ProtectSystem=strict
 # MVP: worker needs access to both ~/bridge and ~/dotfiles/working
 # Phase 2: tighten to just ~/bridge once per-workspace working/ lands
-ReadWritePaths=%h/bridge %h/dotfiles/working
+ReadWritePaths=${BRIDGE_ROOT} %h/dotfiles/working
 
 [Install]
 WantedBy=default.target
