@@ -32,8 +32,14 @@ _deny() {
 
 MIGRATION_PATTERN='(prisma[[:space:]]+migrate[[:space:]]+(deploy|dev)|prisma[[:space:]]+db[[:space:]]+push|artisan[[:space:]]+migrate|knex[[:space:]]+migrate|db-migrate[[:space:]]+up|typeorm[[:space:]]+migration:run|drizzle-kit[[:space:]]+push)'
 
-# Runner prefix — package managers that invoke migration tools
-RUNNER_PREFIX='(npx[[:space:]]+|yarn([[:space:]]+(dlx|run))?[[:space:]]+|pnpm([[:space:]]+(dlx|exec|run))?[[:space:]]+|bunx[[:space:]]+|php[[:space:]]+)?'
+# Runner prefix — package managers that invoke migration tools.
+# Allow common runner flags so invocations such as:
+#   npx --yes prisma migrate deploy
+#   pnpm exec --package foo prisma migrate deploy
+# still match the anchored migration check.
+RUNNER_OPT='[[:space:]]+--?[[:alnum:]][-[:alnum:]]*(=[^[:space:]]+)?([[:space:]]+[^-[:space:]][^[:space:]]*)?'
+RUNNER_OPTS="(${RUNNER_OPT})*"
+RUNNER_PREFIX="(npx${RUNNER_OPTS}[[:space:]]+|yarn(${RUNNER_OPT})*([[:space:]]+(dlx|run))?(${RUNNER_OPT})*[[:space:]]+|pnpm(${RUNNER_OPT})*([[:space:]]+(dlx|exec|run))?(${RUNNER_OPT})*[[:space:]]+|bunx${RUNNER_OPTS}[[:space:]]+|php[[:space:]]+)?"
 
 # Wrapper prefix (simplified) — sudo, env, command, builtin with GNU-style options
 WRAPPER_PREFIX='(sudo([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]=][^[:space:]]*)?)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*'
@@ -62,8 +68,11 @@ if echo "$COMMAND" | grep -qiE "$MIGRATION_PATTERN"; then
             # let FOO_TEST=1 bypass the guard without changing the actual DB target.
             # Also deny the exemption when env -i or env -u DATABASE_URL appears,
             # since those strip the assignment before the migration runner sees it.
+            # Require an explicit test marker in the URL (delimited by non-alphanumeric
+            # characters, e.g. /test, _test, -test) rather than matching any occurrence
+            # of "test" (which would pass 'contest', 'latest', etc.).
             env_prefix=$(echo "$segment" | sed -n 's/^\(\([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]*\)*\).*/\1/p')
-            if [[ -n "$env_prefix" ]] && echo "$env_prefix" | grep -qiE '(^|[[:space:]])DATABASE_URL=[^[:space:]]*(test|localhost:5433([^0-9]|$)|:5433([^0-9]|$))'; then
+            if [[ -n "$env_prefix" ]] && echo "$env_prefix" | grep -qiE '(^|[[:space:]])DATABASE_URL=[^[:space:]]*([^[:alnum:]]test([^[:alnum:]]|$)|localhost:5433([^0-9]|$)|:5433([^0-9]|$))'; then
                 # env -i wipes the entire environment; env -u DATABASE_URL unsets it.
                 # Either form means the migration runner won't receive the test URL.
                 if echo "$segment" | grep -qE 'env[[:space:]]+-i([[:space:]]|$)|env[[:space:]]+-u[[:space:]]+DATABASE_URL([[:space:]]|$)|env[[:space:]]+--ignore-environment([[:space:]]|$)|env[[:space:]]+--unset=DATABASE_URL([[:space:]]|$)'; then

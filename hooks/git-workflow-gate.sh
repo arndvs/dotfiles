@@ -49,8 +49,15 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 # wrapped command. The regex allows optional non-flag tokens after each
 # flag so the engine backtracks to correctly match the target command.
 # GNU-style long options with inline =value (--opt=val) are also consumed.
+# Nested shell wrappers using -c/-lc are also treated as git commands when
+# the child shell command string contains a git invocation, so safety gates
+# cannot be bypassed via `bash -c 'git ...'` or `sh -lc 'git ...'`.
 WRAPPER_PREFIX='(sudo([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]=][^[:space:]]*)?)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*'
-if ! echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git[[:space:]]'; then
+COMMAND_BOUNDARY='((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)'
+ASSIGNMENT_PREFIX='([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'
+TOP_LEVEL_GIT="${COMMAND_BOUNDARY}${ASSIGNMENT_PREFIX}${WRAPPER_PREFIX}git[[:space:]]"
+NESTED_SHELL_GIT="${COMMAND_BOUNDARY}${ASSIGNMENT_PREFIX}${WRAPPER_PREFIX}(bash|sh|dash|ksh|zsh)([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?)*[[:space:]]+-[[:alnum:]]*c[[:alnum:]]*[[:space:]]+.*git[[:space:]]"
+if ! echo "$COMMAND" | grep -qE "$TOP_LEVEL_GIT|$NESTED_SHELL_GIT"; then
     exit 0
 fi
 

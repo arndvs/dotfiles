@@ -58,17 +58,32 @@ if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:spa
     _deny "🔒 Blocked: bare env/printenv dumps all variables. Use echo \$SPECIFIC_VAR instead."
 fi
 
-# Block printenv with credential-named arguments (e.g. printenv SECRET_KEY)
+# Block printenv with credential-named arguments (e.g. printenv SECRET_KEY, AUTH0_TOKEN, OAUTH2_SECRET)
 # This prevents targeted disclosure via printenv of individual sensitive vars.
-if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'(printenv|env)[[:space:]]+[A-Za-z_]*(_)?(SECRET|KEY|TOKEN|PASSWORD|CREDENTIAL|AUTH|PRIVATE)[A-Za-z_0-9]*([[:space:]]*($|;|&&|\|\||\|))'; then
+# Uses [A-Za-z_][A-Za-z0-9_]*_ to allow digits in prefix (e.g. AUTH0_, OAUTH2_)
+if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'(printenv|env)[[:space:]]+([A-Za-z_][A-Za-z0-9_]*_)?(SECRET|KEY|TOKEN|PASSWORD|CREDENTIAL|AUTH|PRIVATE)[A-Za-z_0-9]*([[:space:]]*($|;|&&|\|\||\|))'; then
     _deny "🔒 Blocked: printenv with credential variable name. Use approved credential access methods."
 fi
 
-# Block reads of secrets files and directories (covers relative, nested, and home paths)
+# Block any command that references protected secrets paths (covers relative, nested, and home paths)
 # Handles leading env assignments, sudo, command, builtin, env prefixes
 # Covers .env.secrets, any file under secrets/, and ~/dotfiles/secrets/
-if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'(cat|less|more|head|tail)[[:space:]]+(([^[:space:]]*/)?\.env\.secrets|([^[:space:]]*/)?secrets/[^[:space:]]+|~/dotfiles/secrets/[^[:space:]]+)'; then
-    _deny "🔒 Blocked: direct read of secrets file. Use run-with-secrets.sh for credential access."
+# Blocks all commands (not just cat/less/more/head/tail) so grep, sed, awk, cp, etc. are also caught.
+# Exempts run-with-secrets.sh which is the approved access method.
+SECRETS_PATH_PATTERN='(([^[:space:]]*/)?\.\.env\.secrets|([^[:space:]]*/)?secrets/[^[:space:]]+|~/dotfiles/secrets/[^[:space:]]+)'
+if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'[^[:space:];|&(){}]+([[:space:]]+[^;|&(){}[:space:]]+)*[[:space:]]+'"$SECRETS_PATH_PATTERN" && \
+   ! echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'run-with-secrets\.sh([[:space:]]|$)'; then
+    _deny "🔒 Blocked: command references protected secrets path. Use run-with-secrets.sh for credential access."
+fi
+
+# Block nested shell invocations that reference credential variables or secrets paths
+# Catches: bash -c 'echo $SECRET_KEY', sh -lc 'cat secrets/.env.secrets'
+NESTED_SHELL_CRED='(bash|sh|dash|ksh|zsh)([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?)*[[:space:]]+-[[:alnum:]]*c[[:alnum:]]*[[:space:]]+'
+if echo "$COMMAND" | grep -qiE "$NESTED_SHELL_CRED"'.*\$\{?[A-Za-z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)'; then
+    _deny "🔒 Blocked: nested shell would expose credentials. Don't use sh -c to access credential variables."
+fi
+if echo "$COMMAND" | grep -qE "$NESTED_SHELL_CRED"'.*(\.env\.secrets|secrets/[^[:space:]]+|~/dotfiles/secrets/)'; then
+    _deny "🔒 Blocked: nested shell references secrets path. Use run-with-secrets.sh for credential access."
 fi
 
 # Block piped installs without inspection
