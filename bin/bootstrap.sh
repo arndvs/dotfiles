@@ -554,6 +554,27 @@ else
     fi
 fi
 
+# ── 12.5. Global git hooks ────────────────────────────────────────────────────
+echo
+green "[12.5/13] Global git hooks (pre-commit dispatcher)"
+if [[ "$MINIMAL_MODE" == true ]]; then
+    yellow "  Skipping global git hooks (--minimal mode)"
+else
+    GIT_HOOKS_DIR="$DOTFILES/git-hooks"
+    if [[ -d "$GIT_HOOKS_DIR" ]]; then
+        chmod +x "$GIT_HOOKS_DIR/"* 2>/dev/null || true
+        _current_hooks_path=$(git config --global core.hooksPath 2>/dev/null || echo "")
+        if [[ "$_current_hooks_path" == "$GIT_HOOKS_DIR" ]] || [[ "$_current_hooks_path" == "$HOME/dotfiles/git-hooks" ]]; then
+            yellow "  core.hooksPath already set — skipping"
+        else
+            git config --global core.hooksPath "$GIT_HOOKS_DIR"
+            green "  Set git config --global core.hooksPath $GIT_HOOKS_DIR"
+        fi
+    else
+        yellow "  git-hooks/ directory not found — skipping"
+    fi
+fi
+
 # ── 13. Validation ────────────────────────────────────────────────────────────
 echo
 green "[13/13] Validating setup"

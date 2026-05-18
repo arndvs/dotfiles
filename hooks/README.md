@@ -19,6 +19,7 @@ Bootstrap symlinks `hooks/` → `~/.claude/hooks/` and merges the configuration 
 | `migration-guard.sh` | PreToolUse | Bash | Blocks database migration commands targeting non-test databases |
 | `git-workflow-gate.sh` | PreToolUse | Bash | Enforces git safety: no commit to main, conventional messages, no force-push, no dirty-tree switch, no cd+git chains |
 | `plan-quality-gate.sh` | PreToolUse | Bash | Info warning when scaffolding (mkdir, npx create-, etc.) without a plan file present |
+| `test-gate.sh` | PreToolUse | Bash | Runs project tests before `git commit`; blocks commit if tests fail |
 | `git-post-push.sh` | PostToolUse | Bash | Info nag when no PR exists after pushing to a feature branch |
 | `stale-branches.sh` | SessionStart | — | Reports merged or stale (>14d) local branches at session start |
 | `format-check.sh` | Stop | — | Detects Biome/Prettier/ESLint and formats modified files (non-blocking) |
