@@ -220,11 +220,11 @@ CMD_GIT="((^|;|&&|\\|\\||\\||\(|{|\\\$\()[[:space:]]*|(^|[[:space:]])(then|do|el
 # GATE 0: Block cd + git command chains (&&, ;, or ||)
 # ============================================================
 # Agent should use the cwd parameter instead of cd && git.
-# Catches cd anywhere before a later git in the same chain,
+# Catches cd anywhere before a later git command in the same chain,
 # not just immediately adjacent (e.g. cd /repo && true && git commit).
-# Anchored to command boundaries so 'echo cd /tmp' doesn't false-positive.
+# Anchored to command boundaries so 'echo cd /tmp' or 'echo git status' don't false-positive.
 if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\||\(|{|\$\(|[[:space:]]+(then|do|else))[[:space:]]*cd[[:space:]]+("[^"]*"|'\''[^'\'']*'\''|[^[:space:];|&]+)' && \
-   echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\||\(|{|\$\(|[[:space:]]+(then|do|else))[[:space:]]*cd[[:space:]].*([;&]|\|\||&&).*git[[:space:]]'; then
+   echo "$COMMAND" | grep -qE "(^|;|&&|\\|\\||\\||\\(|{|\\$\\(|[[:space:]]+(then|do|else))[[:space:]]*cd[[:space:]].*([;&]|\\|\\||&&).*${CMD_GIT}"; then
     _deny "🚫 Don't chain cd && git commands. Use the cwd parameter on the tool call instead — cd chains leak shell state."
 fi
 
