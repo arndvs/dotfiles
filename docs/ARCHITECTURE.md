@@ -12,13 +12,13 @@ Internal system map for ctrl+shft. Start here, follow the links.
 ```mermaid
 graph TB
     subgraph "~/dotfiles (source of truth)"
-        RULES["rules/<br/>13 path-gated conventions"]
+        RULES["rules/<br/>12 path-gated conventions"]
         INST["instructions/<br/>8 context/service/task files"]
         SKILLS["skills/<br/>26 public workflows"]
         AGENTS["agents/<br/>6 subagent personas"]
         CMDS["commands/<br/>13 slash dispatchers"]
         HOOKS["hooks/<br/>12 lifecycle guards"]
-        BIN["bin/<br/>26 scripts"]
+        BIN["bin/<br/>25 scripts"]
         SHFT["shft/<br/>autonomous loop"]
         SECRETS["secrets/<br/>3-tier credentials"]
         HUD["hud/<br/>observability dashboard"]
@@ -43,7 +43,7 @@ graph TB
 
 | Directory | Purpose | Details |
 |-----------|---------|---------|
-| [rules/](../rules/README.md) | Path-gated coding conventions (T3) | 13 files, load when edited file matches `paths` glob |
+| [rules/](../rules/README.md) | Path-gated coding conventions (T3) | 12 files, load when edited file matches `paths` glob |
 | [instructions/](../instructions/README.md) | Context, service, and task-triggered knowledge (T1–T2) | 8 files + `_local/`, tiered loading |
 | [skills/](../skills/README.md) | Multi-step workflow definitions (T4) | 26 public skills, triggered by task description |
 | [agents/](../agents/README.md) | Read-only subagent personas | 6 agents across 3 model tiers (Haiku/Sonnet/Opus) |
