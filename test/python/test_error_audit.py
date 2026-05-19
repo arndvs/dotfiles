@@ -223,11 +223,11 @@ class TestSuppressions(unittest.TestCase):
         self.assertEqual(supp, {})
 
     def test_multiple_fenced_blocks_parsed(self):
-        """Seed file has two code fences (active + candidates); both should be scanned."""
+        """Seed file has two code fences under ## Suppressions; both should be scanned."""
         with tempfile.TemporaryDirectory() as tmp:
             path = self._write_suppressions(Path(tmp), (
-                "## Active\n\n```\nkey-a\treason-a\n```\n\n"
-                "## Candidates\n\n```\nkey-b\treason-b\n```\n"
+                "## Suppressions\n\n```\nkey-a\treason-a\n```\n\n"
+                "```\nkey-b\treason-b\n```\n"
             ))
             supp = ea.load_suppressions(path)
             self.assertEqual(set(supp.keys()), {"key-a", "key-b"})

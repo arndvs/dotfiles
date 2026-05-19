@@ -331,10 +331,11 @@ class TestFindPlanForDiff(unittest.TestCase):
             tmp = Path(tmpdir)
             older = tmp / "older.md"
             older.write_text(self.PLAN_A)
-            import time
-            time.sleep(0.05)
             newer = tmp / "newer.md"
             newer.write_text(self.PLAN_A)
+            # Set explicit mtimes to avoid filesystem resolution flakiness
+            os.utime(older, (1000, 1000))
+            os.utime(newer, (2000, 2000))
             diff = {"scripts/foo.py"}
             result = pfl.find_best_plan_for_diff(diff, plans_dir=tmp)
             self.assertIsNotNone(result)
@@ -370,8 +371,6 @@ class TestFindPlanForDiff(unittest.TestCase):
                 - `~/myOS/content/drafts/interview-coach-contribution/negotiation-protocol-draft.md`
                 - `~/myOS/content/drafts/interview-coach-contribution/outline.md`
             """))
-            import time
-            time.sleep(0.05)
             session_b = tmp / "session-b.md"
             session_b.write_text(textwrap.dedent("""\
                 # Plan: dispatcher fix
@@ -380,11 +379,9 @@ class TestFindPlanForDiff(unittest.TestCase):
             """))
             diff = {"scripts/open-for-review.py"}
 
-            # Swap mtimes so session-a is newest (old behavior would pick it)
-            a_mtime = session_a.stat().st_mtime
-            b_mtime = session_b.stat().st_mtime
-            os.utime(session_a, (b_mtime, b_mtime))
-            os.utime(session_b, (a_mtime, a_mtime))
+            # Set explicit mtimes: session-a is newest (old behavior would pick it)
+            os.utime(session_a, (2000, 2000))
+            os.utime(session_b, (1000, 1000))
 
             result = pfl.find_best_plan_for_diff(diff, plans_dir=tmp)
             self.assertIsNotNone(result)
