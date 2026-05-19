@@ -33,14 +33,17 @@ fi
 HOOK_STDOUT=""
 HOOK_STDERR=""
 HOOK_EXIT=0
+_HOOK_STDERR_FILE=""
 
 run_hook() {
     local hook_script="$1"
     local json_input="$2"
     HOOK_EXIT=0
+    _HOOK_STDERR_FILE=$(mktemp)
     # Capture stdout and stderr separately
-    HOOK_STDOUT=$(echo "$json_input" | bash "$hook_script" 2>/tmp/hook-stderr) || HOOK_EXIT=$?
-    HOOK_STDERR=$(cat /tmp/hook-stderr 2>/dev/null || true)
+    HOOK_STDOUT=$(echo "$json_input" | bash "$hook_script" 2>"$_HOOK_STDERR_FILE") || HOOK_EXIT=$?
+    HOOK_STDERR=$(cat "$_HOOK_STDERR_FILE" 2>/dev/null || true)
+    rm -f "$_HOOK_STDERR_FILE"
 }
 
 # --- Parse hook output ---
