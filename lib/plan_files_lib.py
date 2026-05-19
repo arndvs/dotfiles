@@ -83,7 +83,7 @@ def extract_plan_files(plan_text: str) -> tuple[list[str], list[str], list[str]]
 
         path_match = re.search(r'\*\*`([^`]+)`\*\*', line)
         if not path_match:
-            path_match = re.search(r'`(~?/[^`]+)`', line)
+            path_match = re.search(r'`([^`]+\.[a-zA-Z0-9]+)`', line)
         if not path_match:
             continue
 
