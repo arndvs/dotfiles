@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# FAIL_MODE: open
 """Plan review gate — Phase 2: PR diff comparison.
 
 PreToolUse hook (Bash matcher). Fires before `gh pr create` or `gh pr edit`.
@@ -284,7 +285,8 @@ def main():
         msg = format_phase2_checklist(plan_text, missing, warnings)
         deny(msg)
     elif warnings:
-        info(f"PRE-PR AUDIT: pass with {len(warnings)} warnings")
+        details = "; ".join(warnings[:5])
+        info(f"PRE-PR AUDIT: pass with {len(warnings)} warnings: {details}")
     else:
         allow()
 
