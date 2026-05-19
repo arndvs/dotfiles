@@ -36,6 +36,7 @@ Classes detected:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -479,7 +480,7 @@ def to_json(clusters: list[Cluster]) -> list[dict]:
         tier, auto, remediation = suggest(c)
         description = f"{c.cls} · {c.tool_name} · ×{c.count} — {c.signature[:80]}"
         out.append({
-            "id": f"error-cluster-{c.cls}-{c.tool_name.lower()}-{hash(c.signature) & 0xffff:04x}",
+            "id": f"error-cluster-{c.cls}-{c.tool_name.lower()}-{hashlib.sha1(c.signature.encode()).hexdigest()[:8]}",
             "category": "error-audit",
             "description": description,
             "fix": {
