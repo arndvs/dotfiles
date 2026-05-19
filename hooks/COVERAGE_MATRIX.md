@@ -26,7 +26,7 @@ Maps failure modes to their enforcement mechanisms. Use this to identify gaps an
 | `git commit --amend` (history rewrite) | `git-workflow-gate.sh` Gate 1 | PreToolUse/Warn | ⚠️ (warn only) |
 | `cd` + `git` in one command (wrong repo) | `git-workflow-gate.sh` Gate 0 | PreToolUse/Block | ✅ |
 | Push without PR | `git-post-push.sh` | PostToolUse/Info | ✅ |
-| Push to merged-PR branch | `git-workflow-gate.sh` Gate 2 | PreToolUse/Block | ✅ |
+| Push to merged-PR branch | `git-workflow-gate.sh` Gate 2 | PreToolUse/Block | ⚠️ (requires `gh` CLI) |
 | Unpushed commits accumulating | `git-post-commit.sh` | PostToolUse/Warn | ✅ |
 | Stale/merged branches accumulating | `stale-branches.sh` | SessionStart/Info | ✅ |
 | Work stranded (not pushed) | `global.instructions.md` | Instruction | 📋 |
