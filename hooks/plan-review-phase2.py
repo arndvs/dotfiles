@@ -100,6 +100,17 @@ def _default_branch(repo_root):
             return ref.replace("refs/remotes/origin/", "")
     except (subprocess.TimeoutExpired, FileNotFoundError):
         pass
+    # Fallback: try common default branch names that exist locally
+    for candidate in ("main", "master"):
+        try:
+            check = subprocess.run(
+                ["git", "rev-parse", "--verify", f"{candidate}^{{commit}}"],
+                capture_output=True, text=True, cwd=repo_root, timeout=5
+            )
+            if check.returncode == 0:
+                return candidate
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
     return "main"
 
 

@@ -50,10 +50,17 @@ for candidate in PLAN.md plan.md .plan.md docs/PLAN.md docs/plan.md; do
     fi
 done
 
-# Also check ~/.claude/plans/ for the most recently modified plan
+# Also check ~/.claude/plans/ for a recent plan that matches this repo
 PLANS_DIR="$HOME/.claude/plans"
 if [[ -z "$PLAN_FILE" && -d "$PLANS_DIR" ]]; then
-    PLAN_FILE=$(ls -t "$PLANS_DIR"/*.md 2>/dev/null | head -1) || true
+    REPO_NAME=$(basename "$GIT_ROOT")
+    while IFS= read -r candidate; do
+        [[ -f "$candidate" ]] || continue
+        if grep -Fq "$GIT_ROOT" "$candidate" 2>/dev/null || grep -Fq "$REPO_NAME" "$candidate" 2>/dev/null; then
+            PLAN_FILE="$candidate"
+            break
+        fi
+    done < <(ls -t "$PLANS_DIR"/*.md 2>/dev/null || true)
 fi
 
 if [[ -z "$PLAN_FILE" || ! -f "$PLAN_FILE" ]]; then
