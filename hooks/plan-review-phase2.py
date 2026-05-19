@@ -198,8 +198,10 @@ def phase2_check(plan_text, cwd, diff_files=None):
     """
     repo_files, external_files, conditional_files = extract_plan_files(plan_text)
 
-    if not repo_files and not external_files:
+    if not repo_files and not external_files and not conditional_files:
         return True, [], ["no files listed in plan's ## Files section"]
+    if not repo_files and not external_files:
+        return True, [], ["only conditional files listed in plan's ## Files section"]
 
     if diff_files is None:
         diff_files, skip_reason = get_diff_files(cwd)

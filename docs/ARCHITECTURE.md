@@ -12,8 +12,8 @@ Internal system map for ctrl+shft. Start here, follow the links.
 ```mermaid
 graph TB
     subgraph "~/dotfiles (source of truth)"
-        RULES["rules/<br/>13 path-gated conventions"]
-        INST["instructions/<br/>9 context/service/task files"]
+        RULES["rules/<br/>path-gated conventions"]
+        INST["instructions/<br/>context/service/task files"]
         SKILLS["skills/<br/>26 public workflows"]
         AGENTS["agents/<br/>6 subagent personas"]
         CMDS["commands/<br/>14 slash dispatchers"]
@@ -43,8 +43,8 @@ graph TB
 
 | Directory | Purpose | Details |
 |-----------|---------|---------|
-| [rules/](../rules/README.md) | Path-gated coding conventions (T3) | 13 files, load when edited file matches `paths` glob |
-| [instructions/](../instructions/README.md) | Context, service, and task-triggered knowledge (T1–T2) | 9 files + `_local/`, tiered loading |
+| [rules/](../rules/README.md) | Path-gated coding conventions (T3) | Load when edited file matches `paths` glob |
+| [instructions/](../instructions/README.md) | Context, service, and task-triggered knowledge (T1–T2) | `_local/` overlay, tiered loading |
 | [skills/](../skills/README.md) | Multi-step workflow definitions (T4) | 26 public skills, triggered by task description |
 | [agents/](../agents/README.md) | Read-only subagent personas | 6 agents across 3 model tiers (Haiku/Sonnet/Opus) |
 | [commands/](../commands/README.md) | `/slash` command dispatchers | 14 commands, each loads one skill |
