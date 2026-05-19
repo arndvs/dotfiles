@@ -126,6 +126,8 @@ RESULTS=()
 FAIL_COUNT=0
 WARN_COUNT=0
 PASS_COUNT=0
+REQ_PASS=0
+REQ_FAIL=0
 
 _check() {
     local label="$1" status="$2"
@@ -142,8 +144,10 @@ for section in "${SECTIONS[@]}"; do
     section=$(echo "$section" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     if _section_has_content "$section"; then
         _check "$section" "PASS"
+        ((++REQ_PASS))
     else
         _check "$section" "FAIL"
+        ((++REQ_FAIL))
     fi
 done
 
@@ -163,16 +167,16 @@ if _is_code_touching; then
 fi
 
 # --- Format output ---
-TOTAL=$((PASS_COUNT + FAIL_COUNT))
+REQ_TOTAL=$((REQ_PASS + REQ_FAIL))
 HEADER="PLAN REVIEW GATE ($(basename "$PLAN_FILE")):"
 if [[ $FAIL_COUNT -gt 0 ]]; then
     SUMMARY="  RESULT: NEEDS ATTENTION ($FAIL_COUNT missing section(s)"
     [[ $WARN_COUNT -gt 0 ]] && SUMMARY+=", $WARN_COUNT advisory"
     SUMMARY+=")"
 elif [[ $WARN_COUNT -gt 0 ]]; then
-    SUMMARY="  RESULT: PASS ($TOTAL/$TOTAL sections, $WARN_COUNT advisory)"
+    SUMMARY="  RESULT: PASS ($REQ_PASS/$REQ_TOTAL sections, $WARN_COUNT advisory)"
 else
-    SUMMARY="  RESULT: PASS ($TOTAL/$TOTAL sections)"
+    SUMMARY="  RESULT: PASS ($REQ_PASS/$REQ_TOTAL sections)"
 fi
 
 # Build the message

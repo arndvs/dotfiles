@@ -367,8 +367,8 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+push([[:space:]]
     if command -v gh &>/dev/null; then
         local_branch=$(git branch --show-current 2>/dev/null || echo "")
         if [[ -n "$local_branch" ]]; then
-            merged_url=$(_timeout 2 gh pr list --head "$local_branch" --state merged --json url --jq '.[0].url' 2>/dev/null || true)
-            if [[ -n "$merged_url" ]]; then
+            merged_url=$(_timeout 2 gh pr list --head "$local_branch" --state merged --json url --jq '.[0].url // empty' 2>/dev/null || true)
+            if [[ -n "$merged_url" && "$merged_url" != "null" ]]; then
                 _deny "🚫 Branch '$local_branch' is frozen — PR already merged ($merged_url). Create a new branch for further work."
             fi
         fi
