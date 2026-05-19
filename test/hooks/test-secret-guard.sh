@@ -42,8 +42,8 @@ assert_deny "sudo env" "env.*printenv"
 run_hook "$HOOK" "$(make_pretooluse_json 'cat ~/dotfiles/secrets/.env')"
 assert_deny "cat secrets/.env" "secrets"
 
-run_hook "$HOOK" "$(make_pretooluse_json 'cat ..env.secrets')"
-assert_deny "cat ..env.secrets" "secrets"
+run_hook "$HOOK" "$(make_pretooluse_json 'cat ../.env.secrets')"
+assert_deny "cat ../.env.secrets" "secrets"
 
 # --- Piped installs ---
 

@@ -288,7 +288,6 @@ def main():
             "this diff. Either the PR's changes pre-date any plan, or this "
             "session never filed one. Not blocking."
         )
-        allow()
 
     try:
         plan_text = plan_file.read_text()

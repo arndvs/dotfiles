@@ -39,7 +39,7 @@ BUG_PATTERN = re.compile("|".join(BUG_INDICATORS), re.IGNORECASE)
 
 # Configurable issue prefix. Default: any JIRA/Linear-style XX-NN pattern.
 # Set CTRLSHFT_ISSUE_PREFIX=CC to only match CC-NN, or PROJ to match PROJ-NN.
-_issue_prefix = os.environ.get("CTRLSHFT_ISSUE_PREFIX", "").strip()
+_issue_prefix = os.environ.get("CTRLSHFT_ISSUE_PREFIX", "").strip().rstrip("-")
 _prefix_pattern = re.escape(_issue_prefix) + r"-" if _issue_prefix else r"[A-Z]+-"
 ISSUE_REF_PATTERN = re.compile(
     r"\*\*Linear:\*\*\s*" + _prefix_pattern + r"\d+", re.IGNORECASE
