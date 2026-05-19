@@ -1,6 +1,6 @@
 ---
 name: error-audit
-description: Audit errors across Claude Code session transcripts. Scans ~/.claude/projects/*.jsonl for 7 error classes (tool_error, validation_error, permission_denial, hook_block, bash_fail, retry_storm, read_before_edit), clusters by root-cause signature, and surfaces top N with suggested remediation tiers. Use when the user says "error audit", "errors across sessions", "system health errors", or "/error-audit".
+description: Scan Claude Code session transcripts for errors, cluster by root cause, and suggest remediations.
 ---
 
 # Error Audit

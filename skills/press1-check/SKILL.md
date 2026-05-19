@@ -1,6 +1,6 @@
 ---
 name: press1-check
-description: Audit which Bash commands required manual approval ("press 1") in Claude Code sessions. Scans JSONL transcripts, classifies risk (HIGH/MEDIUM/LOW), and suggests safe allow-list additions. Use when the user says "press1-check", "press 1 check", "permission audit", or wants to review which commands need allow-listing.
+description: Audit which Bash commands required manual approval ("press 1") in Claude Code sessions.
 ---
 
 # /press1-check — Permission Audit

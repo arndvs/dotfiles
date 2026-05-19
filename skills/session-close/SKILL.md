@@ -1,6 +1,6 @@
 ---
 name: session-close
-description: Session-close audit — session-scoped manifest, two-section open items, decisive close signal. Runs quality gates before ending a coding session. Use when the user says "check", "wrap up", "land the plane", "end session", "close the session", or "definition of done".
+description: Pre-flight checklist that runs quality gates before ending a coding session.
 ---
 
 # Session Close (`/check`)

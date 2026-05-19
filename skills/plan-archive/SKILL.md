@@ -1,7 +1,6 @@
 ---
 name: plan-archive
-description: Archive plan-mode files by linking them to merged PRs
-trigger: /plan-archive, after PR merge, plan cleanup
+description: Archive plan-mode files by linking them to merged PRs.
 ---
 
 # Plan Archive
