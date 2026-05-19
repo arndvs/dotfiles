@@ -519,22 +519,29 @@ class TestHookEntryPoint(unittest.TestCase):
 
     def test_pr_create_triggers_phase2(self):
         """gh pr create in a git repo should trigger Phase 2 logic."""
-        stdout, _, code = run_gate({
-            "tool_name": "Bash",
-            "tool_input": {"command": "gh pr create --title test"},
-            "cwd": CWD,
-        })
-        self.assertEqual(code, 0)
-        # Should either find a plan and check, or skip with a message
-        if stdout:
-            output = parse_output(stdout)
-            ctx = get_context(output)
-            decision = get_decision(output)
-            # Either skipped (no plan) or checked
-            self.assertTrue(
-                "SKIPPED" in ctx or "AUDIT" in ctx or decision == "deny",
-                f"Unexpected output: {stdout}"
+        # Use a temporary HOME with no plans so output is deterministic
+        with tempfile.TemporaryDirectory() as tmp_home:
+            env = os.environ.copy()
+            env["HOME"] = tmp_home
+            result = subprocess.run(
+                [sys.executable, str(GATE_SCRIPT)],
+                input=json.dumps({
+                    "tool_name": "Bash",
+                    "tool_input": {"command": "gh pr create --title test"},
+                    "cwd": CWD,
+                }),
+                capture_output=True,
+                text=True,
+                timeout=10,
+                cwd=CWD,
+                env=env,
             )
+            self.assertEqual(result.returncode, 0)
+            # With no plans dir, hook must emit SKIPPED output
+            output = parse_output(result.stdout.strip())
+            ctx = get_context(output)
+            self.assertIsNotNone(ctx, f"Expected JSON output, got: {result.stdout}")
+            self.assertIn("SKIPPED", ctx)
 
 
 # ============================================================

@@ -73,7 +73,7 @@ _config_val() {
     local config_file="$GIT_ROOT/.ctrlshft"
     if [[ -f "$config_file" ]] && command -v grep &>/dev/null; then
         local val
-        val=$(grep -E "^${key}:" "$config_file" 2>/dev/null | head -1 | sed 's/^[^:]*:[[:space:]]*//')
+        val=$(grep -E "^${key}:" "$config_file" 2>/dev/null | head -1 | sed 's/^[^:]*:[[:space:]]*//' || true)
         if [[ -n "$val" ]]; then
             echo "$val"
             return
@@ -111,7 +111,7 @@ _section_has_content() {
 
 # --- Code-touching detection ---
 _is_code_touching() {
-    echo "$PLAN_TEXT" | grep -qiE '\.(py|js|ts|sh|json|yaml|yml|toml|bash)\b|scripts/|tests/|Dockerfile|Makefile|\.github/'
+    echo "$PLAN_TEXT" | grep -qiE '\.(py|js|ts|sh|json|yaml|yml|toml|bash)([^[:alnum:]_]|$)|scripts/|tests/|Dockerfile|Makefile|\.github/'
 }
 
 # --- Build checklist ---
