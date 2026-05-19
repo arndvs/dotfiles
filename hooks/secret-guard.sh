@@ -26,24 +26,24 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 # Skip if no command (non-Bash tool calls pass through)
 [[ -z "$COMMAND" ]] && exit 0
 
+# --- Pattern: wrapper command prefix (sudo, env, command, builtin) ---
+# sudo and env can carry flags with optional arguments (e.g. sudo -u root,
+# env -u VARNAME FOO=bar, env --unset=VARNAME) before the wrapped command.
+# GNU-style long options with inline =value (--opt=val) are also consumed.
+WRAPPER_PREFIX='(sudo([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]=][^[:space:]]*)?)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*'
+
 # --- Helper: deny output (JSON-safe via jq) ---
 _deny() {
     jq -cn --arg reason "$1" '{"hookSpecificOutput":{"permissionDecision":"deny","permissionDecisionReason":$reason}}' >&2
     exit 2
 }
 
-# --- Common wrapper prefix pattern ---
-# Matches optional wrapper commands before the real command:
-#   sudo   — with flags and optional flag arguments: sudo -E, sudo -u root
-#   command, builtin — shell builtins
-#   env    — with flags, flag arguments, and assignments: env -i, env -u VAR FOO=bar
-# Flag arguments are consumed via optional non-flag token after each flag.
-# The regex engine backtracks to avoid consuming the target command as a flag argument.
-WRAPPER_PREFIX='(sudo([[:space:]]+-[-a-zA-Z0-9]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+([[:space:]]+[^-[:space:]=][^[:space:]]*)?)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*'
-
 # Block commands that print credentials to stdout
-# Handles sudo (with options), command, builtin, env (with flags/assignments) prefixes
-if echo "$COMMAND" | grep -qiE '(^|;|&&|\|\||\|)[[:space:]]*'"$WRAPPER_PREFIX"'(echo|printf|cat)[[:space:]]+.*\$\{?[A-Za-z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)'; then
+# Handles leading env assignments plus sudo/command/builtin prefixes
+# (e.g. FOO=bar command echo $SECRET_KEY)
+# Also handles env prefix with flags and assignments (e.g. env -u FOO sudo -u root echo $SECRET_KEY)
+# Shell control keywords (then/do/else) are treated as command boundaries.
+if echo "$COMMAND" | grep -qiE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'(echo|printf|cat)[[:space:]]+.*\$\{?[A-Za-z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)'; then
     _deny "🔒 Blocked: command would expose credentials. Use run-with-secrets.sh for credential injection."
 fi
 
@@ -51,19 +51,85 @@ fi
 # Also catches leading env assignments: FOO=bar env, FOO=bar printenv
 # Handles wrapper prefixes and env-as-wrapper (env env, env printenv)
 # Also catches assignment-only env invocations: env FOO=bar (still dumps env)
-# Catches env with flags that still dump: env -0, env -u VAR, env --null
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'(printenv|env)([[:space:]]+(-[-a-zA-Z0-9]+([[:space:]]+[^-[:space:]=;|&][^[:space:];|&]*)?|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*))*[[:space:]]*($|;|&&|\|\||\|)'; then
+# Catches env with flags that still dump: env -0, env --null, env -v
+# Catches env -u NAME (unsets one var but still dumps the rest)
+# Each flag optionally consumes a following non-flag argument (e.g. -u NAME)
+if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'(printenv|env)([[:space:]]+(-[-a-zA-Z0-9]+([[:space:]]+[^-[:space:]=][^[:space:]]*)?|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*))*[[:space:]]*($|;|&&|\|\||\|)'; then
     _deny "🔒 Blocked: bare env/printenv dumps all variables. Use echo \$SPECIFIC_VAR instead."
 fi
 
-# Block reads of secrets files (covers bare name + path prefixes)
-# Handles wrapper prefixes (including env with flags and assignments)
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*'"$WRAPPER_PREFIX"'(cat|less|more|head|tail)[[:space:]]+(([^[:space:]]*/)?\.env\.secrets|([^[:space:]]*/)?secrets/\.env|~/dotfiles/secrets/)'; then
-    _deny "🔒 Blocked: direct read of secrets file. Use run-with-secrets.sh for credential access."
+# Block printenv/env with credential-named arguments anywhere in the argument list
+# (e.g. printenv SECRET_KEY OTHER_VAR, printenv OTHER_VAR AUTH0_TOKEN, env OAUTH2_SECRET)
+# Uses [A-Za-z_][A-Za-z0-9_]*_ to allow digits in prefix (e.g. AUTH0_, OAUTH2_)
+if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'(printenv|env)([[:space:]]+[^;&|[:space:]]+)*[[:space:]]+([A-Za-z_][A-Za-z0-9_]*_)?(SECRET|KEY|TOKEN|PASSWORD|CREDENTIAL|AUTH|PRIVATE)[A-Za-z_0-9]*([[:space:]]+[^;&|[:space:]]+)*[[:space:]]*($|;|&&|\|\||\|)'; then
+    _deny "🔒 Blocked: printenv with credential variable name. Use approved credential access methods."
+fi
+
+# Block any command that references protected secrets paths (covers relative, nested, and home paths)
+# Handles leading env assignments, sudo, command, builtin, env prefixes
+# Covers .env.secrets, any file under secrets/, and ~/dotfiles/secrets/
+# Blocks read/copy/exfiltration commands so grep, sed, awk, cp, cat, etc. are caught.
+# Protected secrets paths are denied even when passed through wrapper scripts.
+# Exempts safe git operations (add, status, diff, log, show, commit, rm) and
+# tracked documentation/templates (README*, CONTRIBUTING*, *.md, *.template)
+# so contributors can commit allowed non-secret files under secrets/.
+SECRETS_PATH_PATTERN='(([^[:space:]]*/)?\.env\.secrets|([^[:space:]]*/)?secrets/[^[:space:]]+|~/dotfiles/secrets/[^[:space:]]+)'
+SAFE_SECRETS_PATH='^secrets/(README[^[:space:]]*|CONTRIBUTING[^[:space:]]*|[^[:space:]]+\.(md|template|example))$'
+# Per-segment helper: checks every protected-path reference in a segment is a safe file
+_segment_references_only_safe_secret_files() {
+    local segment="$1"
+    local protected_path
+    while IFS= read -r protected_path; do
+        [[ -z "$protected_path" ]] && continue
+        if [[ ! "$protected_path" =~ $SAFE_SECRETS_PATH ]]; then
+            return 1
+        fi
+    done < <(printf '%s\n' "$segment" | grep -oE "$SECRETS_PATH_PATTERN" || true)
+    return 0
+}
+# Splits command on ;, &&, ||, | and verifies each segment that references a
+# protected path is (a) a safe git operation and (b) only references safe files.
+_command_secret_refs_are_safe() {
+    local command="$1"
+    local segment
+    while IFS= read -r segment; do
+        [[ -z "${segment//[[:space:]]/}" ]] && continue
+        if echo "$segment" | grep -qE "$SECRETS_PATH_PATTERN"; then
+            if ! echo "$segment" | grep -qE '^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'git[[:space:]]+(add|status|diff|log|show|commit|rm)([[:space:]]|$)'; then
+                return 1
+            fi
+            if ! _segment_references_only_safe_secret_files "$segment"; then
+                return 1
+            fi
+        fi
+    done < <(printf '%s\n' "$command" | sed -E 's/(&&|\|\||;|\|)/\n/g')
+    return 0
+}
+if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'[^[:space:];|&(){}]+([[:space:]]+[^;|&(){}[:space:]]+)*[[:space:]]+'"$SECRETS_PATH_PATTERN"; then
+    # Allow only when every segment referencing a protected path is a safe git op on safe files
+    if _command_secret_refs_are_safe "$COMMAND"; then
+        : # Safe git operation on tracked documentation/template — allow
+    else
+        _deny "🔒 Blocked: command references protected secrets path."
+    fi
+fi
+
+# Block nested shell invocations that reference credential variables or secrets paths
+# Catches: bash -c 'echo $SECRET_KEY', sh -lc 'cat secrets/.env.secrets'
+NESTED_SHELL_CRED='(bash|sh|dash|ksh|zsh)([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?)*[[:space:]]+-[[:alnum:]]*c[[:alnum:]]*[[:space:]]+'
+if echo "$COMMAND" | grep -qiE "$NESTED_SHELL_CRED"'.*\$\{?[A-Za-z0-9_]*(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH)'; then
+    _deny "🔒 Blocked: nested shell would expose credentials. Don't use sh -c to access credential variables."
+fi
+if echo "$COMMAND" | grep -qE "$NESTED_SHELL_CRED"'.*(\.env\.secrets|secrets/[^[:space:]]+|~/dotfiles/secrets/)'; then
+    _deny "🔒 Blocked: nested shell references secrets path. Use run-with-secrets.sh for credential access."
 fi
 
 # Block piped installs without inspection
-if echo "$COMMAND" | grep -qE 'curl[[:space:]].*\|[[:space:]]*(ba)?sh'; then
+# Anchored to command boundaries so harmless mentions in echo/grep/docs do not match.
+# Handles sudo, command, builtin, env prefixes before the executed curl.
+# Allows leading VAR=value assignments before wrapper prefixes.
+# Shell control keywords (then/do/else) are treated as command boundaries.
+if echo "$COMMAND" | grep -qE '((^|;|&&|\|\||\||\(|{|\$\()[[:space:]]*|(^|[[:space:]])(then|do|else)[[:space:]]+)([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'"$WRAPPER_PREFIX"'curl([[:space:]]+[^|;]+)?[[:space:]]*\|[[:space:]]*(ba)?sh([[:space:]]+[^;|&[:space:]][^;|&]*)?[[:space:]]*($|;|&&|\|\||\|)'; then
     _deny "🔒 Blocked: piped install detected. Download first, inspect, then execute."
 fi
 

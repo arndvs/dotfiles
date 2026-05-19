@@ -153,6 +153,25 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     elif [[ "${1:-}" == "reads" ]]; then
         shift
         emit_loaded_files "$@"
+    elif [[ "${1:-}" == "bridge-event" ]]; then
+        # Bridge event — read JSON payload from stdin, forward to HUD daemon.
+        _bridge_payload="$(cat)"
+        if [[ -z "$_bridge_payload" ]]; then
+            exit 0
+        fi
+        # Transport 1 — named pipe
+        if _can_use_pipe; then
+            ( printf '%s\n' "$_bridge_payload" > "$_PIPE" ) 2>/dev/null &
+        # Transport 2 — HTTP POST
+        elif command -v curl &>/dev/null; then
+            curl -sf --max-time 0.3 \
+                "http://localhost:$_HTTP_PORT/api/event" \
+                -X POST -H "Content-Type: application/json" \
+                -d "$_bridge_payload" > /dev/null 2>&1 || true
+        fi
+        # Transport 3 — always append to JSONL fallback
+        mkdir -p "$_WD" 2>/dev/null || true
+        printf '%s\n' "$_bridge_payload" >> "$_JSONL" 2>/dev/null || true
     else
         write_hud_event "${1:-info}" "${2:-}"
     fi

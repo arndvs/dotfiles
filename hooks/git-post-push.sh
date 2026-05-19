@@ -32,8 +32,10 @@ EXIT_CODE=$(echo "$INPUT" | jq -r '.tool_result.exit_code // .tool_result.exitCo
 # Only trigger on git push commands (POSIX ERE: [[:space:]] not \s)
 # Allow global options (--no-pager, -c key=val) between git and push.
 # Dangerous flags (-C/--git-dir/--work-tree) are handled below.
+# Also matches wrapper forms: sudo git push, command git push, env FOO=bar git push.
 GIT_OPTS='([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*'
-if ! echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git${GIT_OPTS}[[:space:]]+push([[:space:]]|\$)"; then
+WRAPPER_PREFIX='(sudo([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+|command[[:space:]]+|builtin[[:space:]]+|env([[:space:]]+-[-a-zA-Z0-9]+(=[^[:space:]]+)?([[:space:]]+[^-[:space:]=][^[:space:]]*)?)*([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]+)*'
+if ! echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*${WRAPPER_PREFIX}git${GIT_OPTS}[[:space:]]+push([[:space:]]|\$)"; then
     exit 0
 fi
 
@@ -41,7 +43,7 @@ fi
 # This hook resolves branch/PR state from the hook event's cwd, so handling
 # these forms would risk checking the wrong branch and missing the reminder.
 # Allow global options before the repo-targeting flags (e.g. git --no-pager -C /repo push)
-if echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*git${GIT_OPTS}([[:space:]]+(-C|--git-dir|--work-tree)([=[:space:]][^;&|[:space:]]+)*)+${GIT_OPTS}[[:space:]]+push([[:space:]]|\$)"; then
+if echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*${WRAPPER_PREFIX}git${GIT_OPTS}([[:space:]]+(-C|--git-dir|--work-tree)([=[:space:]][^;&|[:space:]]+)*)+${GIT_OPTS}[[:space:]]+push([[:space:]]|\$)"; then
     exit 0
 fi
 

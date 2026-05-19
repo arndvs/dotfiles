@@ -111,9 +111,45 @@ Group errors into: Tooling, Convention, Environment, Architecture, External.
 
 Frequency × Cost × Fixability. Minimum 3 occurrences before calling "systemic."
 
-### Phase 4 — Recommend
+### Phase 4 — Recommend actions
 
-One specific action per pattern: new hook, new rule, architecture fix, documentation, or ignore.
+One specific action per pattern. For each high-priority pattern, recommend ONE specific action:
+
+| Action Type | When to use | Example |
+|-------------|-------------|---------|
+| **New hook** | Repeated mechanical error that can be detected before it happens | "Add a hook that checks Node version on SessionStart" |
+| **New rule** | Convention violation that the model keeps forgetting | "Add a rule that requires test file for every new module" |
+| **Architecture fix** | Structural issue causing cascading failures | "Extract shared types to a package" |
+| **Documentation** | Misunderstanding of how something works | "Document the auth flow in README" |
+| **Ignore** | External/transient issue not worth automating | "GH API rate limits during peak hours" |
+
+---
+
+## Report Format
+
+```
+## Error Audit Report
+
+**Period**: Last 2 weeks (N sessions analyzed)
+**Patterns found**: M
+
+### High Priority
+
+| # | Pattern | Freq | Cost | Action |
+|---|---------|------|------|--------|
+| 1 | TypeScript path alias misconfigured | 4 sessions | ~10 min each | Rule: verify tsconfig paths on project start |
+| 2 | Commit to main without PR | 3 sessions | 5 min each | Hook: ✅ already fixed (git-workflow-gate) |
+
+### Medium Priority
+...
+
+### Resolved by existing mechanisms
+- [pattern] → resolved by [hook/rule name]
+
+### Recommendations
+1. [Specific action with a one-liner justification]
+2. ...
+```
 
 ---
 
