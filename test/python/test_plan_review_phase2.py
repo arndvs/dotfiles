@@ -487,13 +487,14 @@ class TestHookEntryPoint(unittest.TestCase):
     """System tests: full subprocess invocation."""
 
     def test_non_pr_command_is_silent(self):
-        stdout, _, code = run_gate({
+        stdout, stderr, code = run_gate({
             "tool_name": "Bash",
             "tool_input": {"command": "git status"},
             "cwd": CWD,
         })
         self.assertEqual(code, 0)
         self.assertEqual(stdout, "")
+        self.assertEqual(stderr, "")
 
     def test_empty_stdin(self):
         result = subprocess.run(
@@ -505,6 +506,7 @@ class TestHookEntryPoint(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stdout.strip(), "")
+        self.assertEqual(result.stderr.strip(), "")
 
     def test_invalid_json(self):
         result = subprocess.run(
@@ -516,6 +518,7 @@ class TestHookEntryPoint(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stdout.strip(), "")
+        self.assertEqual(result.stderr.strip(), "")
 
     def test_pr_create_triggers_phase2(self):
         """gh pr create in a git repo should trigger Phase 2 logic."""

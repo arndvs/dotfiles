@@ -179,13 +179,13 @@ def write_meta_yaml(target_dir: Path, pr: dict, plan_filenames: list[str], cross
         f"  branch: {_yaml_quote(pr['branch'])}",
         f"  merged_at: {_yaml_quote(pr.get('mergedAt') or 'unknown')}",
         f"  merge_sha: {_yaml_quote(pr.get('mergeCommit') or 'unknown')}",
-        "linear:",
     ]
     if pr["linear"]:
+        lines.append("linear:")
         for tk in pr["linear"]:
             lines.append(f"  - {_yaml_quote(tk)}")
     else:
-        lines.append("  []")
+        lines.append("linear: []")
     lines.append("plans:")
     for fn in plan_filenames:
         lines.append(f"  - {_yaml_quote(fn)}")

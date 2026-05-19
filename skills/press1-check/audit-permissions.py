@@ -117,6 +117,8 @@ def find_sessions_dir() -> Path:
     """
     projects_dir = Path.home() / ".claude" / "projects"
     if not projects_dir.exists():
+        if "--auto-stop-hook" in sys.argv:
+            sys.exit(0)
         print(f"Claude Code projects directory not found: {projects_dir}")
         sys.exit(1)
 
@@ -141,6 +143,8 @@ def find_sessions_dir() -> Path:
     if best:
         return best
 
+    if "--auto-stop-hook" in sys.argv:
+        sys.exit(0)
     print("No Claude Code sessions found.")
     sys.exit(1)
 
@@ -149,6 +153,8 @@ def find_all_sessions_dirs() -> list[Path]:
     """Return all project dirs under ~/.claude/projects that contain sessions."""
     projects_dir = Path.home() / ".claude" / "projects"
     if not projects_dir.exists():
+        if "--auto-stop-hook" in sys.argv:
+            sys.exit(0)
         print(f"Claude Code projects directory not found: {projects_dir}")
         sys.exit(1)
     dirs = []
