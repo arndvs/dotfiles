@@ -130,8 +130,13 @@ def load_suppressions(path: Path = DEFAULT_SUPPRESSIONS_PATH) -> dict[str, str]:
         content = path.read_text()
     except (OSError, FileNotFoundError):
         return {}
+    # Only parse code blocks under the ## Suppressions heading (not ## Candidates)
+    supp_match = re.search(r"^## Suppressions\b.*?(?=^## |\Z)", content, re.MULTILINE | re.DOTALL)
+    if not supp_match:
+        return {}
+    section_text = supp_match.group(0)
     suppressions: dict[str, str] = {}
-    for match in _SUPPRESSION_FENCE_RE.finditer(content):
+    for match in _SUPPRESSION_FENCE_RE.finditer(section_text):
         for raw_line in match.group(1).splitlines():
             line = raw_line.rstrip()
             if not line or line.lstrip().startswith("#"):

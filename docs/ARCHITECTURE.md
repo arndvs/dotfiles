@@ -17,7 +17,7 @@ graph TB
         SKILLS["skills/<br/>26 public workflows"]
         AGENTS["agents/<br/>6 subagent personas"]
         CMDS["commands/<br/>14 slash dispatchers"]
-        HOOKS["hooks/<br/>12 lifecycle guards"]
+        HOOKS["hooks/<br/>lifecycle guards"]
         BIN["bin/<br/>27 scripts"]
         SHFT["shft/<br/>autonomous loop"]
         SECRETS["secrets/<br/>3-tier credentials"]
