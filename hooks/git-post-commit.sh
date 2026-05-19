@@ -52,3 +52,5 @@ if [[ "$UNPUSHED" -gt 0 ]]; then
     jq -cn --arg msg "⚠️ ${UNPUSHED} unpushed commit(s) on ${BRANCH}. Remember to push before ending the session." \
         '{"hookSpecificOutput":{"additionalContext":$msg}}' >&2
 fi
+
+exit 0
