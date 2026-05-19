@@ -20,6 +20,8 @@ import sys
 import time
 import traceback
 
+import httpx
+
 from . import db, github, hud, issue, workspace
 from .config import Config
 
@@ -175,9 +177,11 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
                 body=body_str,
                 labels=issue.ISSUE_LABELS,
             )
-        except Exception:
-            # Labels may not exist in repo — retry without them
-            logger.warning("create_issue with labels failed; retrying without labels")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code != 422:
+                raise
+            # Labels may not exist in repo — retry without them (422 = validation error)
+            logger.warning("create_issue with labels failed (422); retrying without labels")
             tracking_number = github.create_issue(
                 token,
                 owner=owner,
@@ -201,7 +205,7 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
     # Do NOT forward the full os.environ (which includes .env.secrets).
     env = {
         "HOME": os.environ.get("HOME", ""),
-        "PATH": "/usr/local/bin:/usr/bin:/bin",
+        "PATH": os.path.expanduser("~/.local/bin") + ":/usr/local/bin:/usr/bin:/bin",
         "TERM": os.environ.get("TERM", "dumb"),
         "LANG": os.environ.get("LANG", "en_US.UTF-8"),
         "USER": os.environ.get("USER", ""),

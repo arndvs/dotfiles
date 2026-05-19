@@ -75,6 +75,14 @@ class Config:
         if not bot_login:
             raise ConfigError("COPILOT_BOT_LOGIN must not be empty")
 
+        # MVP: only single worker is supported (global lockfile constraint).
+        worker_count = int(opt("WORKER_COUNT", "1"))
+        if worker_count > 1:
+            raise ConfigError(
+                "WORKER_COUNT>1 is not supported in MVP (global lockfile at "
+                "/tmp/shft-afk.lock). See README.md MVP Constraints #3."
+            )
+
         return cls(
             github_app_id=os.environ.get("GITHUB_APP_ID") or None,
             github_app_installation_id=os.environ.get("GITHUB_APP_INSTALLATION_ID") or None,
@@ -84,7 +92,7 @@ class Config:
             repo_allowlist=allowlist,
             max_iterations=int(opt("BRIDGE_MAX_ITERATIONS", "3")),
             # ^^ default 3 — low cap for MVP safety
-            worker_count=int(opt("WORKER_COUNT", "1")),
+            worker_count=worker_count,
             dotfiles_root=dotfiles,
             bridge_root=bridge_root,
             workspaces_root=bridge_root / "workspaces",

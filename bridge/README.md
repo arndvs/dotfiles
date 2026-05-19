@@ -75,7 +75,7 @@ These are known limitations of the MVP, documented and accepted:
 
 2. **Global working directory** — `~/dotfiles/working/` is shared. HUD events don't distinguish bridge vs manual sessions. Phase 2: per-workspace isolation (ADR pending).
 
-3. **Single worker** — Only `bridge-worker@1` is supported. The `@` template supports future multi-worker, but the lockfile constraint makes it moot until Phase 2.
+3. **Single worker** — Only `bridge-worker@1` is supported. `Config.from_env()` refuses `WORKER_COUNT>1`. The `@` template supports future multi-worker, but the lockfile constraint makes it moot until Phase 2.
 
 4. **No retry with backoff** — Failed jobs are marked `failed` and stay in the queue. Manual replay via `ctrl bridge replay <id>`.
 
@@ -120,5 +120,3 @@ All 10 priority findings from the codebase audit are addressed:
 - **I-3**: Allowlist parsing filters empty strings
 - **L-1**: Only `pull_request_review` events accepted
 - **L-2**: Only `state=changes_requested` reviews enqueued
-
-See `docs/copilot-bridge-docs/CODEBASE-AUDIT.md` for the full audit report and `IMPLEMENTATION-PLAN.md` for the slice-by-slice plan.
