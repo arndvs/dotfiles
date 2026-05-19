@@ -220,7 +220,7 @@ def find_sessions(session_id: str = None, all_recent: bool = False,
         sessions_dir = find_sessions_dir()
         jsonl_files = sorted(collect_jsonls(sessions_dir),
                              key=lambda p: p.stat().st_mtime, reverse=True)
-        main_files = [f for f in jsonl_files if "/subagents/" not in str(f)]
+        main_files = [f for f in jsonl_files if not is_subagent(f)]
         if main_files:
             latest = main_files[0]
             results = [latest]

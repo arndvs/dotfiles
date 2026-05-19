@@ -35,18 +35,6 @@ from plan_files_lib import (  # noqa: E402
 )
 
 
-def deny(reason):
-    """Output deny JSON and exit."""
-    print(json.dumps({
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": reason,
-        }
-    }))
-    sys.exit(0)
-
-
 def info(message):
     """Output informational context (non-blocking) and exit."""
     print(json.dumps({
