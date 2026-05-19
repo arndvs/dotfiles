@@ -7,8 +7,8 @@
 # Provides:
 #   run_hook <hook-script> <json-input>  — feeds JSON to hook, captures output
 #   assert_allow <test-name>             — last hook exited 0, no deny
-#   assert_deny <test-name> [pattern]    — last hook denied (permissionDecision=deny)
-#   assert_warn <test-name> [pattern]    — last hook warned (additionalContext present)
+#   assert_deny <test-name> [pattern]    — last hook exited 2, permissionDecision=deny
+#   assert_warn <test-name> [pattern]    — last hook exited 0, additionalContext present
 #   make_tmp_repo                        — creates temp git repo, returns path
 #   cleanup_tmp_repos                    — removes all temp repos
 #   report                               — prints pass/fail summary, exits 1 on failure
@@ -66,6 +66,11 @@ parse_reason() {
 assert_allow() {
     local test_name="$1"
     TESTS_TOTAL=$((TESTS_TOTAL + 1))
+    if [[ "$HOOK_EXIT" -ne 0 ]]; then
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+        printf "${RED}FAIL${RESET} %s — expected exit 0 but got %d\n" "$test_name" "$HOOK_EXIT"
+        return
+    fi
     local decision
     decision=$(parse_decision)
     if [[ "$decision" == "deny" ]]; then
@@ -81,6 +86,11 @@ assert_deny() {
     local test_name="$1"
     local pattern="${2:-}"
     TESTS_TOTAL=$((TESTS_TOTAL + 1))
+    if [[ "$HOOK_EXIT" -ne 2 ]]; then
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+        printf "${RED}FAIL${RESET} %s — expected exit 2 but got %d\n" "$test_name" "$HOOK_EXIT"
+        return
+    fi
     local decision
     decision=$(parse_decision)
     if [[ "$decision" != "deny" ]]; then
@@ -105,6 +115,11 @@ assert_warn() {
     local test_name="$1"
     local pattern="${2:-}"
     TESTS_TOTAL=$((TESTS_TOTAL + 1))
+    if [[ "$HOOK_EXIT" -ne 0 ]]; then
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+        printf "${RED}FAIL${RESET} %s — expected exit 0 but got %d\n" "$test_name" "$HOOK_EXIT"
+        return
+    fi
     local context
     context=$(parse_context)
     if [[ -z "$context" ]]; then
