@@ -167,6 +167,16 @@ _warn() {
     exit 0
 }
 
+# Accumulate warnings so later gates (especially blocking ones) still run.
+PENDING_WARN=""
+_defer_warn() {
+    if [[ -n "$PENDING_WARN" ]]; then
+        PENDING_WARN="${PENDING_WARN} $1"
+    else
+        PENDING_WARN="$1"
+    fi
+}
+
 # --- cd into the hook event's working directory ---
 EVENT_CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
 if [[ -n "$EVENT_CWD" ]]; then
@@ -297,7 +307,7 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:
 
     # Warn on --amend (rewrites the last commit)
     if echo "$COMMAND" | grep -qE '[[:space:]]--amend([[:space:]]|$)'; then
-        _warn "⚠️ git commit --amend rewrites the previous commit. If already pushed, you will need --force-with-lease to push."
+        _defer_warn "⚠️ git commit --amend rewrites the previous commit. If already pushed, you will need --force-with-lease to push."
     fi
 fi
 
@@ -391,8 +401,7 @@ fi
 # GATES 4–6: Destructive operation checks
 # ============================================================
 # Warning-only gates (4, 6) must not exit before blocking gates (5).
-# Collect warnings and emit them after all blocking gates have run.
-PENDING_WARN=""
+# Warnings are accumulated via _defer_warn and emitted at the end.
 
 # GATE 4: Block git reset --hard (destructive)
 # reset --hard HEAD (no ~N) is a common "discard working tree" idiom,
@@ -426,7 +435,7 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+reset([[:space:]
                 break
             done
             if [[ -z "$reset_target" || "$reset_target" == "HEAD" || "$reset_target" == "@" ]]; then
-                PENDING_WARN="⚠️ git reset --hard HEAD discards all uncommitted changes. Consider git stash if you might need them later."
+                _defer_warn "⚠️ git reset --hard HEAD discards all uncommitted changes. Consider git stash if you might need them later."
             else
                 _deny "🚫 git reset --hard (to a non-HEAD target) rewrites history irreversibly. Use git stash or git reset --soft instead."
             fi
@@ -466,12 +475,7 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+rebase([[:space:
     if echo "$COMMAND" | grep -qE '[[:space:]](-i|--interactive)([[:space:]]|$)'; then
         local_branch=$(git branch --show-current 2>/dev/null || echo "")
         if [[ -n "$local_branch" ]] && git rev-parse --verify "origin/$local_branch" &>/dev/null; then
-            msg="⚠️ Interactive rebase on a pushed branch ($local_branch) will rewrite history. You'll need --force-with-lease to push afterward. Proceed with caution."
-            if [[ -n "$PENDING_WARN" ]]; then
-                PENDING_WARN="${PENDING_WARN} ${msg}"
-            else
-                PENDING_WARN="$msg"
-            fi
+            _defer_warn "⚠️ Interactive rebase on a pushed branch ($local_branch) will rewrite history. You'll need --force-with-lease to push afterward. Proceed with caution."
         fi
     fi
 fi
