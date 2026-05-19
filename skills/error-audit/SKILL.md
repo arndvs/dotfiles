@@ -24,24 +24,24 @@ Scan every Claude Code session transcript for errors, cluster by root cause, sur
 
 ```bash
 # Default: all sessions, top 20 clusters, human output
-python3 error-audit.py
+python3 skills/error-audit/error-audit.py
 
 # Last 30 days only
-python3 error-audit.py --since 30
+python3 skills/error-audit/error-audit.py --since 30
 
 # Show fewer clusters
-python3 error-audit.py --top 10
+python3 skills/error-audit/error-audit.py --top 10
 
 # Machine-readable (for piping into other tools)
-python3 error-audit.py --json
+python3 skills/error-audit/error-audit.py --json
 
 # Override the projects dir (useful for testing)
-python3 error-audit.py --projects-dir /path/to/projects
+python3 skills/error-audit/error-audit.py --projects-dir /path/to/projects
 
 # Override or disable suppressions
-python3 error-audit.py --suppressions-path /path/to/suppressions.md
-python3 error-audit.py --no-suppressions
-python3 error-audit.py --show-suppressed
+python3 skills/error-audit/error-audit.py --suppressions-path /path/to/suppressions.md
+python3 skills/error-audit/error-audit.py --no-suppressions
+python3 skills/error-audit/error-audit.py --show-suppressed
 ```
 
 ## Steps (when invoking via `/error-audit`)
@@ -63,7 +63,7 @@ python3 error-audit.py --show-suppressed
 | `permission_denial` | "The user doesn't want to proceed" | Bash command rejected |
 | `hook_block` | `hook_failure` attachment type | git-workflow-gate blocks |
 | `bash_fail` | Non-zero `exitCode` on Bash attachment | Command failures |
-| `retry_storm` | 3+ consecutive `overloaded_error` records | API overload |
+| `retry_storm` | 3+ `overloaded_error` records for the same tool on the same day | API overload |
 | `read_before_edit` | "File has not been read yet" | Edit without prior Read |
 
 ## Remediation Tiers

@@ -3,7 +3,7 @@
 Lifted from claude-mechanisms-tools/tests/test_error_audit.py.
 Paths adapted for ctrlshft repo layout.
 
-Run: python3 -m pytest test/python/test_error_audit.py -v
+Run: python3 -m unittest test/python/test_error_audit.py -v
 """
 
 import importlib.util

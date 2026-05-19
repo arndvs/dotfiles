@@ -33,22 +33,22 @@ Two paths:
 
 ```bash
 # Since the last run (default, state-tracked)
-python3 audit-permissions.py
+python3 skills/press1-check/audit-permissions.py
 
 # Last N days across all project dirs
-python3 audit-permissions.py --days 7
+python3 skills/press1-check/audit-permissions.py --days 7
 
 # Only the single most recent session
-python3 audit-permissions.py --latest-session
+python3 skills/press1-check/audit-permissions.py --latest-session
 
 # All sessions from the last 24h
-python3 audit-permissions.py --all-recent
+python3 skills/press1-check/audit-permissions.py --all-recent
 
 # All sessions since a date
-python3 audit-permissions.py --since 2026-04-10
+python3 skills/press1-check/audit-permissions.py --since 2026-04-10
 
 # Specific session (prefix match OK)
-python3 audit-permissions.py <session-id>
+python3 skills/press1-check/audit-permissions.py <session-id>
 ```
 
 ---
