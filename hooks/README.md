@@ -33,6 +33,7 @@ Bootstrap symlinks `hooks/` → `~/.claude/hooks/` and merges the configuration 
 ## Requirements
 
 - **jq** — all fail-closed hooks (secret-guard, migration-guard, git-workflow-gate) **require** jq and deny if missing. Fail-open hooks (stale-branches, plan-quality-gate, git-post-push) skip gracefully if jq is missing.
+- **Python 3** — `plan-review-phase2.py` and `feedback-memory-gate.py` require Python 3.
 - **npx** — format-check and typecheck use npx to run project-local tools.
 
 ## Editor Compatibility
