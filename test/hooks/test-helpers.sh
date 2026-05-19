@@ -41,7 +41,7 @@ run_hook() {
     HOOK_EXIT=0
     _HOOK_STDERR_FILE=$(mktemp)
     # Capture stdout and stderr separately
-    HOOK_STDOUT=$(echo "$json_input" | bash "$hook_script" 2>"$_HOOK_STDERR_FILE") || HOOK_EXIT=$?
+    HOOK_STDOUT=$(printf '%s' "$json_input" | bash "$hook_script" 2>"$_HOOK_STDERR_FILE") || HOOK_EXIT=$?
     HOOK_STDERR=$(cat "$_HOOK_STDERR_FILE" 2>/dev/null || true)
     rm -f "$_HOOK_STDERR_FILE"
 }

@@ -18,7 +18,7 @@ graph TB
         AGENTS["agents/<br/>6 subagent personas"]
         CMDS["commands/<br/>14 slash dispatchers"]
         HOOKS["hooks/<br/>lifecycle guards"]
-        BIN["bin/<br/>27 scripts"]
+        BIN["bin/<br/>tools"]
         SHFT["shft/<br/>autonomous loop"]
         SECRETS["secrets/<br/>3-tier credentials"]
         HUD["hud/<br/>observability dashboard"]
