@@ -39,13 +39,13 @@ assert_allow "bare git status (no cd chain)"
 # ============================================================
 
 echo ""
-echo "--- Gate 1: commit to main + message validation ---"
+echo "--- Gate 1: commit to protected default branch + message validation ---"
 
-# Create a temp repo on main branch
+# Create a temp repo (defaults to main via make_tmp_repo -b main)
 REPO=$(make_tmp_repo)
 
 run_hook "$HOOK" "$(make_pretooluse_json 'git commit -m "feat: add feature"' "$REPO")"
-assert_deny "commit on main branch" "Cannot commit directly"
+assert_deny "commit on protected default branch" "Cannot commit directly"
 
 # Switch to feature branch for message validation tests
 git -C "$REPO" checkout -b feat/test --quiet 2>/dev/null

@@ -1,6 +1,6 @@
 ---
 name: error-audit
-description: Scan Claude Code session transcripts for errors, cluster by root cause, and suggest remediations.
+description: Use when repeated Claude Code session errors need analysis; scans session transcripts for errors, clusters by root cause, and suggests remediations.
 ---
 
 # Error Audit

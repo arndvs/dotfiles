@@ -1,6 +1,6 @@
 ---
 name: press1-check
-description: Audit which Bash commands required manual approval ("press 1") in Claude Code sessions.
+description: Use when Claude Code sessions had many manual approval ("press 1") prompts or when auditing hook permissions; identifies which Bash commands required approval.
 ---
 
 # /press1-check — Permission Audit

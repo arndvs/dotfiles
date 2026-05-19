@@ -1,6 +1,6 @@
 ---
 name: plan-archive
-description: Archive plan-mode files by linking them to merged PRs.
+description: Use after merging a PR or during periodic cleanup to archive plan-mode files by linking them to merged PRs.
 ---
 
 # Plan Archive

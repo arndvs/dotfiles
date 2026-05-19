@@ -142,7 +142,7 @@ assert_warn() {
 make_tmp_repo() {
     local tmp_dir
     tmp_dir=$(mktemp -d)
-    git -C "$tmp_dir" init --quiet 2>/dev/null
+    git -C "$tmp_dir" init -b main --quiet 2>/dev/null
     git -C "$tmp_dir" config user.email "test@test.com"
     git -C "$tmp_dir" config user.name "Test"
     touch "$tmp_dir/README.md"
