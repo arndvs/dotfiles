@@ -42,7 +42,7 @@ def info(message):
             "hookEventName": "PreToolUse",
             "additionalContext": message,
         }
-    }))
+    }), file=sys.stderr)
     sys.exit(0)
 
 
@@ -337,5 +337,5 @@ if __name__ == "__main__":
                 "hookEventName": "PreToolUse",
                 "additionalContext": f"PRE-PR AUDIT: SKIPPED (error: {e})",
             }
-        }), file=sys.stdout)
+        }), file=sys.stderr)
         sys.exit(0)

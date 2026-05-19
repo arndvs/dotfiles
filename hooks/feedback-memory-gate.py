@@ -55,7 +55,7 @@ def info(message):
             "hookEventName": "PostToolUse",
             "additionalContext": message,
         }
-    }))
+    }), file=sys.stderr)
     sys.exit(0)
 
 
@@ -107,5 +107,5 @@ if __name__ == "__main__":
                 "hookEventName": "PostToolUse",
                 "additionalContext": f"feedback-memory-gate error: {e}",
             }
-        }))
+        }), file=sys.stderr)
         sys.exit(0)
