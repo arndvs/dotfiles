@@ -109,7 +109,7 @@ def gh_json(args: list[str]) -> object:
             args, check=True, capture_output=True, text=True, timeout=30
         )
         return json.loads(out.stdout)
-    except (subprocess.CalledProcessError, json.JSONDecodeError, subprocess.TimeoutExpired) as e:
+    except (subprocess.CalledProcessError, json.JSONDecodeError, subprocess.TimeoutExpired, FileNotFoundError) as e:
         info(f"warn: gh call failed ({' '.join(args)}): {e}")
         return None
 
@@ -121,7 +121,7 @@ def gh_text(args: list[str]) -> str:
             args, check=True, capture_output=True, text=True, timeout=30
         )
         return out.stdout
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
         info(f"warn: gh call failed ({' '.join(args)}): {e}")
         return ""
 
@@ -355,7 +355,7 @@ def main() -> int:
     parser.add_argument("--archive-dir", type=Path, default=ARCHIVE_DIR, help="Override archive directory")
     args = parser.parse_args()
 
-    if args.mode != "audit" and not args.archive_dir.exists():
+    if args.mode != "audit" and args.execute and not args.archive_dir.exists():
         args.archive_dir.mkdir(parents=True, exist_ok=True)
 
     if args.mode == "archive-pr":
