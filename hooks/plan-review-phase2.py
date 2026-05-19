@@ -161,7 +161,9 @@ def get_diff_files(cwd, head_ref=None):
     default_branch = _default_branch(repo_root)
     if default_branch is None:
         return set(), "no default branch detected -- skipping file audit"
-    origin_ref = f"origin/{default_branch}" if not default_branch.startswith("origin/") else default_branch
+    # If the ref already contains a remote prefix (e.g. origin/main, upstream/main),
+    # use it as-is; only prefix origin/ for plain local branch names (main, master).
+    origin_ref = default_branch if "/" in default_branch else f"origin/{default_branch}"
     # Fall back to local default branch if origin remote-tracking ref is missing
     try:
         subprocess.run(
