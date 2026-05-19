@@ -141,14 +141,25 @@ def get_diff_files(cwd, head_ref=None):
     # Merge base
     default_branch = _default_branch(repo_root)
     origin_ref = f"origin/{default_branch}"
+    # Fall back to local default branch if origin remote-tracking ref is missing
+    try:
+        subprocess.run(
+            ["git", "rev-parse", "--verify", origin_ref],
+            capture_output=True, text=True, cwd=repo_root, timeout=5,
+            check=True
+        )
+        base_ref = origin_ref
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired,
+            FileNotFoundError):
+        base_ref = default_branch
     try:
         result = subprocess.run(
-            ["git", "merge-base", diff_target, origin_ref],
+            ["git", "merge-base", diff_target, base_ref],
             capture_output=True, text=True, cwd=repo_root, timeout=5
         )
-        base = result.stdout.strip() if result.returncode == 0 else origin_ref
+        base = result.stdout.strip() if result.returncode == 0 else base_ref
     except (subprocess.TimeoutExpired, FileNotFoundError):
-        base = origin_ref
+        base = base_ref
 
     # Committed diff
     try:

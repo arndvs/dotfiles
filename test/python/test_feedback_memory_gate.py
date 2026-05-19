@@ -204,7 +204,7 @@ class TestIssueRefSuppression(unittest.TestCase):
 
     def test_custom_prefix_env_var(self):
         """CTRLSHFT_ISSUE_PREFIX narrows matching to specific prefix."""
-        # With CTRLSHFT_ISSUE_PREFIX=CC, only CC-NN matches
+        # With CTRLSHFT_ISSUE_PREFIX=CC-, only CC-NN matches (hook normalizes trailing dash)
         stdout, _, code = run_gate(
             make_input(
                 "/Users/test/project/claude-memory/feedback_custom.md",

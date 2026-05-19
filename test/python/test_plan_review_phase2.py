@@ -15,18 +15,21 @@ Tests cover:
 Run: python3 -m unittest discover -s test/python -p "test_*.py" -v
 """
 
+import atexit
+import importlib.util
 import json
 import os
-
-# Pin REPO_PREFIXES for tests — fixtures use ~/myOS/ and /Users/christophe/myOS/ literals.
-os.environ["CLAUDE_PLAN_REPO_PREFIXES"] = "~/myOS/,/Users/christophe/myOS/"
-
-import importlib.util
 import subprocess
 import sys
 import tempfile
 import textwrap
 import unittest
+from unittest.mock import patch
+
+# Pin REPO_PREFIXES for tests — fixtures use ~/myOS/ and /Users/christophe/myOS/ literals.
+_REPO_PREFIX_PATCH = patch.dict(os.environ, {"CLAUDE_PLAN_REPO_PREFIXES": "~/myOS/,/Users/christophe/myOS/"})
+_REPO_PREFIX_PATCH.start()
+atexit.register(_REPO_PREFIX_PATCH.stop)
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
