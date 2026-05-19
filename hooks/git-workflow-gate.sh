@@ -210,12 +210,6 @@ fi
 # Matches: short flags with optional value (-c user.name=x), long flags (--no-pager)
 GIT_OPTS='([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*'
 
-# Pattern for a real git command at a shell command boundary.
-# Reuse the same boundary/prefix handling as the initial detector so later
-# gate checks don't false-positive on strings like `echo "git push --force"`.
-GIT_CMD="(^|;|&&|\\|\\||\\|)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*${WRAPPER_PREFIX}git"
-
-# --- Pattern: command-boundary-anchored git (for per-gate checks) ---
 # --- Pattern: command-boundary-anchored git (for per-gate checks) ---
 # Anchors to shell command boundaries (^, ;, &&, ||, |) and shell control
 # keywords (then/do/else) so that quoted git commands don't match.
