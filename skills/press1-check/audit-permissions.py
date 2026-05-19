@@ -359,7 +359,7 @@ def audit_session(path: Path, prefixes: list[str]) -> list[dict]:
     return needs_approval
 
 
-def suggest_rules(commands: list[dict]) -> list[str]:
+def suggest_rules(commands: list[dict]) -> list[tuple[str, str]]:
     """Suggest allow rules for unmatched commands."""
     suggestions = {}
     for item in commands:
@@ -417,7 +417,6 @@ def main():
     for path in sessions:
         needs = audit_session(path, prefixes)
         if needs:
-            display = session_display_name(path)
             main_id = path.stem if not is_subagent(path) else path.parent.parent.name
             if main_id != current_session:
                 current_session = main_id

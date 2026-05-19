@@ -234,15 +234,15 @@ def format_phase2_checklist(plan_text, missing, warnings):
         else:
             lines.append(f"  [PASS] {relative}")
 
-    for path_str in external_files:
-        lines.append(f"  [WARN] {path_str} (external -- verify manually)")
+    for warning in warnings:
+        lines.append(f"  [WARN] {warning}")
 
     for path_str in conditional_files:
         relative = normalize_to_repo_relative(path_str)
         lines.append(f"  [SKIP] {relative} (conditional)")
 
     fail_count = sum(1 for line in lines if "[FAIL]" in line)
-    warn_count = sum(1 for line in lines if "[WARN]" in line)
+    warn_count = len(warnings)
     total_repo = len(repo_files)
 
     if fail_count > 0:
@@ -279,7 +279,6 @@ def main():
     diff_files, skip_reason = get_diff_files(cwd, head_ref=head_ref)
     if skip_reason:
         info(f"PRE-PR AUDIT: SKIPPED ({skip_reason})")
-        allow()
 
     # Find best-matching plan by diff overlap (CC-80)
     plan_file = find_best_plan_for_diff(diff_files)
@@ -295,7 +294,6 @@ def main():
         plan_text = plan_file.read_text()
     except Exception as e:
         info(f"PRE-PR AUDIT: SKIPPED (error reading plan {plan_file.name}: {e})")
-        allow()
 
     passed, missing, warnings = phase2_check(plan_text, cwd, diff_files=diff_files)
     if not passed:

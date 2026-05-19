@@ -36,10 +36,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 from lib.plan_files_lib import (  # noqa: E402
     PLANS_DIR,
-    REPO_PREFIXES,
-    extract_plan_files,
     find_plans_matching_diff,
-    normalize_to_repo_relative,
 )
 
 

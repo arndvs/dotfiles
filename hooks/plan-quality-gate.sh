@@ -123,9 +123,9 @@ PASS_COUNT=0
 _check() {
     local label="$1" status="$2"
     case "$status" in
-        PASS) RESULTS+=("  [PASS] $label"); ((PASS_COUNT++)) ;;
-        FAIL) RESULTS+=("  [FAIL] $label -- empty or missing"); ((FAIL_COUNT++)) ;;
-        WARN) RESULTS+=("  [WARN] $label"); ((WARN_COUNT++)) ;;
+        PASS) RESULTS+=("  [PASS] $label"); ((++PASS_COUNT)) ;;
+        FAIL) RESULTS+=("  [FAIL] $label -- empty or missing"); ((++FAIL_COUNT)) ;;
+        WARN) RESULTS+=("  [WARN] $label"); ((++WARN_COUNT)) ;;
     esac
 }
 

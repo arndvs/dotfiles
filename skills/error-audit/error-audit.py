@@ -5,10 +5,11 @@ Scans JSONL transcripts under ~/.claude/projects/, classifies errors into 7
 classes, normalises signatures, clusters by class + signature, and surfaces
 top clusters with suggested remediation tiers.
 
-Suppressions (claude-memory/error-audit-suppressions.md) mark known
-"working-as-designed" cluster_keys as suppressed. Default --human output
-hides them; --show-suppressed re-includes them; --json always includes
-them with a `suppressed: true|false` field.
+Suppressions (default: skills/error-audit/suppressions.md, next to this
+script) mark known "working-as-designed" cluster_keys as suppressed. Use
+--suppressions-path or CLAUDE_ERROR_AUDIT_SUPPRESSIONS to override. Default
+--human output hides them; --show-suppressed re-includes them; --json
+always includes them with a `suppressed: true|false` field.
 
 Usage:
     error-audit.py                       # all sessions, human output
@@ -116,7 +117,7 @@ _SUPPRESSION_FENCE_RE = re.compile(r"```\s*\n(.*?)\n```", re.DOTALL)
 
 
 def load_suppressions(path: Path = DEFAULT_SUPPRESSIONS_PATH) -> dict[str, str]:
-    """Parse error-audit-suppressions.md.
+    """Parse suppressions.md.
 
     Format: cluster_keys inside fenced code blocks. Each line is either:
       - a comment starting with `#`
