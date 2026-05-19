@@ -29,7 +29,7 @@ Classes detected:
     permission_denial  "The user doesn't want to proceed"
     hook_block         attachment.type == hook_failure (or Stop/PreToolUse blocker)
     bash_fail          attachment.exitCode != 0 (Bash)
-    retry_storm        >=3 consecutive overloaded_error records in one session
+    retry_storm        >=3 same-day overloaded_error records in one session
     read_before_edit   "File has not been read yet. Read it first"
 """
 
@@ -409,7 +409,7 @@ def session_mtime(path: Path) -> float:
 
 
 def find_transcripts(projects_dir: Path, since_days: int | None) -> list[Path]:
-    files = list(projects_dir.glob("*/*.jsonl"))
+    files = list(projects_dir.rglob("*.jsonl"))
     if since_days is None:
         return files
     cutoff = time.time() - since_days * 86400
