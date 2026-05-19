@@ -28,6 +28,7 @@ import argparse
 import calendar
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime
@@ -77,13 +78,17 @@ MEDIUM_RISK_PATTERNS = [
 
 
 def classify_risk(command: str) -> str:
-    """Classify a command's risk level."""
+    """Classify a command's risk level.
+
+    Patterns may contain regex (e.g. ``curl.*POST``), so use re.search
+    rather than plain substring matching.
+    """
     cmd_lower = command.lower()
     for pattern in HIGH_RISK_PATTERNS:
-        if pattern.lower() in cmd_lower:
+        if re.search(pattern.lower(), cmd_lower):
             return "HIGH"
     for pattern in MEDIUM_RISK_PATTERNS:
-        if pattern.lower() in cmd_lower:
+        if re.search(pattern.lower(), cmd_lower):
             return "MEDIUM"
     return "LOW"
 
@@ -133,7 +138,6 @@ def find_sessions_dir() -> Path:
             if mt > best_mtime:
                 best_mtime = mt
                 best = d
-            break
     if best:
         return best
 
