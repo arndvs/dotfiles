@@ -537,10 +537,10 @@ class TestHookEntryPoint(unittest.TestCase):
                 env=env,
             )
             self.assertEqual(result.returncode, 0)
-            # With no plans dir, hook must emit SKIPPED output
-            output = parse_output(result.stdout.strip())
+            # With no plans dir, hook must emit SKIPPED output on stderr
+            output = parse_output(result.stderr.strip())
             ctx = get_context(output)
-            self.assertIsNotNone(ctx, f"Expected JSON output, got: {result.stdout}")
+            self.assertIsNotNone(ctx, f"Expected JSON output on stderr, got: {result.stderr}")
             self.assertIn("SKIPPED", ctx)
 
 
