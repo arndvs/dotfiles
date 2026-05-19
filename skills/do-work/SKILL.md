@@ -32,7 +32,19 @@ Skip this step if a plan or PRD already exists.
 
 ### 3. Implement
 
-Write the code. Follow the conventions already established in the codebase — read a sample existing file of the same type before creating new ones.
+Read a sample existing file of the same type before creating new ones — follow the conventions already established in the codebase.
+
+**For backend code**: use red/green/refactor, one test at a time in a tracer-bullet style.
+
+1. Write a single failing test for the smallest vertical slice of behaviour
+2. Run the test — confirm it fails (red)
+3. Write the minimum code to make it pass (green)
+4. Repeat from step 1 for the next slice
+5. Refactor if needed while keeping tests green
+
+Do not write all tests upfront — write one, make it pass, then move to the next.
+
+**For frontend code**: implement directly without TDD.
 
 ### 4. Validate
 
