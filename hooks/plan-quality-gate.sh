@@ -53,8 +53,7 @@ done
 # Also check ~/.claude/plans/ for the most recently modified plan
 PLANS_DIR="$HOME/.claude/plans"
 if [[ -z "$PLAN_FILE" && -d "$PLANS_DIR" ]]; then
-    PLAN_FILE=$(find "$PLANS_DIR" -maxdepth 1 -name '*.md' -type f -printf '%T@ %p\n' 2>/dev/null \
-        | sort -rn | head -1 | cut -d' ' -f2-) || true
+    PLAN_FILE=$(ls -t "$PLANS_DIR"/*.md 2>/dev/null | head -1) || true
 fi
 
 if [[ -z "$PLAN_FILE" || ! -f "$PLAN_FILE" ]]; then
@@ -93,12 +92,12 @@ _section_has_content() {
     local found_content=false
     while IFS= read -r line; do
         if [[ "$in_section" == "true" ]]; then
-            # Next heading at same or higher level → section ended
-            if echo "$line" | grep -qE '^#{2,3}[[:space:]]' && ! echo "$line" | grep -qiE "$heading_pattern"; then
+            # Next heading at same level (##) → section ended; ### subsections are valid content
+            if echo "$line" | grep -qE '^##[[:space:]]' && ! echo "$line" | grep -qiE "$heading_pattern"; then
                 break
             fi
-            # Non-empty, non-heading line = content
-            if [[ -n "${line// /}" ]] && ! echo "$line" | grep -qE '^#{1,6}[[:space:]]'; then
+            # Non-empty, non-heading line = content (### subsections also count as content)
+            if [[ -n "${line// /}" ]] && ! echo "$line" | grep -qE '^##[[:space:]]'; then
                 found_content=true
                 break
             fi
