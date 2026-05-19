@@ -123,6 +123,7 @@ query($owner:String!,$repo:String!,$num:Int!,$cursor:String){
         nodes{
           id
           isResolved
+          isOutdated
           comments(first:1){
             nodes{
               id
@@ -161,10 +162,7 @@ def fetch_unresolved_copilot_threads(
     pr_number: int,
     copilot_login: str,
 ) -> list[UnresolvedThread]:
-    """Return unresolved review threads authored by Copilot."""
-    # Strip [bot] suffix for GraphQL — GraphQL surfaces logins without it.
-    copilot_bare = copilot_login.removesuffix("[bot]")
-
+    """Return unresolved, non-outdated review threads authored by Copilot."""
     all_thread_nodes: list[dict] = []
     cursor: str | None = None
 
@@ -200,12 +198,14 @@ def fetch_unresolved_copilot_threads(
     for t in all_thread_nodes:
         if t["isResolved"]:
             continue
+        if t.get("isOutdated", False):
+            continue
         comments = t["comments"]["nodes"]
         if not comments:
             continue
         first = comments[0]
         author = first["author"]["login"] if first.get("author") else ""
-        if author != copilot_bare:
+        if author != copilot_login:
             continue
         out.append(
             UnresolvedThread(

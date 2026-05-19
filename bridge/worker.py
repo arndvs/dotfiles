@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -200,7 +201,7 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
     # Do NOT forward the full os.environ (which includes .env.secrets).
     env = {
         "HOME": os.environ.get("HOME", ""),
-        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+        "PATH": "/usr/local/bin:/usr/bin:/bin",
         "TERM": os.environ.get("TERM", "dumb"),
         "LANG": os.environ.get("LANG", "en_US.UTF-8"),
         "USER": os.environ.get("USER", ""),
@@ -229,12 +230,19 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
             raise RuntimeError(f"shft afk exited {proc.returncode}")
     except subprocess.TimeoutExpired:
         # Kill the entire process group to avoid orphaned agents/stale locks
-        import signal
         try:
             os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
         except (ProcessLookupError, OSError):
             pass
-        proc.wait(timeout=10)  # Allow graceful shutdown
+        try:
+            proc.wait(timeout=10)  # Allow graceful shutdown
+        except subprocess.TimeoutExpired:
+            # SIGTERM didn't work — escalate to SIGKILL
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except (ProcessLookupError, OSError):
+                pass
+            proc.wait(timeout=5)
         emit("bridge.job.failed", reason="shft_timeout")
         raise RuntimeError("shft afk timed out")
 

@@ -13,15 +13,15 @@ WorkingDirectory=%h/dotfiles
 ExecStart=%h/dotfiles/secrets/.venv/bin/python -m bridge.worker
 Restart=on-failure
 RestartSec=10
-StandardOutput=append:${BRIDGE_ROOT}/logs/bridge.log
-StandardError=append:${BRIDGE_ROOT}/logs/bridge.log
+StandardOutput=append:%h/bridge/logs/bridge.log
+StandardError=append:%h/bridge/logs/bridge.log
 
 # Hardening
 NoNewPrivileges=yes
 ProtectSystem=strict
 # MVP: worker needs access to both ~/bridge and ~/dotfiles/working
 # Phase 2: tighten to just ~/bridge once per-workspace working/ lands
-ReadWritePaths=${BRIDGE_ROOT} %h/dotfiles/working
+ReadWritePaths=%h/bridge %h/dotfiles/working
 
 [Install]
 WantedBy=default.target

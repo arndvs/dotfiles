@@ -1,6 +1,6 @@
 """Per-PR workspace lifecycle.
 
-A workspace is ~/bridge/workspaces/<owner>-<repo>-pr<num>/, a
+A workspace is ~/bridge/workspaces/<owner>--<repo>--pr<num>/, a
 single-branch clone of the PR's head. Reused across iterations for the
 same PR; recreated if missing.
 
@@ -26,10 +26,15 @@ class WorkspaceError(RuntimeError):
 
 
 def workspace_path(workspaces_root: Path, claim_key: str) -> Path:
-    """Convert claim_key to a filesystem-safe path."""
-    # claim_key is "owner/repo#42"; normalize for filesystem.
-    safe = claim_key.replace("/", "-").replace("#", "-pr")
-    return workspaces_root / safe
+    """Convert claim_key to a filesystem-safe path.
+
+    Uses '--' between owner, repo, and PR number to avoid collisions
+    between repos like 'a-b/c' and 'a/b-c'.
+    """
+    # claim_key is "owner/repo#42"; parse and use unambiguous separator.
+    owner_repo, _, pr_num = claim_key.partition("#")
+    owner, _, repo = owner_repo.partition("/")
+    return workspaces_root / f"{owner}--{repo}--pr{pr_num}"
 
 
 def _git_env(token: Token) -> dict[str, str]:
@@ -81,6 +86,12 @@ def prepare(
                 shutil.rmtree(path, ignore_errors=True)
             raise WorkspaceError(
                 f"git clone failed for {repo_full_name} (exit {e.returncode})"
+            )
+        except subprocess.TimeoutExpired:
+            if path.exists():
+                shutil.rmtree(path, ignore_errors=True)
+            raise WorkspaceError(
+                f"git clone timed out for {repo_full_name} after 300s"
             )
     else:
         logger.info("Fetching %s in %s", head_ref, path)

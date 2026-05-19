@@ -40,7 +40,7 @@ Sourced into shells or loaded via systemd EnvironmentFile. No secrets.
 | Variable | Description |
 |---|---|
 | `BRIDGE_PORT` | Port for webhook receiver (default: 8765) |
-| `COPILOT_BOT_LOGIN` | Bot login, e.g. `copilot-swe-agent[bot]` |
+| `COPILOT_BOT_LOGIN` | Bot login (default: `copilot-pull-request-reviewer[bot]`) |
 | `BRIDGE_REPO_ALLOWLIST` | Comma-separated `owner/repo` list |
 | `BRIDGE_MAX_ITERATIONS` | Loop cap per PR (default: 3) |
 
@@ -116,7 +116,7 @@ All 10 priority findings from the codebase audit are addressed:
 - **H-4**: Dedicated `claim_keys` table for iteration tracking
 - **S-1**: Ephemeral `GIT_CONFIG_COUNT` env vars (no token in .git/config)
 - **S-2**: Token `__repr__` returns `Token(***)`
-- **I-1**: bot_login validated for `[bot]` suffix
+- **I-1**: bot_login validated as non-empty
 - **I-3**: Allowlist parsing filters empty strings
 - **L-1**: Only `pull_request_review` events accepted
 - **L-2**: Only `state=changes_requested` reviews enqueued

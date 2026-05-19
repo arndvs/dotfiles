@@ -70,8 +70,8 @@ def body(
             "1. Read the comment in context of the diff hunk and surrounding code.",
             "2. Decide: AFK-able fix, or escalate as `hitl`?",
             "3. If AFK: implement, commit atomically (one commit per thread,",
-            "   scoped to the thread's file/line). Reply to the thread with",
-            "   `Fixed in <sha>` and resolve it via GraphQL.",
+            "   scoped to the thread's file/line). Push to the PR branch, then",
+            "   reply to the thread with `Fixed in <sha>` and resolve it via GraphQL.",
             "4. If HITL: remove the `afk` label from this issue, add `hitl`,",
             "   post a summary comment on this issue explaining which thread(s)",
             "   and why.",
@@ -82,5 +82,12 @@ def body(
     )
     result = "\n".join(parts)
     if len(result) > MAX_BODY_LEN:
-        result = result[: MAX_BODY_LEN - 100] + "\n\n---\n*Body truncated (GitHub limit).*"
+        mkr = marker(repo_full_name, pr_number)
+        # Preserve the marker at the end so the bridge can find this issue.
+        budget = MAX_BODY_LEN - len(mkr) - 60
+        result = (
+            result[:budget]
+            + "\n\n---\n*Body truncated (GitHub limit).*\n\n"
+            + mkr
+        )
     return result

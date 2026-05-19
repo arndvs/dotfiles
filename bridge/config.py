@@ -67,14 +67,13 @@ class Config:
         if not allowlist:
             raise ConfigError("BRIDGE_REPO_ALLOWLIST is empty")
 
-        # Validate bot login contains [bot] suffix (fixes I-1)
+        # Validate bot login is non-empty (accepts any valid GitHub login,
+        # including variants like copilot-swe-agent without [bot] suffix).
         bot_login = opt(
             "COPILOT_BOT_LOGIN", "copilot-pull-request-reviewer[bot]"
         )
-        if not bot_login.endswith("[bot]"):
-            raise ConfigError(
-                f"COPILOT_BOT_LOGIN must end with [bot], got: {bot_login!r}"
-            )
+        if not bot_login:
+            raise ConfigError("COPILOT_BOT_LOGIN must not be empty")
 
         return cls(
             github_app_id=os.environ.get("GITHUB_APP_ID") or None,
@@ -96,11 +95,20 @@ class Config:
         )
 
     def require_webhook_secret(self) -> str:
-        """Validate WEBHOOK_SECRET is present. Call from webhook startup."""
+        """Validate WEBHOOK_SECRET is present and strong enough.
+
+        Call from webhook startup.
+        """
         if not self.webhook_secret:
             raise ConfigError(
                 "WEBHOOK_SECRET is required for the webhook receiver. "
                 "Ensure secrets/.env.bridge is loaded."
+            )
+        if len(self.webhook_secret) < 32:
+            raise ConfigError(
+                "WEBHOOK_SECRET must be at least 32 characters for adequate "
+                "HMAC entropy. Generate one with: "
+                'python3 -c "import secrets; print(secrets.token_hex(32))"'
             )
         return self.webhook_secret
 

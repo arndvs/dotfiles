@@ -10,14 +10,22 @@ import os
 
 from .github import Token
 
+# Only forward safe, non-secret env vars to git subprocesses.
+_SAFE_ENV_VARS = ("HOME", "PATH", "TERM", "LANG", "USER", "LOGNAME", "SHELL")
+
 
 def git_credential_env(token: Token) -> dict[str, str]:
-    """Return os.environ merged with ephemeral git credential config."""
-    return {
-        **os.environ,
+    """Return a scrubbed env with ephemeral git credential config.
+
+    Only forwards safe vars — does NOT spread os.environ to avoid
+    leaking secrets from the worker's EnvironmentFile.
+    """
+    env = {k: os.environ[k] for k in _SAFE_ENV_VARS if k in os.environ}
+    env.update({
         "GIT_CONFIG_COUNT": "1",
         "GIT_CONFIG_KEY_0": (
             f"url.https://x-access-token:{token.value}@github.com/.insteadOf"
         ),
         "GIT_CONFIG_VALUE_0": "https://github.com/",
-    }
+    })
+    return env
