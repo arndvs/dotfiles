@@ -16,6 +16,8 @@ __pycache__/
 # Secrets — NEVER commit
 secrets/*
 !secrets/README.md
+!secrets/.env.agent.example
+!secrets/.env.bridge.example
 .env
 .env.*
 !.env.agent.example
