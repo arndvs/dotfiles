@@ -49,7 +49,6 @@ fi
 UNPUSHED=$(git rev-list '@{u}..HEAD' 2>/dev/null | wc -l | tr -d ' ')
 if [[ "$UNPUSHED" -gt 0 ]]; then
     BRANCH=$(git branch --show-current 2>/dev/null || echo "HEAD")
-    cat <<EOF
-{"hookSpecificOutput":{"additionalContext":"⚠️ ${UNPUSHED} unpushed commit(s) on ${BRANCH}. Remember to push before ending the session."}}
-EOF
+    jq -cn --arg msg "⚠️ ${UNPUSHED} unpushed commit(s) on ${BRANCH}. Remember to push before ending the session." \
+        '{"hookSpecificOutput":{"additionalContext":$msg}}'
 fi
