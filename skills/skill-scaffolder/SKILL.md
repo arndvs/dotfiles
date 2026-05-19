@@ -291,15 +291,14 @@ The most critical file. This is what the agent reads to understand how to operat
 
 - Max 1024 characters
 - Write in third person
-- First sentence: what the skill does
-- Second sentence: "Use when [specific triggers, keywords, file types]"
+- Single sentence combining what the skill does and when to invoke it (e.g., "Builds X when the user asks to Y or mentions Z")
 - Be specific enough to distinguish from other skills with similar domains
 
 ```markdown
 ---
 name: { skill-name }
 description: >
-  {First sentence: what it does. Second sentence: Use when [specific triggers].
+  {Single sentence: what it does and when to invoke it.
   Max 1024 chars. Third person. Specific enough to distinguish from similar skills.}
 ---
 
@@ -498,26 +497,3 @@ User says: _"Create a skill that audits a GitHub repo, identifies all features, 
 6. State: Google Sheets (user wants visibility)
 7. Auth: No (public repos, local server)
 8. Evidence: Yes (screenshots at multiple viewports)
-9. Environment: Dual-mode (VS Code for interactive, Playwright for batch)
-10. Data source: Git repo URL → code analysis discovers features
-
-**Generated modules:**
-
-- `shared_utils.py` ✓ (always)
-- `session_logger.py` ✓ (always)
-- `preflight.py` ✓ (always)
-- `run_portfolio.py` ✓ (always)
-- `sheets_client.py` ✓ (Sheets state)
-- `setup_sheet.py` ✓ (Sheets state)
-- `screenshot_manager.py` ✓ (evidence)
-- `browser_adapter.py` ✓ (dual-mode browser)
-- `repo_analyzer.py` ✓ (domain-specific: tech stack detection)
-- `feature_discovery.py` ✓ (domain-specific: route enumeration)
-- `app_runner.py` ✓ (domain-specific: dev server management)
-- `report_generator.py` ✓ (domain-specific: markdown portfolio output)
-
-**Omitted:**
-
-- `credential_vault.py` (no auth)
-- `email_handler.py` (no email verification)
-- `state_store.py` (using Sheets instead)

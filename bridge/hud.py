@@ -7,11 +7,14 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import subprocess
 from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+_SAFE_ENV_VARS = ("HOME", "PATH", "TERM", "LANG", "USER")
 
 
 def emit(
@@ -41,6 +44,9 @@ def emit(
         **({"pr_number": pr_number} if pr_number else {}),
         **extra,
     }
+    # Scrub environment — HUD emitter only needs basic shell vars,
+    # not secrets from the worker's EnvironmentFile.
+    safe_env = {k: os.environ[k] for k in _SAFE_ENV_VARS if k in os.environ}
     try:
         subprocess.run(
             ["bash", str(hud_script), "bridge-event"],
@@ -48,6 +54,7 @@ def emit(
             text=True,
             check=False,  # never fail the job on HUD issues
             timeout=2,
+            env=safe_env,
         )
     except Exception as e:
         logger.debug("HUD emit failed (non-fatal): %s", e)

@@ -77,9 +77,9 @@ class Config:
 
         # MVP: only single worker is supported (global lockfile constraint).
         worker_count = int(opt("WORKER_COUNT", "1"))
-        if worker_count > 1:
+        if worker_count != 1:
             raise ConfigError(
-                "WORKER_COUNT>1 is not supported in MVP (global lockfile at "
+                "WORKER_COUNT must be exactly 1 in MVP (global lockfile at "
                 "/tmp/shft-afk.lock). See README.md MVP Constraints #3."
             )
 
@@ -126,6 +126,14 @@ class Config:
             raise ConfigError(
                 "GITHUB_APP_ID and GITHUB_APP_INSTALLATION_ID are required "
                 "for the worker process (set in secrets/.env.secrets)"
+            )
+        # Verify the private key is available — mint script reads it directly,
+        # but fail fast here so a misconfigured worker doesn't claim jobs
+        # only to fail during token minting.
+        if not os.environ.get("GITHUB_APP_PRIVATE_KEY_B64"):
+            raise ConfigError(
+                "GITHUB_APP_PRIVATE_KEY_B64 is required for token minting "
+                "(set in secrets/.env.secrets)"
             )
         return self.github_app_id, self.github_app_installation_id
 

@@ -180,8 +180,20 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
         except httpx.HTTPStatusError as e:
             if e.response.status_code != 422:
                 raise
-            # Labels may not exist in repo — retry without them (422 = validation error)
-            logger.warning("create_issue with labels failed (422); retrying without labels")
+            # Only retry without labels if the 422 is specifically about invalid labels
+            try:
+                err_data = e.response.json()
+                errors = err_data.get("errors", [])
+                is_label_error = any(
+                    err.get("resource") == "Label"
+                    or "label" in str(err.get("message", "")).lower()
+                    for err in errors
+                )
+            except Exception:
+                is_label_error = False
+            if not is_label_error:
+                raise
+            logger.warning("create_issue with labels failed (422, label validation); retrying without labels")
             tracking_number = github.create_issue(
                 token,
                 owner=owner,
@@ -203,9 +215,17 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
     shft_bin = str(cfg.dotfiles_root / "shft" / "shft")
     # Build a scrubbed environment for shft — only pass what it needs.
     # Do NOT forward the full os.environ (which includes .env.secrets).
+    # Preserve existing PATH (may contain srt location from nvm/npm prefix)
+    # and prepend ~/.local/bin for user-installed tools.
+    existing_path = os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin")
+    local_bin = os.path.expanduser("~/.local/bin")
+    if local_bin not in existing_path.split(":"):
+        path_val = f"{local_bin}:{existing_path}"
+    else:
+        path_val = existing_path
     env = {
         "HOME": os.environ.get("HOME", ""),
-        "PATH": os.path.expanduser("~/.local/bin") + ":/usr/local/bin:/usr/bin:/bin",
+        "PATH": path_val,
         "TERM": os.environ.get("TERM", "dumb"),
         "LANG": os.environ.get("LANG", "en_US.UTF-8"),
         "USER": os.environ.get("USER", ""),

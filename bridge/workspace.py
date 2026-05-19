@@ -20,6 +20,8 @@ from .github import Token
 
 logger = logging.getLogger(__name__)
 
+_SAFE_ENV_VARS = ("HOME", "PATH", "TERM", "LANG", "USER")
+
 
 class WorkspaceError(RuntimeError):
     pass
@@ -40,6 +42,11 @@ def workspace_path(workspaces_root: Path, claim_key: str) -> Path:
 def _git_env(token: Token) -> dict[str, str]:
     """Build env dict with ephemeral git credential injection."""
     return git_credential_env(token)
+
+
+def _safe_env() -> dict[str, str]:
+    """Build a minimal env without secrets for local-only git operations."""
+    return {k: os.environ[k] for k in _SAFE_ENV_VARS if k in os.environ}
 
 
 def prepare(
@@ -123,15 +130,19 @@ def prepare(
             )
 
     # Configure git identity for commits shft makes in this workspace.
+    # Use scrubbed env — git config is a local-only operation, no secrets needed.
+    safe = _safe_env()
     subprocess.run(
         ["git", "-C", str(path), "config", "user.name", "ctrl-shft bridge"],
         check=True,
         timeout=10,
+        env=safe,
     )
     subprocess.run(
         ["git", "-C", str(path), "config", "user.email", "bridge@ctrlshft.local"],
         check=True,
         timeout=10,
+        env=safe,
     )
 
     return path

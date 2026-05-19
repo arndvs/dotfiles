@@ -69,6 +69,24 @@ else
     log "python deps: skipped (--validate)"
 fi
 
+# ── 3a. Bridge secrets file ─────────────────────────────────────────────────
+# systemd EnvironmentFile= requires this file to exist before units start.
+if [[ ! -f "$DOTFILES/secrets/.env.bridge" ]]; then
+    if [[ "$validate_only" == "0" ]]; then
+        if [[ -f "$DOTFILES/secrets/.env.bridge.example" ]]; then
+            cp "$DOTFILES/secrets/.env.bridge.example" "$DOTFILES/secrets/.env.bridge"
+            log "created secrets/.env.bridge from example — edit with your webhook secret"
+        else
+            printf 'WEBHOOK_SECRET=%s\n' "$WEBHOOK_SECRET" > "$DOTFILES/secrets/.env.bridge"
+            log "created secrets/.env.bridge from current WEBHOOK_SECRET"
+        fi
+    else
+        warn "secrets/.env.bridge does not exist — systemd units will fail to start"
+    fi
+else
+    log "secrets/.env.bridge: exists"
+fi
+
 # ── 4. Runtime dirs ─────────────────────────────────────────────────────────
 mkdir -p "$BRIDGE_ROOT/workspaces" "$BRIDGE_ROOT/logs"
 touch "$BRIDGE_ROOT/logs/bridge.log"
