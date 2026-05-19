@@ -89,29 +89,37 @@ def parse_head_branch(command):
 
 
 def _default_branch(repo_root):
-    """Detect the default branch name (e.g. main, master) from origin HEAD."""
-    try:
-        result = subprocess.run(
-            ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
-            capture_output=True, text=True, cwd=repo_root, timeout=5
-        )
-        if result.returncode == 0:
-            ref = result.stdout.strip()
-            return ref.replace("refs/remotes/origin/", "")
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-    # Fallback: try common default branch names that exist locally
-    for candidate in ("main", "master"):
+    """Detect a valid base branch for diffing. Returns None when no candidate exists."""
+    def _git_ok(args):
         try:
-            check = subprocess.run(
-                ["git", "rev-parse", "--verify", f"{candidate}^{{commit}}"],
+            r = subprocess.run(
+                ["git", *args],
                 capture_output=True, text=True, cwd=repo_root, timeout=5
             )
-            if check.returncode == 0:
-                return candidate
+            return r if r.returncode == 0 else None
         except (subprocess.TimeoutExpired, FileNotFoundError):
-            pass
-    return "main"
+            return None
+
+    # 1. origin/HEAD symbolic ref
+    r = _git_ok(["symbolic-ref", "refs/remotes/origin/HEAD"])
+    if r:
+        ref = r.stdout.strip().replace("refs/remotes/origin/", "")
+        if _git_ok(["rev-parse", "--verify", f"{ref}^{{commit}}"]):
+            return ref
+
+    # 2. Current branch's upstream
+    r = _git_ok(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"])
+    if r:
+        upstream = r.stdout.strip()
+        if _git_ok(["rev-parse", "--verify", f"{upstream}^{{commit}}"]):
+            return upstream
+
+    # 3. Common default branch names (local and remote)
+    for candidate in ("main", "master", "origin/main", "origin/master"):
+        if _git_ok(["rev-parse", "--verify", f"{candidate}^{{commit}}"]):
+            return candidate
+
+    return None
 
 
 def get_diff_files(cwd, head_ref=None):
@@ -151,7 +159,9 @@ def get_diff_files(cwd, head_ref=None):
 
     # Merge base
     default_branch = _default_branch(repo_root)
-    origin_ref = f"origin/{default_branch}"
+    if default_branch is None:
+        return set(), "no default branch detected -- skipping file audit"
+    origin_ref = f"origin/{default_branch}" if not default_branch.startswith("origin/") else default_branch
     # Fall back to local default branch if origin remote-tracking ref is missing
     try:
         subprocess.run(
