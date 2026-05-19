@@ -317,5 +317,4 @@ if __name__ == "__main__":
                 "additionalContext": f"PRE-PR AUDIT: SKIPPED (error: {e})",
             }
         }), file=sys.stdout)
-        sys.stderr.write(f"plan-review-phase2.py error: {e}\n")
         sys.exit(0)

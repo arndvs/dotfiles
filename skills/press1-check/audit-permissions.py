@@ -329,7 +329,7 @@ def audit_session(path: Path, prefixes: list[str]) -> list[dict]:
     needs_approval = []
     subagent = is_subagent(path)
 
-    with open(path) as f:
+    with open(path, encoding="utf-8", errors="replace") as f:
         for line in f:
             try:
                 d = json.loads(line.strip())

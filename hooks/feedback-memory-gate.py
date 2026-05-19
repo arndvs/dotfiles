@@ -102,5 +102,10 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         # Fail-open: hook errors should not block the user
-        sys.stderr.write(f"feedback-memory-gate error: {e}\n")
+        print(json.dumps({
+            "hookSpecificOutput": {
+                "hookEventName": "PostToolUse",
+                "additionalContext": f"feedback-memory-gate error: {e}",
+            }
+        }))
         sys.exit(0)
