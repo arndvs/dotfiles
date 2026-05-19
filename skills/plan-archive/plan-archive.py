@@ -163,32 +163,37 @@ def fetch_pr_data(pr_number: int, repo: str | None = None) -> dict | None:
     }
 
 
+def _yaml_quote(value: str) -> str:
+    """Return a YAML-safe double-quoted scalar for a string value."""
+    return json.dumps(value)
+
+
 def write_meta_yaml(target_dir: Path, pr: dict, plan_filenames: list[str], cross_refs: list[int] | None = None) -> None:
     """Write _meta.yaml inside target_dir using a hand-rolled YAML emitter (no PyYAML dep)."""
     cross_refs = cross_refs or []
     lines = [
         "pr:",
         f"  number: {pr['number']}",
-        f"  url: {_pr_url_template().format(number=pr['number'])}",
-        f"  title: {json.dumps(pr['title'])}",
-        f"  branch: {pr['branch']}",
-        f"  merged_at: {pr.get('mergedAt') or 'unknown'}",
-        f"  merge_sha: {pr.get('mergeCommit') or 'unknown'}",
+        f"  url: {_yaml_quote(_pr_url_template().format(number=pr['number']))}",
+        f"  title: {_yaml_quote(pr['title'])}",
+        f"  branch: {_yaml_quote(pr['branch'])}",
+        f"  merged_at: {_yaml_quote(pr.get('mergedAt') or 'unknown')}",
+        f"  merge_sha: {_yaml_quote(pr.get('mergeCommit') or 'unknown')}",
         "linear:",
     ]
     if pr["linear"]:
         for tk in pr["linear"]:
-            lines.append(f"  - {tk}")
+            lines.append(f"  - {_yaml_quote(tk)}")
     else:
         lines.append("  []")
     lines.append("plans:")
     for fn in plan_filenames:
-        lines.append(f"  - {fn}")
+        lines.append(f"  - {_yaml_quote(fn)}")
     if cross_refs:
         lines.append("cross_refs:")
         for n in cross_refs:
             lines.append(f"  - {n}")
-    lines.append(f"archived_at: {datetime.now(timezone.utc).isoformat()}")
+    lines.append(f"archived_at: {_yaml_quote(datetime.now(timezone.utc).isoformat())}")
     (target_dir / "_meta.yaml").write_text("\n".join(lines) + "\n")
 
 
