@@ -456,11 +456,12 @@ def main():
                 "low_suggestions": [r for r, _ in low_suggestions],
                 "summary": findings_summary,
             })
-            write_state({
-                "last_run_ts": now_iso,
-                "last_run_mode": "auto-stop-hook",
-                "last_run_findings": findings_summary,
-            })
+        # Always update state so the cooldown timer resets, even with no findings
+        write_state({
+            "last_run_ts": now_iso,
+            "last_run_mode": "auto-stop-hook",
+            "last_run_findings": findings_summary,
+        })
         return
 
     if not all_needs:
