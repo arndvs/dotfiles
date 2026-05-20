@@ -61,7 +61,10 @@ fi
 if [[ -f "package.json" ]]; then
     if jq -e '.scripts.test' package.json &>/dev/null; then
         echo "pre-commit: running tests..."
-        $_pm test || exit 1
+        case "$_pm" in
+            bun)  bun run test || exit 1 ;;
+            *)    $_pm test || exit 1 ;;
+        esac
     fi
 fi
 

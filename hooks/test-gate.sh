@@ -64,7 +64,12 @@ fi
 
 # Run tests — capture output to keep hook JSON clean, dump on failure
 _test_out=$(mktemp)
-if ! $_pm test >"$_test_out" 2>&1; then
+if [[ "$_pm" == "bun" ]]; then
+    _test_cmd=(bun run test)
+else
+    _test_cmd=("$_pm" test)
+fi
+if ! "${_test_cmd[@]}" >"$_test_out" 2>&1; then
     _tail=$(tail -20 "$_test_out" | tr '\n' ' ' | cut -c1-200)
     rm -f "$_test_out"
     jq -cn --arg reason "test-gate: tests failed. Fix failing tests before committing." \
