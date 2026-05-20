@@ -100,7 +100,7 @@ async def webhook(
     actor = (
         (payload.get("review") or {}).get("user", {}).get("login", "")
     )
-    _strip_bot = lambda s: s.removesuffix("[bot]")
+    _strip_bot = lambda s: s[:-5] if s.endswith("[bot]") else s
     if _strip_bot(actor) != _strip_bot(config.copilot_bot_login):
         return Response(status_code=204)
 
