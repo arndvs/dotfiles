@@ -43,7 +43,12 @@ if [[ -f "tsconfig.json" ]] && [[ -f "package.json" ]]; then
             $_pm run type-check || exit 1
         else
             echo "pre-commit: running tsc --noEmit..."
-            npx tsc --noEmit || exit 1
+            case "$_pm" in
+                pnpm) pnpm exec tsc --noEmit || exit 1 ;;
+                yarn) yarn exec tsc --noEmit || exit 1 ;;
+                bun)  bun x tsc --noEmit || exit 1 ;;
+                *)    npm exec -- tsc --noEmit || exit 1 ;;
+            esac
         fi
     fi
 fi

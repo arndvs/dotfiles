@@ -56,10 +56,16 @@ _pm="npm"
 [[ -f "yarn.lock" ]] && _pm="yarn"
 [[ -f "bun.lockb" ]] && _pm="bun"
 
-# Run tests — stream output so failures are visible in real time
-if ! $_pm test; then
-    echo '{"hookSpecificOutput":{"permissionDecision":"deny","permissionDecisionReason":"test-gate: tests failed. Fix failing tests before committing."}}' >&2
+# Run tests — capture output to keep hook JSON clean, dump on failure
+_test_out=$(mktemp)
+if ! $_pm test >"$_test_out" 2>&1; then
+    _tail=$(tail -20 "$_test_out" | tr '\n' ' ' | cut -c1-200)
+    rm -f "$_test_out"
+    jq -cn --arg reason "test-gate: tests failed. Fix failing tests before committing." \
+           --arg context "$_tail" \
+        '{"hookSpecificOutput":{"permissionDecision":"deny","permissionDecisionReason":$reason,"additionalContext":$context}}' >&2
     exit 2
 fi
+rm -f "$_test_out"
 
 exit 0
