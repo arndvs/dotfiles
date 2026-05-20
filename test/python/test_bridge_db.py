@@ -18,11 +18,12 @@ sys.path.insert(0, str(REPO_ROOT))
 from bridge import db
 
 
-def _make_db() -> Path:
-    """Create a temp DB and initialize schema."""
-    tmp = Path(tempfile.mkdtemp()) / "test.db"
+def _make_db():
+    """Create a temp DB and initialize schema. Returns (Path, TemporaryDirectory)."""
+    td = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+    tmp = Path(td.name) / "test.db"
     db.init_db(tmp)
-    return tmp
+    return tmp, td
 
 
 def _enqueue_sample(conn: sqlite3.Connection, delivery_id: str = "d-1",
@@ -39,7 +40,10 @@ def _enqueue_sample(conn: sqlite3.Connection, delivery_id: str = "d-1",
 
 class TestEnqueue(unittest.TestCase):
     def setUp(self):
-        self.db_path = _make_db()
+        self.db_path, self._tmpdir = _make_db()
+
+    def tearDown(self):
+        self._tmpdir.cleanup()
 
     def test_enqueue_inserts_job(self):
         with db.connect(self.db_path) as conn:
@@ -73,7 +77,10 @@ class TestEnqueue(unittest.TestCase):
 
 class TestClaimNextJob(unittest.TestCase):
     def setUp(self):
-        self.db_path = _make_db()
+        self.db_path, self._tmpdir = _make_db()
+
+    def tearDown(self):
+        self._tmpdir.cleanup()
 
     def test_claim_returns_oldest_queued(self):
         with db.connect(self.db_path) as conn:
@@ -102,7 +109,10 @@ class TestClaimNextJob(unittest.TestCase):
 
 class TestMarkDone(unittest.TestCase):
     def setUp(self):
-        self.db_path = _make_db()
+        self.db_path, self._tmpdir = _make_db()
+
+    def tearDown(self):
+        self._tmpdir.cleanup()
 
     def test_mark_done_sets_status(self):
         with db.connect(self.db_path) as conn:
@@ -117,7 +127,10 @@ class TestMarkDone(unittest.TestCase):
 
 class TestMarkFailed(unittest.TestCase):
     def setUp(self):
-        self.db_path = _make_db()
+        self.db_path, self._tmpdir = _make_db()
+
+    def tearDown(self):
+        self._tmpdir.cleanup()
 
     def test_mark_failed_stores_error(self):
         with db.connect(self.db_path) as conn:
@@ -131,7 +144,10 @@ class TestMarkFailed(unittest.TestCase):
 
 class TestBumpIteration(unittest.TestCase):
     def setUp(self):
-        self.db_path = _make_db()
+        self.db_path, self._tmpdir = _make_db()
+
+    def tearDown(self):
+        self._tmpdir.cleanup()
 
     def test_bump_increments(self):
         with db.connect(self.db_path) as conn:
@@ -149,7 +165,10 @@ class TestBumpIteration(unittest.TestCase):
 
 class TestRequeueStaleClaims(unittest.TestCase):
     def setUp(self):
-        self.db_path = _make_db()
+        self.db_path, self._tmpdir = _make_db()
+
+    def tearDown(self):
+        self._tmpdir.cleanup()
 
     def test_requeues_stale_jobs(self):
         with db.connect(self.db_path) as conn:

@@ -74,17 +74,25 @@ def is_pr_create_command(command):
 def parse_head_branch(command):
     """Extract the value of --head / -H / --head=<branch> from a gh command.
 
-    When present, the gate diffs against that branch instead of HEAD-of-cwd.
+    Uses shlex tokenization so values embedded inside --body or --title
+    quotes are never matched. Falls back to regex on shlex parse error.
     CC-174.
     """
     if not command:
         return None
-    eq_match = re.search(r"--head=(\S+)", command)
-    if eq_match:
-        return eq_match.group(1)
-    space_match = re.search(r"(?:--head|-H)\s+(\S+)", command)
-    if space_match:
-        return space_match.group(1)
+    try:
+        tokens = shlex.split(command, comments=False, posix=True)
+    except ValueError:
+        # Fall back to regex on parse error (fail-open)
+        eq_match = re.search(r"--head=(\S+)", command)
+        if eq_match:
+            return eq_match.group(1)
+        return None
+    for i, tok in enumerate(tokens):
+        if tok.startswith("--head="):
+            return tok.split("=", 1)[1] or None
+        if tok in ("--head", "-H") and i + 1 < len(tokens):
+            return tokens[i + 1]
     return None
 
 

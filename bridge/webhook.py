@@ -96,10 +96,12 @@ async def webhook(
         return Response(status_code=204)
 
     # Actor filter — only Copilot bot reviews
+    # Normalize: GitHub may send login with or without [bot] suffix
     actor = (
         (payload.get("review") or {}).get("user", {}).get("login", "")
     )
-    if actor != config.copilot_bot_login:
+    _strip_bot = lambda s: s.removesuffix("[bot]")
+    if _strip_bot(actor) != _strip_bot(config.copilot_bot_login):
         return Response(status_code=204)
 
     # Review state filter — only changes_requested (fixes L-2)
