@@ -105,6 +105,14 @@ assert_deny "deny: git -c option commit (tests fail)" "tests failed"
 run_hook "$HOOK" "$(make_pretooluse_json 'git --no-pager commit -m "feat: x"' "$FAIL_DIR")"
 assert_deny "deny: git --no-pager commit (tests fail)" "tests failed"
 
+# --- Bare git commit (no flags) ---
+
+run_hook "$HOOK" "$(make_pretooluse_json 'git commit' "$FAIL_DIR")"
+assert_deny "deny: bare git commit (tests fail)" "tests failed"
+
+run_hook "$HOOK" "$(make_pretooluse_json 'git commit' "$PASS_DIR")"
+assert_allow "allow: bare git commit (tests pass)"
+
 # --- Report ---
 
 report

@@ -32,6 +32,17 @@ _pm="npm"
 [[ -f "yarn.lock" ]] && _pm="yarn"
 [[ -f "bun.lockb" ]] && _pm="bun"
 
+# Require the selected package manager to exist — warn and fall back/skip if missing
+if ! command -v "$_pm" &>/dev/null; then
+    if [[ "$_pm" != "npm" ]] && command -v npm &>/dev/null; then
+        echo "pre-commit: $_pm not found — falling back to npm for typecheck and tests" >&2
+        _pm="npm"
+    else
+        echo "pre-commit: $_pm not found — skipping typecheck and tests" >&2
+        exit 0
+    fi
+fi
+
 # Require jq for script inspection — warn and skip if missing
 if ! command -v jq &>/dev/null; then
     echo "pre-commit: jq not found — skipping typecheck and tests (install jq for full safety net)" >&2
@@ -50,7 +61,7 @@ if [[ -f "tsconfig.json" ]] && [[ -f "package.json" ]]; then
         echo "pre-commit: running tsc --noEmit..."
         case "$_pm" in
             pnpm) pnpm exec tsc --noEmit || exit 1 ;;
-            yarn) yarn exec tsc --noEmit || exit 1 ;;
+            yarn) yarn run tsc --noEmit || exit 1 ;;
             bun)  bun x tsc --noEmit || exit 1 ;;
             *)    npm exec -- tsc --noEmit || exit 1 ;;
         esac

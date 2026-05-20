@@ -24,7 +24,7 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
 # Only intercept git commit commands (allow global git options like -c key=val, --no-pager)
 GIT_OPTS='([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*'
-if ! echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*git${GIT_OPTS}[[:space:]]+commit([[:space:]]|\$)"; then
+if ! echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*git${GIT_OPTS}[[:space:]]+commit([[:space:]]|$)"; then
     exit 0
 fi
 
