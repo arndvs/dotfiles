@@ -30,7 +30,9 @@ if ! echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*${ENV_PREFIX}git${G
 fi
 
 # Skip amend commits (typically fixups, not new code)
-if echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*${ENV_PREFIX}git${GIT_OPTS}[[:space:]]+commit([[:space:]].*)?[[:space:]]--amend([[:space:]]|$)"; then
+# Strip quoted strings first so --amend inside a -m message doesn't false-positive
+_cmd_stripped=$(echo "$COMMAND" | sed "s/\"[^\"]*\"//g; s/'[^']*'//g")
+if echo "$_cmd_stripped" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*${ENV_PREFIX}git${GIT_OPTS}[[:space:]]+commit([[:space:]].*)?[[:space:]]--amend([[:space:]]|$)"; then
     exit 0
 fi
 
