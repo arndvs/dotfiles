@@ -94,7 +94,10 @@ REQUIRED_SECTIONS=$(_config_val "plan_required_sections" "Context,Implementation
 # --- Section check helper ---
 # Returns 0 if heading exists with at least one non-empty content line
 _section_has_content() {
-    local heading_pattern="$1"
+    local raw_pattern="$1"
+    # Escape regex metacharacters so section names like "C++ Notes" or "Q&A" are safe
+    local heading_pattern
+    heading_pattern=$(printf '%s' "$raw_pattern" | sed 's/[].[^$*+?{}()|\\]/\\&/g')
     local in_section=false
     local found_content=false
     # Build anchored regex: match "## Section" or "## Sections" as full words

@@ -54,7 +54,7 @@
           },
           {
             "type": "command",
-            "command": "python3 \"$HOME/.claude/hooks/plan-review-phase2.py\""
+            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$HOME/.claude/hooks/plan-review-phase2.py\" || exit 0"
           },
           {
             "type": "command",
@@ -109,7 +109,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$HOME/.claude/hooks/feedback-memory-gate.py\""
+            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$HOME/.claude/hooks/feedback-memory-gate.py\" || exit 0"
           }
         ]
       }
