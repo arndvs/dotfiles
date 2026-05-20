@@ -3,7 +3,7 @@
 Covers: enqueue idempotency, claim_next_job, mark_done/mark_failed,
 bump_iteration, and requeue_stale_claims.
 
-Run: python3 -m pytest test/python/test_bridge_db.py -v
+Run: python3 -m unittest discover -s test/python -p "test_bridge_db.py" -v
 """
 
 import sqlite3
