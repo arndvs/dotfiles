@@ -107,7 +107,7 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
         --output-format stream-json \
         < "$PROMPT_FILE" \
         2>/dev/null \
-        | grep --line-buffered '^{' \
+        | perl -ne 'BEGIN{$|=1} print if /^\{/' \
         | tee >(jq --unbuffered -rj "$stream_text" >&2) \
         > "$raw_output"; then
         echo "ERROR: srt failed on iteration $i" >&2

@@ -277,6 +277,11 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:
         if ! echo "$_commit_seg" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:]]|\$)"; then
             continue
         fi
+        # Warn on --amend (rewrites the last commit) — checked per-segment
+        # so quoted text like -m "mention --amend" doesn't false-positive.
+        if echo "$_commit_seg" | grep -qE '[[:space:]]--amend([[:space:]]|$)'; then
+            _defer_warn "⚠️ git commit --amend rewrites the previous commit. If already pushed, you will need --force-with-lease to push."
+        fi
         if echo "$_commit_seg" | grep -qE "[[:space:]](-m[[:space:]]|-m[\"']|--message[=[:space:]])"; then
             # Extract FIRST -m/--message value from this segment.
             # grep -oE returns matches left-to-right; head -1 takes the first (= subject line).
@@ -304,11 +309,6 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:
             fi
         fi
     done <<< "$(echo "$COMMAND" | sed 's/||/\n/g; s/&&/\n/g; s/;/\n/g; s/|/\n/g')"
-
-    # Warn on --amend (rewrites the last commit)
-    if echo "$COMMAND" | grep -qE '[[:space:]]--amend([[:space:]]|$)'; then
-        _defer_warn "⚠️ git commit --amend rewrites the previous commit. If already pushed, you will need --force-with-lease to push."
-    fi
 fi
 
 # ============================================================
