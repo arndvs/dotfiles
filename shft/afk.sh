@@ -108,7 +108,7 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
         < "$PROMPT_FILE" \
         2>/dev/null \
         | awk '/^[[:space:]]*\{/' \
-        | tee >(jq -rj "$stream_text" >&2) \
+        | tee >(jq -rj "$stream_text" >&2 || cat >/dev/null) \
         > "$raw_output"; then
         echo "ERROR: srt failed on iteration $i" >&2
         exit 1
