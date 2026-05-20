@@ -100,7 +100,7 @@ _section_has_content() {
     while IFS= read -r line; do
         if [[ "$in_section" == "true" ]]; then
             # Next heading at same level (##) → section ended; ### subsections are valid content
-            if echo "$line" | grep -qE '^##[[:space:]]' && ! echo "$line" | grep -qiw -e "${heading_pattern}" -e "${heading_pattern}s"; then
+            if echo "$line" | grep -qE '^##[[:space:]]' && ! echo "$line" | grep -qiF -e "${heading_pattern}" -e "${heading_pattern}s"; then
                 break
             fi
             # Non-empty, non-heading line = content (### subsections also count as content)
@@ -109,7 +109,7 @@ _section_has_content() {
                 break
             fi
         fi
-        if echo "$line" | grep -qE '^#{2,3}[[:space:]]' && echo "$line" | grep -qiw -e "${heading_pattern}" -e "${heading_pattern}s"; then
+        if echo "$line" | grep -qE '^#{2,3}[[:space:]]' && echo "$line" | grep -qiF -e "${heading_pattern}" -e "${heading_pattern}s"; then
             in_section=true
         fi
     done <<< "$PLAN_TEXT"
