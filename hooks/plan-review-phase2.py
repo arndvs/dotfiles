@@ -51,23 +51,66 @@ def allow():
     sys.exit(0)
 
 
+_ENV_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
+
+_PR_CREATE_BOUNDARY_RE = re.compile(
+    r"(^|;|\|\||&&|\|)\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*gh\s+pr\s+(?:create|edit)(?=\s|$)"
+)
+
+
+def _matches_pr_create_at_segment_start(tokens, start_index):
+    """Return True iff a command segment starting at start_index begins with `gh pr create|edit`."""
+    i = start_index
+    while i < len(tokens) and _ENV_ASSIGNMENT_RE.match(tokens[i]):
+        i += 1
+    return (
+        i + 2 < len(tokens)
+        and tokens[i] == "gh"
+        and tokens[i + 1] == "pr"
+        and tokens[i + 2] in ("create", "edit")
+    )
+
+
 def is_pr_create_command(command):
     """Return True iff the Bash command actually invokes `gh pr create` or `gh pr edit`.
 
-    Token-aware match: tokenizes with shlex so quoted strings (HEREDOC bodies,
-    --body=... args) become single opaque tokens that cannot match the
-    (gh, pr, create) triple. Falls back to substring match on shlex parse error.
-    CC-175.
+    Matches only at shell command boundaries (start of the command, or after
+    `;`, `&&`, `||`, `|`), optionally preceded by environment-variable
+    assignments. Quoted strings and other arguments remain opaque tokens and
+    cannot trigger a false positive. Falls back to a boundary-aware regex on
+    shlex parse error. CC-175.
     """
     if not command:
         return False
     try:
-        tokens = shlex.split(command, comments=False, posix=True)
+        lexer = shlex.shlex(command, posix=True, punctuation_chars="|&;")
+        lexer.whitespace_split = True
+        lexer.commenters = ""
+        tokens = list(lexer)
     except ValueError:
-        return "gh pr create" in command or "gh pr edit" in command
-    for i in range(len(tokens) - 2):
-        if tokens[i] == "gh" and tokens[i + 1] == "pr" and tokens[i + 2] in ("create", "edit"):
-            return True
+        return bool(_PR_CREATE_BOUNDARY_RE.search(command))
+
+    # Merge doubled punctuation (&&, ||) into single tokens
+    merged: list[str] = []
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok in ("&", "|") and i + 1 < len(tokens) and tokens[i + 1] == tok:
+            merged.append(tok + tok)
+            i += 2
+            continue
+        merged.append(tok)
+        i += 1
+
+    segment_start = True
+    for i, tok in enumerate(merged):
+        if tok in (";", "&&", "||", "|"):
+            segment_start = True
+            continue
+        if segment_start:
+            if _matches_pr_create_at_segment_start(merged, i):
+                return True
+            segment_start = False
     return False
 
 

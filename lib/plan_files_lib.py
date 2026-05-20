@@ -22,16 +22,29 @@ from pathlib import Path
 PLANS_DIR = Path.home() / ".claude" / "plans"
 
 
+def _find_repo_root_from_module() -> Path | None:
+    """Best-effort repo root discovery based on this module's location."""
+    module_path = Path(__file__).resolve()
+    for parent in module_path.parents:
+        if (parent / ".git").exists():
+            return parent
+    return None
+
+
 def _detect_repo_prefixes() -> list[str]:
     """Return path prefixes treated as repo-root markers when stripping to repo-relative."""
     env = os.environ.get("CLAUDE_PLAN_REPO_PREFIXES", "").strip()
     if env:
         return [p.strip() for p in env.split(",") if p.strip()]
 
+    repo_root = _find_repo_root_from_module()
+    if repo_root is None:
+        return []
+
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, timeout=2,
+            capture_output=True, text=True, timeout=2, cwd=repo_root,
         )
         if result.returncode == 0:
             toplevel = result.stdout.strip()
