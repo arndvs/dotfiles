@@ -36,6 +36,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 from lib.plan_files_lib import (  # noqa: E402
     PLANS_DIR,
+    detect_repo_prefixes,
     find_plans_matching_diff,
 )
 
@@ -205,10 +206,10 @@ def write_meta_yaml(target_dir: Path, pr: dict, plan_filenames: list[str], cross
     (target_dir / "_meta.yaml").write_text("\n".join(lines) + "\n")
 
 
-def find_matching_plans_for_pr(pr: dict, plans_dir: Path) -> list[Path]:
+def find_matching_plans_for_pr(pr: dict, plans_dir: Path, repo_prefixes: list[str] | None = None) -> list[Path]:
     """All plans whose ## Files section overlaps the PR's diff files."""
     diff_set = set(pr["files"])
-    matches = find_plans_matching_diff(diff_set, plans_dir, min_overlap=1)
+    matches = find_plans_matching_diff(diff_set, plans_dir, min_overlap=1, repo_prefixes=repo_prefixes)
     return [m[2] for m in matches]
 
 
@@ -252,7 +253,7 @@ def cmd_archive_pr(args: argparse.Namespace) -> int:
     if not pr:
         info(f"error: could not fetch PR #{args.pr}")
         return 2
-    plans = find_matching_plans_for_pr(pr, args.plans_dir)
+    plans = find_matching_plans_for_pr(pr, args.plans_dir, repo_prefixes=detect_repo_prefixes(os.getcwd()))
     if not plans:
         info(f"PR #{args.pr}: no matching plans in {args.plans_dir}")
         return 0
@@ -305,7 +306,7 @@ def cmd_backfill(args: argparse.Namespace) -> int:
         if not pr:
             continue
         pr_data_cache[pr["number"]] = pr
-        candidate_plans = find_matching_plans_for_pr(pr, args.plans_dir)
+        candidate_plans = find_matching_plans_for_pr(pr, args.plans_dir, repo_prefixes=detect_repo_prefixes(os.getcwd()))
         plans_for_this_pr: list[Path] = []
         for p in candidate_plans:
             if p in plans_assigned:

@@ -29,6 +29,7 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "lib"))
 from plan_files_lib import (  # noqa: E402
+    detect_repo_prefixes,
     extract_plan_files,
     find_best_plan_for_diff,
     normalize_to_repo_relative,
@@ -274,7 +275,8 @@ def phase2_check(plan_text, cwd, diff_files=None):
 
     Returns (passed: bool, missing: list[str], warnings: list[str]).
     """
-    repo_files, external_files, conditional_files = extract_plan_files(plan_text)
+    prefixes = detect_repo_prefixes(cwd)
+    repo_files, external_files, conditional_files = extract_plan_files(plan_text, prefixes)
 
     if not repo_files and not external_files and not conditional_files:
         return True, [], ["no files listed in plan's ## Files section"]
@@ -289,7 +291,7 @@ def phase2_check(plan_text, cwd, diff_files=None):
     # Compare plan files against diff
     missing = []
     for path_str in repo_files:
-        relative = normalize_to_repo_relative(path_str)
+        relative = normalize_to_repo_relative(path_str, prefixes)
         if relative not in diff_files:
             missing.append(path_str)
 
@@ -301,13 +303,13 @@ def phase2_check(plan_text, cwd, diff_files=None):
     return len(missing) == 0, missing, warnings
 
 
-def format_phase2_checklist(plan_text, missing, warnings):
+def format_phase2_checklist(plan_text, missing, warnings, repo_prefixes=None):
     """Format Phase 2 results as a per-file checklist."""
-    repo_files, external_files, conditional_files = extract_plan_files(plan_text)
+    repo_files, external_files, conditional_files = extract_plan_files(plan_text, repo_prefixes)
     lines = ["PRE-PR AUDIT:"]
 
     for path_str in repo_files:
-        relative = normalize_to_repo_relative(path_str)
+        relative = normalize_to_repo_relative(path_str, repo_prefixes)
         if path_str in missing:
             lines.append(f"  [FAIL] {relative} -- not in diff")
         else:
@@ -317,7 +319,7 @@ def format_phase2_checklist(plan_text, missing, warnings):
         lines.append(f"  [WARN] {warning}")
 
     for path_str in conditional_files:
-        relative = normalize_to_repo_relative(path_str)
+        relative = normalize_to_repo_relative(path_str, repo_prefixes)
         lines.append(f"  [SKIP] {relative} (conditional)")
 
     fail_count = sum(1 for line in lines if "[FAIL]" in line)
@@ -360,7 +362,8 @@ def main():
         info(f"PRE-PR AUDIT: SKIPPED ({skip_reason})")
 
     # Find best-matching plan by diff overlap (CC-80)
-    plan_file = find_best_plan_for_diff(diff_files)
+    prefixes = detect_repo_prefixes(cwd)
+    plan_file = find_best_plan_for_diff(diff_files, repo_prefixes=prefixes)
     if not plan_file:
         info(
             "PRE-PR AUDIT: SKIPPED -- no plan in ~/.claude/plans/ overlaps "
@@ -375,7 +378,7 @@ def main():
 
     passed, missing, warnings = phase2_check(plan_text, cwd, diff_files=diff_files)
     if not passed:
-        msg = format_phase2_checklist(plan_text, missing, warnings)
+        msg = format_phase2_checklist(plan_text, missing, warnings, repo_prefixes=prefixes)
         info(msg)
     elif warnings:
         details = "; ".join(warnings[:5])
