@@ -321,7 +321,7 @@ BEGIN {
     if (c == "\"") { dq = 1; seg = seg c; continue }
     cc = substr(cmd, i, 2)
     if (cc == "||" || cc == "&&") { if (seg != "") print seg; seg = ""; i++; continue }
-    if (c == ";") { if (seg != "") print seg; seg = ""; continue }
+    if (c == ";" || c == "|") { if (seg != "") print seg; seg = ""; continue }
     seg = seg c
   }
   if (seg != "") print seg
@@ -359,7 +359,7 @@ BEGIN {
     if (c == "\"") { dq = 1; seg = seg c; continue }
     cc = substr(cmd, i, 2)
     if (cc == "||" || cc == "&&") { if (seg != "") print seg; seg = ""; i++; continue }
-    if (c == ";") { if (seg != "") print seg; seg = ""; continue }
+    if (c == ";" || c == "|") { if (seg != "") print seg; seg = ""; continue }
     seg = seg c
   }
   if (seg != "") print seg

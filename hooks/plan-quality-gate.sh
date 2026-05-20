@@ -110,9 +110,10 @@ _section_has_content() {
             if echo "$line" | grep -qE "$same_level_end_re" && ! echo "$line" | grep -qiE "$heading_re"; then
                 break
             fi
-            # Non-empty lines that are not a new level-2 section count as content;
-            # ### subsection headings also count as content within the current section.
-            if [[ -n "${line// /}" ]] && ! echo "$line" | grep -qE "$same_level_end_re"; then
+            # Lines with at least one non-whitespace character that are not a new
+            # level-2 section count as content; ### subsection headings also count
+            # as content within the current section.
+            if [[ "$line" =~ [^[:space:]] ]] && ! echo "$line" | grep -qE "$same_level_end_re"; then
                 found_content=true
                 break
             fi
