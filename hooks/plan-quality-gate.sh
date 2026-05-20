@@ -100,16 +100,18 @@ _section_has_content() {
     heading_pattern=$(printf '%s' "$raw_pattern" | sed 's/[].[^$*+?{}()|\\]/\\&/g')
     local in_section=false
     local found_content=false
-    # Build anchored regex: match "## Section" or "## Sections" as full words
+    # Build anchored regex: match "## Section" or "### Section" as full words
     local heading_re="^#{2,3}[[:space:]]+${heading_pattern}s?([[:space:]]|$)"
-    local same_level_end_re="^##[[:space:]]"
+    # Only a true level-2 heading (## but not ###) starts a new peer section
+    local same_level_end_re="^##([^#]|$)"
     while IFS= read -r line; do
         if [[ "$in_section" == "true" ]]; then
             # Next heading at same level (##) → section ended; ### subsections are valid content
             if echo "$line" | grep -qE "$same_level_end_re" && ! echo "$line" | grep -qiE "$heading_re"; then
                 break
             fi
-            # Non-empty, non-heading line = content (### subsections also count as content)
+            # Non-empty lines that are not a new level-2 section count as content;
+            # ### subsection headings also count as content within the current section.
             if [[ -n "${line// /}" ]] && ! echo "$line" | grep -qE "$same_level_end_re"; then
                 found_content=true
                 break

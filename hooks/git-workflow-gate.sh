@@ -405,17 +405,26 @@ BEGIN {
                     tok = tok c
                   }
                   if (tok != "") tokens[++tc] = tok
-                  # Walk past "git" and "push", skip flags, collect positionals
+                  # Walk past "git" and "push", skip flags, collect positionals.
+                  # Only flags known to take a value consume the next token;
+                  # standalone flags (-n, -v, -f, etc.) do not.
                   pc = 0; skip_next = 0
+                  # git push flags that consume the next token
+                  split("--push-option,-o,--repo,--receive-pack,--exec,--recurse-submodules,--signed", _vf, ",")
+                  for (_k in _vf) val_flag[_vf[_k]] = 1
                   for (j = 1; j <= tc; j++) {
                     t = tokens[j]
                     if (skip_next) { skip_next = 0; continue }
                     if (t == "git" || t == "push") continue
                     if (substr(t,1,2) == "--") {
-                      if (index(t, "=") == 0) skip_next = 1
+                      if (index(t, "=") > 0) continue
+                      if (t in val_flag) skip_next = 1
                       continue
                     }
-                    if (substr(t,1,1) == "-") { skip_next = 1; continue }
+                    if (substr(t,1,1) == "-") {
+                      if (t in val_flag) skip_next = 1
+                      continue
+                    }
                     pos[++pc] = t
                   }
                   if (pc >= 2) print pos[2]
