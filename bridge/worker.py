@@ -89,6 +89,12 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
             "bridge.job.issue_closed",
             tracking_issue_number=existing["number"],
         )
+        # Persist tracking-issue number so mark_done records it (CC-review)
+        with db.connect(cfg.db_path) as conn:
+            conn.execute(
+                "UPDATE jobs SET tracking_issue_number=? WHERE id=?",
+                (existing["number"], job.id),
+            )
         return
 
     if not threads:

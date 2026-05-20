@@ -96,18 +96,27 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     raw_output=$(mktemp)
     trap 'rm -f "$raw_output" "$PROMPT_FILE"; rmdir "$LOCKDIR" 2>/dev/null' EXIT
 
+    # jq filters for stream-json format
+    # stream_text: streams assistant text to stderr for real-time visibility
+    # final_result: extracts the terminal result block used for sentinel detection
+    stream_text='select(.type == "assistant").message.content[]? | select(.type == "text").text // empty'
+    final_result='select(.type == "result") | .result // empty'
+
     if ! GITHUB_TOKEN="$afk_token" srt claude \
         --print \
         --output-format stream-json \
         < "$PROMPT_FILE" \
-        2>/dev/null | tee /dev/stderr > "$raw_output"; then
+        2>/dev/null \
+        | awk '/^[[:space:]]*\{/' \
+        | tee >(jq -rj "$stream_text" >&2 || cat >/dev/null) \
+        > "$raw_output"; then
         echo "ERROR: srt failed on iteration $i" >&2
         exit 1
     fi
 
     unset afk_token
 
-    result=$(jq -r 'select(.type == "text") | .content' < "$raw_output" 2>/dev/null || true)
+    result=$(jq -r "$final_result" < "$raw_output" 2>/dev/null || true)
     rm -f "$raw_output" "$PROMPT_FILE"
 
     if echo "$result" | grep -q '<promise>NO MORE TASKS</promise>'; then

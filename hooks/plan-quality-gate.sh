@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # FAIL_MODE: open
-# plan-quality-gate.sh — PreToolUse hook: warn when scaffolding without a plan.
+# plan-quality-gate.sh — PreToolUse hook: validate plan structure before scaffolding.
 #
 # Receives Claude Code PreToolUse JSON on stdin (matcher: Bash).
-# When the command creates directories or scaffolds projects (mkdir, npx create-,
-# npm init, etc.), checks if a plan file exists at the git root. Emits an
-# info warning if no plan is found. Never blocks.
+#
+# Phase 1: When the command creates directories or scaffolds projects (mkdir,
+#   npx create-, npm init, etc.), checks if a plan file exists at the git root.
+#   If found, validates required sections and code-touching indicators.
+#   Emits a checklist summary. Never blocks — warns only.
+#
 # Fail-open: non-git directories and missing tools silently pass.
 
 set -euo pipefail
@@ -38,20 +41,156 @@ fi
 # Must be inside a git repo
 GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 
-# Check for plan files at git root
-PLAN_FOUND=false
+# --- Find plan file ---
+PLAN_FILE=""
 for candidate in PLAN.md plan.md .plan.md docs/PLAN.md docs/plan.md; do
     if [[ -f "$GIT_ROOT/$candidate" ]]; then
-        PLAN_FOUND=true
+        PLAN_FILE="$GIT_ROOT/$candidate"
         break
     fi
 done
 
-if [[ "$PLAN_FOUND" == "true" ]]; then
+# Also check ~/.claude/plans/ for a recent plan that matches this repo
+PLANS_DIR="$HOME/.claude/plans"
+if [[ -z "$PLAN_FILE" && -d "$PLANS_DIR" ]]; then
+    REPO_NAME=$(basename "$GIT_ROOT")
+    while IFS= read -r candidate; do
+        [[ -f "$candidate" ]] || continue
+        if grep -Fq "$GIT_ROOT" "$candidate" 2>/dev/null || grep -Fq "$REPO_NAME" "$candidate" 2>/dev/null; then
+            PLAN_FILE="$candidate"
+            break
+        fi
+    done < <(ls -t "$PLANS_DIR"/*.md 2>/dev/null || true)
+fi
+
+if [[ -z "$PLAN_FILE" || ! -f "$PLAN_FILE" ]]; then
+    # No plan found — emit info warning (never blocks)
+    MSG="⚠️ No plan file found (PLAN.md, docs/PLAN.md, ~/.claude/plans/). Consider documenting your approach before scaffolding."
+    jq -cn --arg msg "$MSG" '{"hookSpecificOutput":{"additionalContext":$msg}}' >&2
     exit 0
 fi
 
-# No plan found — emit info warning (never blocks)
-MSG="⚠️ No plan file found (PLAN.md, docs/PLAN.md). Consider documenting your approach before scaffolding."
+# --- Read plan content ---
+PLAN_TEXT=$(cat "$PLAN_FILE") || exit 0
+
+# --- Read required sections from .ctrlshft config or use defaults ---
+# Config key: plan_required_sections (comma-separated)
+_config_val() {
+    local key="$1" default="$2"
+    local config_file="$GIT_ROOT/.ctrlshft"
+    if [[ -f "$config_file" ]] && command -v grep &>/dev/null; then
+        local val
+        val=$(grep -E "^${key}:" "$config_file" 2>/dev/null | head -1 | sed 's/^[^:]*:[[:space:]]*//' || true)
+        if [[ -n "$val" ]]; then
+            echo "$val"
+            return
+        fi
+    fi
+    echo "$default"
+}
+
+REQUIRED_SECTIONS=$(_config_val "plan_required_sections" "Context,Implementation,Test,Verification,Files")
+
+# --- Section check helper ---
+# Returns 0 if heading exists with at least one non-empty content line
+_section_has_content() {
+    local raw_pattern="$1"
+    # Escape regex metacharacters so section names like "C++ Notes" or "Q&A" are safe
+    local heading_pattern
+    heading_pattern=$(printf '%s' "$raw_pattern" | sed 's/[].[^$*+?{}()|\\]/\\&/g')
+    local in_section=false
+    local found_content=false
+    # Build anchored regex: match "## Section" or "### Section" as full words
+    local heading_re="^#{2,3}[[:space:]]+${heading_pattern}s?([[:space:]]|$)"
+    # Only a true level-2 heading (## but not ###) starts a new peer section
+    local same_level_end_re="^##([^#]|$)"
+    while IFS= read -r line; do
+        if [[ "$in_section" == "true" ]]; then
+            # Next heading at same level (##) → section ended; ### subsections are valid content
+            if echo "$line" | grep -qE "$same_level_end_re" && ! echo "$line" | grep -qiE "$heading_re"; then
+                break
+            fi
+            # Lines with at least one non-whitespace character that are not a new
+            # level-2 section count as content; ### subsection headings also count
+            # as content within the current section.
+            if [[ "$line" =~ [^[:space:]] ]] && ! echo "$line" | grep -qE "$same_level_end_re"; then
+                found_content=true
+                break
+            fi
+        fi
+        if echo "$line" | grep -qiE "$heading_re"; then
+            in_section=true
+        fi
+    done <<< "$PLAN_TEXT"
+    [[ "$found_content" == "true" ]]
+}
+
+# --- Code-touching detection ---
+_is_code_touching() {
+    echo "$PLAN_TEXT" | grep -qiE '\.(py|js|ts|sh|json|yaml|yml|toml|bash)([^[:alnum:]_]|$)|scripts/|tests/|Dockerfile|Makefile|\.github/'
+}
+
+# --- Build checklist ---
+RESULTS=()
+FAIL_COUNT=0
+WARN_COUNT=0
+PASS_COUNT=0
+REQ_PASS=0
+REQ_FAIL=0
+
+_check() {
+    local label="$1" status="$2"
+    case "$status" in
+        PASS) RESULTS+=("  [PASS] $label"); ((++PASS_COUNT)) ;;
+        FAIL) RESULTS+=("  [FAIL] $label -- empty or missing"); ((++FAIL_COUNT)) ;;
+        WARN) RESULTS+=("  [WARN] $label"); ((++WARN_COUNT)) ;;
+    esac
+}
+
+# Check each required section
+IFS=',' read -ra SECTIONS <<< "$REQUIRED_SECTIONS"
+for section in "${SECTIONS[@]}"; do
+    section=$(echo "$section" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    if _section_has_content "$section"; then
+        _check "$section" "PASS"
+        ((++REQ_PASS))
+    else
+        _check "$section" "FAIL"
+        ((++REQ_FAIL))
+    fi
+done
+
+# Code-touching checks (advisory)
+if _is_code_touching; then
+    if echo "$PLAN_TEXT" | grep -qiE 'changelog'; then
+        _check "changelog reference" "PASS"
+    else
+        _check "changelog reference (code-touching plan)" "WARN"
+    fi
+
+    if echo "$PLAN_TEXT" | grep -qiE 'doc(s|umentation)?\s+to\s+(update|create)|doc(s|umentation)?\s+audit|#{2,3}\s+Doc'; then
+        _check "docs audit" "PASS"
+    else
+        _check "docs audit (code-touching plan)" "WARN"
+    fi
+fi
+
+# --- Format output ---
+REQ_TOTAL=$((REQ_PASS + REQ_FAIL))
+HEADER="PLAN REVIEW GATE ($(basename "$PLAN_FILE")):"
+if [[ $FAIL_COUNT -gt 0 ]]; then
+    SUMMARY="  RESULT: NEEDS ATTENTION ($FAIL_COUNT missing section(s)"
+    [[ $WARN_COUNT -gt 0 ]] && SUMMARY+=", $WARN_COUNT advisory"
+    SUMMARY+=")"
+elif [[ $WARN_COUNT -gt 0 ]]; then
+    SUMMARY="  RESULT: PASS ($REQ_PASS/$REQ_TOTAL sections, $WARN_COUNT advisory)"
+else
+    SUMMARY="  RESULT: PASS ($REQ_PASS/$REQ_TOTAL sections)"
+fi
+
+# Build the message
+MSG=$(printf '%s\n' "$HEADER" "${RESULTS[@]}" "$SUMMARY")
+
+# Emit as info (never blocks)
 jq -cn --arg msg "$MSG" '{"hookSpecificOutput":{"additionalContext":$msg}}' >&2
 exit 0

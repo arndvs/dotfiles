@@ -51,6 +51,14 @@
           {
             "type": "command",
             "command": "\"$HOME/.claude/hooks/plan-quality-gate.sh\""
+          },
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$HOME/.claude/hooks/plan-review-phase2.py\" || exit 0"
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/test-gate.sh\""
           }
         ]
       }
@@ -89,6 +97,19 @@
           {
             "type": "command",
             "command": "\"$HOME/.claude/hooks/git-post-push.sh\""
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/git-post-commit.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$HOME/.claude/hooks/feedback-memory-gate.py\" || exit 0"
           }
         ]
       }

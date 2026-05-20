@@ -9,7 +9,7 @@
 #   0 — Block `cd <dir> && git ...` chains (leaks shell state)
 #   1 — Block commit to main/master + enforce conventional commit format
 #         (only validates -m inline messages; editor/file-based commits pass through)
-#   2 — Block push when behind origin + block force-push without --force-with-lease
+#   2 — Block force-push without --force-with-lease + opt-in behind-origin check
 #   3 — Block branch switch with dirty working tree
 #   4 — Block git reset --hard (destructive — loses uncommitted changes)
 #   5 — Block git clean -f (irreversible removal of untracked files)
@@ -167,6 +167,16 @@ _warn() {
     exit 0
 }
 
+# Accumulate warnings so later gates (especially blocking ones) still run.
+PENDING_WARN=""
+_defer_warn() {
+    if [[ -n "$PENDING_WARN" ]]; then
+        PENDING_WARN="${PENDING_WARN} $1"
+    else
+        PENDING_WARN="$1"
+    fi
+}
+
 # --- cd into the hook event's working directory ---
 EVENT_CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
 if [[ -n "$EVENT_CWD" ]]; then
@@ -267,6 +277,13 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:
         if ! echo "$_commit_seg" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:]]|\$)"; then
             continue
         fi
+        # Warn on --amend (rewrites the last commit) — checked per-segment
+        # after stripping quoted substrings so -m "mention --amend"
+        # doesn't false-positive.
+        _commit_seg_unquoted=$(echo "$_commit_seg" | sed 's/"[^"]*"//g; s/'\''[^'\'']*'\''//g')
+        if echo "$_commit_seg_unquoted" | grep -qE '[[:space:]]--amend([[:space:]]|$)'; then
+            _defer_warn "⚠️ git commit --amend rewrites the previous commit. If already pushed, you will need --force-with-lease to push."
+        fi
         if echo "$_commit_seg" | grep -qE "[[:space:]](-m[[:space:]]|-m[\"']|--message[=[:space:]])"; then
             # Extract FIRST -m/--message value from this segment.
             # grep -oE returns matches left-to-right; head -1 takes the first (= subject line).
@@ -293,7 +310,22 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:
                 _deny "🚫 Could not parse commit message. Wrap the message in quotes: git commit -m \"type(scope): description\""
             fi
         fi
-    done <<< "$(echo "$COMMAND" | sed 's/||/\n/g; s/&&/\n/g; s/;/\n/g; s/|/\n/g')"
+    done <<< "$(awk -v cmd="$COMMAND" '
+BEGIN {
+  n = length(cmd); sq = 0; dq = 0; seg = ""
+  for (i = 1; i <= n; i++) {
+    c = substr(cmd, i, 1)
+    if (sq) { if (c == "\047") sq = 0; seg = seg c; continue }
+    if (dq) { if (c == "\"") dq = 0; seg = seg c; continue }
+    if (c == "\047") { sq = 1; seg = seg c; continue }
+    if (c == "\"") { dq = 1; seg = seg c; continue }
+    cc = substr(cmd, i, 2)
+    if (cc == "||" || cc == "&&") { if (seg != "") print seg; seg = ""; i++; continue }
+    if (c == ";" || c == "|") { if (seg != "") print seg; seg = ""; continue }
+    seg = seg c
+  }
+  if (seg != "") print seg
+}')"
 fi
 
 # ============================================================
@@ -316,7 +348,22 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+push([[:space:]]
         fi
         _match=$(echo "$_seg" | grep -oE 'git([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*[[:space:]]+push([[:space:]]+[^;&|][^;&|]*)*' || true)
         [[ -n "$_match" ]] && ALL_PUSH_SEGS="${ALL_PUSH_SEGS}${_match}"$'\n'
-    done <<< "$(echo "$COMMAND" | sed 's/||/\n/g; s/&&/\n/g; s/;/\n/g; s/|/\n/g')"
+    done <<< "$(awk -v cmd="$COMMAND" '
+BEGIN {
+  n = length(cmd); sq = 0; dq = 0; seg = ""
+  for (i = 1; i <= n; i++) {
+    c = substr(cmd, i, 1)
+    if (sq) { if (c == "\047") sq = 0; seg = seg c; continue }
+    if (dq) { if (c == "\"") dq = 0; seg = seg c; continue }
+    if (c == "\047") { sq = 1; seg = seg c; continue }
+    if (c == "\"") { dq = 1; seg = seg c; continue }
+    cc = substr(cmd, i, 2)
+    if (cc == "||" || cc == "&&") { if (seg != "") print seg; seg = ""; i++; continue }
+    if (c == ";" || c == "|") { if (seg != "") print seg; seg = ""; continue }
+    seg = seg c
+  }
+  if (seg != "") print seg
+}')"
     while IFS= read -r PUSH_SEG; do
         [[ -z "$PUSH_SEG" ]] && continue
 
@@ -328,6 +375,75 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+push([[:space:]]
         # Block +refspec force-update (e.g. git push origin +HEAD:main)
         if echo "$PUSH_SEG" | grep -qE '[[:space:]]\+[^[:space:]]+' && ! echo "$PUSH_SEG" | grep -qE '[[:space:]]--force-with-lease'; then
             _deny "🚫 Refspec prefixed with '+' forces the update. Use --force-with-lease instead of +refspec."
+        fi
+
+        # Frozen-branch detection: deny push if branch has a merged PR
+        # Requires gh CLI and network — fail-open on missing gh or timeout.
+        # Only check when pushing the current branch (no explicit refspec for a
+        # different ref), otherwise skip — e.g. `git push origin main` while on a
+        # frozen feature branch should not be blocked.
+        if command -v gh &>/dev/null; then
+            local_branch=$(git branch --show-current 2>/dev/null || echo "")
+            if [[ -n "$local_branch" ]]; then
+                _push_ref=""
+                # Quote-aware argv extraction: tokenize PUSH_SEG respecting
+                # quotes, drop flags (--opt / --opt=val / -x / -x val), then
+                # take the second positional arg (refspec after remote).
+                _push_ref=$(awk -v cmd="$PUSH_SEG" '
+                BEGIN {
+                  n = length(cmd); sq = 0; dq = 0; tok = ""; tc = 0
+                  for (i = 1; i <= n; i++) {
+                    c = substr(cmd, i, 1)
+                    if (sq) { if (c == "\047") sq = 0; else tok = tok c; continue }
+                    if (dq) { if (c == "\"") dq = 0; else tok = tok c; continue }
+                    if (c == "\047") { sq = 1; continue }
+                    if (c == "\"") { dq = 1; continue }
+                    if (c == " " || c == "\t") {
+                      if (tok != "") { tokens[++tc] = tok; tok = "" }
+                      continue
+                    }
+                    tok = tok c
+                  }
+                  if (tok != "") tokens[++tc] = tok
+                  # Walk past "git" and "push", skip flags, collect positionals.
+                  # Only flags known to take a value consume the next token;
+                  # standalone flags (-n, -v, -f, etc.) do not.
+                  pc = 0; skip_next = 0
+                  # git push flags that consume the next token
+                  split("--push-option,-o,--repo,--receive-pack,--exec,--recurse-submodules,--signed", _vf, ",")
+                  for (_k in _vf) val_flag[_vf[_k]] = 1
+                  for (j = 1; j <= tc; j++) {
+                    t = tokens[j]
+                    if (skip_next) { skip_next = 0; continue }
+                    if (t == "git" || t == "push") continue
+                    if (substr(t,1,2) == "--") {
+                      if (index(t, "=") > 0) continue
+                      if (t in val_flag) skip_next = 1
+                      continue
+                    }
+                    if (substr(t,1,1) == "-") {
+                      if (t in val_flag) skip_next = 1
+                      continue
+                    }
+                    pos[++pc] = t
+                  }
+                  if (pc >= 2) print pos[2]
+                }')
+                _check_frozen=true
+                if [[ -n "$_push_ref" ]]; then
+                    _src_ref=${_push_ref%%:*}
+                    _src_ref=${_src_ref#+}  # strip leading + if present
+                    if [[ "$_src_ref" != "$local_branch" && "$_src_ref" != "HEAD" && -n "$_src_ref" ]]; then
+                        _check_frozen=false
+                    fi
+                fi
+                if [[ "$_check_frozen" == "true" ]]; then
+                    merged_url=$(_timeout 2 gh pr list --head "$local_branch" --state merged --json url --jq '.[0].url // empty' 2>/dev/null || true)
+                    if [[ -n "$merged_url" && "$merged_url" != "null" ]]; then
+                        _deny "🚫 Branch '$local_branch' is frozen — PR already merged ($merged_url). Create a new branch for further work."
+                    fi
+                fi
+            fi
         fi
     done <<< "$ALL_PUSH_SEGS"
 
@@ -347,10 +463,6 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+push([[:space:]]
         fi
     fi
 fi
-
-# ============================================================
-# GATE 3: Block branch switch with dirty working tree
-# ============================================================
 if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+(checkout|switch)[[:space:]]"; then
     # Mask creation/restore forms so they don't count as bare switches.
     # A chained command like `git checkout -b tmp && git switch main` must still
@@ -378,8 +490,7 @@ fi
 # GATES 4–6: Destructive operation checks
 # ============================================================
 # Warning-only gates (4, 6) must not exit before blocking gates (5).
-# Collect warnings and emit them after all blocking gates have run.
-PENDING_WARN=""
+# Warnings are accumulated via _defer_warn and emitted at the end.
 
 # GATE 4: Block git reset --hard (destructive)
 # reset --hard HEAD (no ~N) is a common "discard working tree" idiom,
@@ -413,7 +524,7 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+reset([[:space:]
                 break
             done
             if [[ -z "$reset_target" || "$reset_target" == "HEAD" || "$reset_target" == "@" ]]; then
-                PENDING_WARN="⚠️ git reset --hard HEAD discards all uncommitted changes. Consider git stash if you might need them later."
+                _defer_warn "⚠️ git reset --hard HEAD discards all uncommitted changes. Consider git stash if you might need them later."
             else
                 _deny "🚫 git reset --hard (to a non-HEAD target) rewrites history irreversibly. Use git stash or git reset --soft instead."
             fi
@@ -453,12 +564,7 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+rebase([[:space:
     if echo "$COMMAND" | grep -qE '[[:space:]](-i|--interactive)([[:space:]]|$)'; then
         local_branch=$(git branch --show-current 2>/dev/null || echo "")
         if [[ -n "$local_branch" ]] && git rev-parse --verify "origin/$local_branch" &>/dev/null; then
-            msg="⚠️ Interactive rebase on a pushed branch ($local_branch) will rewrite history. You'll need --force-with-lease to push afterward. Proceed with caution."
-            if [[ -n "$PENDING_WARN" ]]; then
-                PENDING_WARN="${PENDING_WARN} ${msg}"
-            else
-                PENDING_WARN="$msg"
-            fi
+            _defer_warn "⚠️ Interactive rebase on a pushed branch ($local_branch) will rewrite history. You'll need --force-with-lease to push afterward. Proceed with caution."
         fi
     fi
 fi

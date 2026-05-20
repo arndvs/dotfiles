@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Generic git hook dispatcher.
+# Delegates to local hooks (Husky, .git/hooks) when present.
+# No global fallback — only pre-commit has one.
+#
+# Copied as: commit-msg, pre-push, prepare-commit-msg, post-commit
+# Keep those copies in sync with this canonical dispatcher.
+# See pre-commit for the full dispatcher with fallback logic.
+
+set -euo pipefail
+
+HOOK_NAME=$(basename "$0")
+
+# ── 1. Delegate to Husky if present ──────────────────────────────────────────
+if [[ -f ".husky/$HOOK_NAME" ]] && [[ -x ".husky/$HOOK_NAME" ]]; then
+    exec ".husky/$HOOK_NAME" "$@"
+fi
+
+# ── 2. Delegate to .git/hooks if present ─────────────────────────────────────
+if [[ -x ".git/hooks/$HOOK_NAME" ]]; then
+    exec ".git/hooks/$HOOK_NAME" "$@"
+fi
+
+# No global fallback for non-pre-commit hooks
+exit 0
