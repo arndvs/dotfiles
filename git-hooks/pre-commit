@@ -63,7 +63,7 @@ if [[ -f "tsconfig.json" ]] && [[ -f "package.json" ]]; then
             pnpm) pnpm exec tsc --noEmit || exit 1 ;;
             yarn) yarn run tsc --noEmit || exit 1 ;;
             bun)  bun x tsc --noEmit || exit 1 ;;
-            *)    npm exec -- tsc --noEmit || exit 1 ;;
+            *)    npx tsc --noEmit || exit 1 ;;
         esac
     fi
 fi

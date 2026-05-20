@@ -386,8 +386,40 @@ BEGIN {
             local_branch=$(git branch --show-current 2>/dev/null || echo "")
             if [[ -n "$local_branch" ]]; then
                 _push_ref=""
-                _positional=$(echo "$PUSH_SEG" | sed -E 's/git([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*[[:space:]]+push//' | sed -E 's/[[:space:]]+--?[a-zA-Z][^[:space:]]*//g')
-                _push_ref=$(echo "$_positional" | awk '{print $2}')
+                # Quote-aware argv extraction: tokenize PUSH_SEG respecting
+                # quotes, drop flags (--opt / --opt=val / -x / -x val), then
+                # take the second positional arg (refspec after remote).
+                _push_ref=$(awk -v cmd="$PUSH_SEG" '
+                BEGIN {
+                  n = length(cmd); sq = 0; dq = 0; tok = ""; tc = 0
+                  for (i = 1; i <= n; i++) {
+                    c = substr(cmd, i, 1)
+                    if (sq) { if (c == "\047") sq = 0; else tok = tok c; continue }
+                    if (dq) { if (c == "\"") dq = 0; else tok = tok c; continue }
+                    if (c == "\047") { sq = 1; continue }
+                    if (c == "\"") { dq = 1; continue }
+                    if (c == " " || c == "\t") {
+                      if (tok != "") { tokens[++tc] = tok; tok = "" }
+                      continue
+                    }
+                    tok = tok c
+                  }
+                  if (tok != "") tokens[++tc] = tok
+                  # Walk past "git" and "push", skip flags, collect positionals
+                  pc = 0; skip_next = 0
+                  for (j = 1; j <= tc; j++) {
+                    t = tokens[j]
+                    if (skip_next) { skip_next = 0; continue }
+                    if (t == "git" || t == "push") continue
+                    if (substr(t,1,2) == "--") {
+                      if (index(t, "=") == 0) skip_next = 1
+                      continue
+                    }
+                    if (substr(t,1,1) == "-") { skip_next = 1; continue }
+                    pos[++pc] = t
+                  }
+                  if (pc >= 2) print pos[2]
+                }')
                 _check_frozen=true
                 if [[ -n "$_push_ref" ]]; then
                     _src_ref=${_push_ref%%:*}
