@@ -278,8 +278,10 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:
             continue
         fi
         # Warn on --amend (rewrites the last commit) — checked per-segment
-        # so quoted text like -m "mention --amend" doesn't false-positive.
-        if echo "$_commit_seg" | grep -qE '[[:space:]]--amend([[:space:]]|$)'; then
+        # after stripping quoted substrings so -m "mention --amend"
+        # doesn't false-positive.
+        _commit_seg_unquoted=$(echo "$_commit_seg" | sed 's/"[^"]*"//g; s/'\''[^'\'']*'\''//g')
+        if echo "$_commit_seg_unquoted" | grep -qE '[[:space:]]--amend([[:space:]]|$)'; then
             _defer_warn "⚠️ git commit --amend rewrites the previous commit. If already pushed, you will need --force-with-lease to push."
         fi
         if echo "$_commit_seg" | grep -qE "[[:space:]](-m[[:space:]]|-m[\"']|--message[=[:space:]])"; then
@@ -308,17 +310,16 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:
                 _deny "🚫 Could not parse commit message. Wrap the message in quotes: git commit -m \"type(scope): description\""
             fi
         fi
-    done <<< "$(echo "$COMMAND" | awk '
-BEGIN { RS = "\0" }
-{
-  n = length($0); sq = 0; dq = 0; seg = ""
+    done <<< "$(awk -v cmd="$COMMAND" '
+BEGIN {
+  n = length(cmd); sq = 0; dq = 0; seg = ""
   for (i = 1; i <= n; i++) {
-    c = substr($0, i, 1)
+    c = substr(cmd, i, 1)
     if (sq) { if (c == "\047") sq = 0; seg = seg c; continue }
     if (dq) { if (c == "\"") dq = 0; seg = seg c; continue }
     if (c == "\047") { sq = 1; seg = seg c; continue }
     if (c == "\"") { dq = 1; seg = seg c; continue }
-    cc = substr($0, i, 2)
+    cc = substr(cmd, i, 2)
     if (cc == "||" || cc == "&&") { if (seg != "") print seg; seg = ""; i++; continue }
     if (c == ";") { if (seg != "") print seg; seg = ""; continue }
     seg = seg c
@@ -347,7 +348,22 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+push([[:space:]]
         fi
         _match=$(echo "$_seg" | grep -oE 'git([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*[[:space:]]+push([[:space:]]+[^;&|][^;&|]*)*' || true)
         [[ -n "$_match" ]] && ALL_PUSH_SEGS="${ALL_PUSH_SEGS}${_match}"$'\n'
-    done <<< "$(echo "$COMMAND" | sed 's/||/\n/g; s/&&/\n/g; s/;/\n/g')"
+    done <<< "$(awk -v cmd="$COMMAND" '
+BEGIN {
+  n = length(cmd); sq = 0; dq = 0; seg = ""
+  for (i = 1; i <= n; i++) {
+    c = substr(cmd, i, 1)
+    if (sq) { if (c == "\047") sq = 0; seg = seg c; continue }
+    if (dq) { if (c == "\"") dq = 0; seg = seg c; continue }
+    if (c == "\047") { sq = 1; seg = seg c; continue }
+    if (c == "\"") { dq = 1; seg = seg c; continue }
+    cc = substr(cmd, i, 2)
+    if (cc == "||" || cc == "&&") { if (seg != "") print seg; seg = ""; i++; continue }
+    if (c == ";") { if (seg != "") print seg; seg = ""; continue }
+    seg = seg c
+  }
+  if (seg != "") print seg
+}')"
     while IFS= read -r PUSH_SEG; do
         [[ -z "$PUSH_SEG" ]] && continue
 
