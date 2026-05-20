@@ -14,18 +14,32 @@ import json
 import logging
 from typing import Any
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 
 from . import db, hud
 from .config import Config
 
 logger = logging.getLogger("bridge.webhook")
-config = Config.from_env()
-_webhook_secret = config.require_webhook_secret()
-config.ensure_dirs()
-db.init_db(config.db_path)
 
-app = FastAPI(title="ctrl+shft bridge webhook", version="0.1.0")
+# Lazy-initialized at startup via lifespan handler
+config: Config = None  # type: ignore[assignment]
+_webhook_secret: str = ""  # type: ignore[assignment]
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    global config, _webhook_secret
+    config = Config.from_env()
+    _webhook_secret = config.require_webhook_secret()
+    config.ensure_dirs()
+    db.init_db(config.db_path)
+    logger.info("Bridge webhook ready (repos=%s)", config.repo_allowlist)
+    yield
+
+
+app = FastAPI(title="ctrl+shft bridge webhook", version="0.1.0", lifespan=_lifespan)
 
 # MVP: only pull_request_review events (fixes L-1 — drop review_comment)
 ALLOWED_EVENTS = {"pull_request_review"}

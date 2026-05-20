@@ -48,17 +48,20 @@ run_hook() {
 
 # --- Parse hook output ---
 parse_decision() {
-    local combined="${HOOK_STDOUT}${HOOK_STDERR}"
+    local combined
+    combined=$(printf '%s\n%s' "$HOOK_STDOUT" "$HOOK_STDERR")
     echo "$combined" | jq -r '.hookSpecificOutput.permissionDecision // empty' 2>/dev/null || true
 }
 
 parse_context() {
-    local combined="${HOOK_STDOUT}${HOOK_STDERR}"
+    local combined
+    combined=$(printf '%s\n%s' "$HOOK_STDOUT" "$HOOK_STDERR")
     echo "$combined" | jq -r '.hookSpecificOutput.additionalContext // empty' 2>/dev/null || true
 }
 
 parse_reason() {
-    local combined="${HOOK_STDOUT}${HOOK_STDERR}"
+    local combined
+    combined=$(printf '%s\n%s' "$HOOK_STDOUT" "$HOOK_STDERR")
     echo "$combined" | jq -r '.hookSpecificOutput.permissionDecisionReason // empty' 2>/dev/null || true
 }
 

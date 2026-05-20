@@ -57,8 +57,9 @@ For knowledge/workflow skills that don't need scripts, state stores, or orchestr
 ```
 {skill-name}/
 ├── SKILL.md           # Main instructions (required, ≤100 lines)
-├── REFERENCE.md       # Detailed docs (if SKILL.md would exceed 100 lines)
-├── EXAMPLES.md        # Usage examples (if patterns are complex)
+├── references/        # Supplemental docs (if SKILL.md would exceed 100 lines)
+│   ├── overview.md    # Detailed reference docs
+│   └── examples.md    # Usage examples (if patterns are complex)
 └── scripts/           # Only if deterministic operations exist
     └── helper.js
 ```
