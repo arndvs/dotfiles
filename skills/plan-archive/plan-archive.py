@@ -51,11 +51,19 @@ ORPHAN_DIR = ARCHIVE_DIR / "orphan"
 LINEAR_RE = re.compile(r"\bCC-(\d+)\b")
 
 
-def _pr_url_template() -> str:
-    """Return GitHub PR URL template with `{number}` placeholder."""
+def _pr_url_template(repo: str | None = None) -> str:
+    """Return GitHub PR URL template with `{number}` placeholder.
+
+    When *repo* is provided (e.g. "owner/name" from --repo), it takes
+    priority over inferring from git-remote so archived metadata always
+    links to the correct PR — even outside a git checkout.
+    """
     env = os.environ.get("CLAUDE_PLAN_PR_URL_TEMPLATE", "").strip()
     if env:
         return env
+    # Explicit --repo flag: build URL directly
+    if repo and "/" in repo:
+        return f"https://github.com/{repo}/pull/{{number}}"
     try:
         result = subprocess.run(
             ["git", "remote", "get-url", "origin"],
@@ -67,8 +75,8 @@ def _pr_url_template() -> str:
             if not m:
                 m = re.match(r"https?://github\.com/([^/]+)/([^/.]+?)(?:\.git)?/?$", url)
             if m:
-                owner, repo = m.group(1), m.group(2)
-                return f"https://github.com/{owner}/{repo}/pull/{{number}}"
+                owner, name = m.group(1), m.group(2)
+                return f"https://github.com/{owner}/{name}/pull/{{number}}"
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
         pass
     return "pull/{number}"
@@ -168,13 +176,13 @@ def _yaml_quote(value: str) -> str:
     return json.dumps(value)
 
 
-def write_meta_yaml(target_dir: Path, pr: dict, plan_filenames: list[str], cross_refs: list[int] | None = None) -> None:
+def write_meta_yaml(target_dir: Path, pr: dict, plan_filenames: list[str], cross_refs: list[int] | None = None, repo: str | None = None) -> None:
     """Write _meta.yaml inside target_dir using a hand-rolled YAML emitter (no PyYAML dep)."""
     cross_refs = cross_refs or []
     lines = [
         "pr:",
         f"  number: {pr['number']}",
-        f"  url: {_yaml_quote(_pr_url_template().format(number=pr['number']))}",
+        f"  url: {_yaml_quote(_pr_url_template(repo=repo).format(number=pr['number']))}",
         f"  title: {_yaml_quote(pr['title'])}",
         f"  branch: {_yaml_quote(pr['branch'])}",
         f"  merged_at: {_yaml_quote(pr.get('mergedAt') or 'unknown')}",
@@ -210,6 +218,7 @@ def archive_pr_bundle(
     plans_dir: Path,
     by_pr_dir: Path,
     dry_run: bool,
+    repo: str | None = None,
 ) -> Path | None:
     """Create archive/by-pr/PR-<num>-<slug>/, move plans, write _meta.yaml."""
     slug = slugify_branch(pr["branch"])
@@ -232,7 +241,7 @@ def archive_pr_bundle(
         shutil.move(str(p), str(dest))
         moved_filenames.append(p.name)
     if moved_filenames:
-        write_meta_yaml(target_dir, pr, moved_filenames)
+        write_meta_yaml(target_dir, pr, moved_filenames, repo=repo)
         info(f"  archived {len(moved_filenames)} plan(s) to {target_dir}")
     return target_dir
 
@@ -253,7 +262,7 @@ def cmd_archive_pr(args: argparse.Namespace) -> int:
     by_pr_dir = args.archive_dir / "by-pr"
     if args.execute:
         by_pr_dir.mkdir(parents=True, exist_ok=True)
-    archive_pr_bundle(pr, plans, args.plans_dir, by_pr_dir, dry_run=not args.execute)
+    archive_pr_bundle(pr, plans, args.plans_dir, by_pr_dir, dry_run=not args.execute, repo=args.repo)
     return 0
 
 
@@ -309,7 +318,7 @@ def cmd_backfill(args: argparse.Namespace) -> int:
             continue
         prs_with_matches += 1
         info(f"PR #{pr['number']} ({pr['branch']}): {len(plans_for_this_pr)} plan(s)")
-        archive_pr_bundle(pr, plans_for_this_pr, args.plans_dir, by_pr_dir, dry_run=not args.execute)
+        archive_pr_bundle(pr, plans_for_this_pr, args.plans_dir, by_pr_dir, dry_run=not args.execute, repo=args.repo)
         plans_archived_count += len(plans_for_this_pr)
 
     if args.execute:

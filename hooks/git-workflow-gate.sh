@@ -364,12 +364,36 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+push([[:space:]]
 
     # Frozen-branch detection: deny push if branch has a merged PR
     # Requires gh CLI and network — fail-open on missing gh or timeout.
+    # Only check when pushing the current branch (no explicit refspec for a
+    # different ref), otherwise skip — e.g. `git push origin main` while on a
+    # frozen feature branch should not be blocked.
     if command -v gh &>/dev/null; then
         local_branch=$(git branch --show-current 2>/dev/null || echo "")
         if [[ -n "$local_branch" ]]; then
-            merged_url=$(_timeout 2 gh pr list --head "$local_branch" --state merged --json url --jq '.[0].url // empty' 2>/dev/null || true)
-            if [[ -n "$merged_url" && "$merged_url" != "null" ]]; then
-                _deny "🚫 Branch '$local_branch' is frozen — PR already merged ($merged_url). Create a new branch for further work."
+            # Determine the source ref being pushed.  When no refspec is given
+            # (just `git push` or `git push origin`) the current branch is
+            # implied.  When an explicit refspec is present, extract the source
+            # (LHS of src:dst or the bare ref) and only proceed if it matches
+            # the current branch or HEAD.
+            _push_ref=""
+            # Strip flags/options to isolate positional args (remote + refspec)
+            _positional=$(echo "$PUSH_SEG" | sed -E 's/git([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*[[:space:]]+push//' | sed -E 's/[[:space:]]+--?[a-zA-Z][^[:space:]]*//g')
+            # Second positional word (after remote) is the refspec, if any
+            _push_ref=$(echo "$_positional" | awk '{print $2}')
+            _check_frozen=true
+            if [[ -n "$_push_ref" ]]; then
+                # Extract source side of refspec (before ':')
+                _src_ref=${_push_ref%%:*}
+                _src_ref=${_src_ref#+}  # strip leading + if present
+                if [[ "$_src_ref" != "$local_branch" && "$_src_ref" != "HEAD" && -n "$_src_ref" ]]; then
+                    _check_frozen=false
+                fi
+            fi
+            if [[ "$_check_frozen" == "true" ]]; then
+                merged_url=$(_timeout 2 gh pr list --head "$local_branch" --state merged --json url --jq '.[0].url // empty' 2>/dev/null || true)
+                if [[ -n "$merged_url" && "$merged_url" != "null" ]]; then
+                    _deny "🚫 Branch '$local_branch' is frozen — PR already merged ($merged_url). Create a new branch for further work."
+                fi
             fi
         fi
     fi
