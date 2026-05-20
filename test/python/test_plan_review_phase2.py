@@ -26,20 +26,16 @@ import unittest
 from unittest.mock import patch
 
 # Pin REPO_PREFIXES for tests — fixtures use ~/myOS/ and /Users/christophe/myOS/ literals.
-# Scoped via setUpModule/tearDownModule to avoid leaking env changes into other tests.
+# Started at import time so module-level exec_module calls see the patched env.
+# Stopped in tearDownModule to avoid leaking into other test modules.
 _REPO_PREFIX_PATCH = patch.dict(os.environ, {"CLAUDE_PLAN_REPO_PREFIXES": "~/myOS/,/Users/christophe/myOS/"})
-
-
-def setUpModule():
-    _REPO_PREFIX_PATCH.start()
+_REPO_PREFIX_PATCH.start()
 
 
 def tearDownModule():
     _REPO_PREFIX_PATCH.stop()
 
 
-# Start patch now so the module-level imports below see the patched env.
-_REPO_PREFIX_PATCH.start()
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent

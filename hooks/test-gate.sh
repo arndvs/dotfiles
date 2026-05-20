@@ -30,7 +30,7 @@ if ! echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*${ENV_PREFIX}git${G
 fi
 
 # Skip amend commits (typically fixups, not new code)
-if echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*${ENV_PREFIX}git${GIT_OPTS}[[:space:]]+commit.*--amend"; then
+if echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*${ENV_PREFIX}git${GIT_OPTS}[[:space:]]+commit([[:space:]].*)?[[:space:]]--amend([[:space:]]|$)"; then
     exit 0
 fi
 
