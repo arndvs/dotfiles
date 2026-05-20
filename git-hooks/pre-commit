@@ -35,9 +35,12 @@ _pm="npm"
 # TypeScript typecheck
 if [[ -f "tsconfig.json" ]] && [[ -f "package.json" ]]; then
     if command -v jq &>/dev/null; then
-        if jq -e '.scripts["typecheck"] // .scripts["type-check"]' package.json &>/dev/null; then
+        if jq -e '.scripts["typecheck"]' package.json &>/dev/null; then
             echo "pre-commit: running typecheck..."
             $_pm run typecheck || exit 1
+        elif jq -e '.scripts["type-check"]' package.json &>/dev/null; then
+            echo "pre-commit: running type-check..."
+            $_pm run type-check || exit 1
         else
             echo "pre-commit: running tsc --noEmit..."
             npx tsc --noEmit || exit 1

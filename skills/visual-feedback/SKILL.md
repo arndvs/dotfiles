@@ -1,6 +1,6 @@
 ---
 name: visual-feedback
-description: "Add a visual feedback loop to frontend work. Use when implementing UI, checking dark/light mode, validating animations or interactions, or any time you need to see what the browser is actually rendering. Companion to do-work for frontend tasks."
+description: "Use when implementing UI, checking dark/light mode, or validating animations — adds a visual feedback loop via browser screenshots so frontend changes are verified, not assumed."
 ---
 
 # Visual Feedback

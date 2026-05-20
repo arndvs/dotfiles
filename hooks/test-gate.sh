@@ -56,11 +56,10 @@ _pm="npm"
 [[ -f "yarn.lock" ]] && _pm="yarn"
 [[ -f "bun.lockb" ]] && _pm="bun"
 
-# Run tests
-OUTPUT=$($_pm test 2>&1) || {
-    echo "$OUTPUT" >&2
+# Run tests — stream output so failures are visible in real time
+if ! $_pm test; then
     echo '{"hookSpecificOutput":{"permissionDecision":"deny","permissionDecisionReason":"test-gate: tests failed. Fix failing tests before committing."}}' >&2
     exit 2
-}
+fi
 
 exit 0
