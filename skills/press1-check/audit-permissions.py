@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 """Audit which Bash commands required manual approval in Claude Code sessions.
 
 Usage:
