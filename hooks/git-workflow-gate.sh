@@ -308,7 +308,7 @@ if echo "$COMMAND" | grep -qE "${CMD_GIT}${GIT_OPTS}[[:space:]]+commit([[:space:
                 _deny "🚫 Could not parse commit message. Wrap the message in quotes: git commit -m \"type(scope): description\""
             fi
         fi
-    done <<< "$(echo "$COMMAND" | sed 's/||/\n/g; s/&&/\n/g; s/;/\n/g; s/|/\n/g')"
+    done <<< "$(echo "$COMMAND" | sed 's/||/\n/g; s/&&/\n/g; s/;/\n/g')"
 fi
 
 # ============================================================
