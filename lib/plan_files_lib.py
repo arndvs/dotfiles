@@ -44,24 +44,6 @@ def _detect_repo_prefixes() -> list[str]:
 
     return _prefixes_from_cwd(repo_root)
 
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, timeout=2, cwd=repo_root,
-        )
-        if result.returncode == 0:
-            toplevel = result.stdout.strip()
-            if toplevel:
-                home = str(Path.home())
-                prefixes = [toplevel + "/"]
-                if toplevel.startswith(home + "/"):
-                    prefixes.append("~/" + toplevel[len(home) + 1:] + "/")
-                return prefixes
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        pass
-
-    return _prefixes_from_cwd(repo_root)
-
 
 def _prefixes_from_cwd(cwd: Path) -> list[str]:
     """Derive repo prefixes from a directory by running git rev-parse."""
