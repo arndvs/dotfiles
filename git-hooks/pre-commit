@@ -32,29 +32,33 @@ _pm="npm"
 [[ -f "yarn.lock" ]] && _pm="yarn"
 [[ -f "bun.lockb" ]] && _pm="bun"
 
+# Require jq for script inspection — warn and skip if missing
+if ! command -v jq &>/dev/null; then
+    echo "pre-commit: jq not found — skipping typecheck and tests (install jq for full safety net)" >&2
+    exit 0
+fi
+
 # TypeScript typecheck
 if [[ -f "tsconfig.json" ]] && [[ -f "package.json" ]]; then
-    if command -v jq &>/dev/null; then
-        if jq -e '.scripts["typecheck"]' package.json &>/dev/null; then
-            echo "pre-commit: running typecheck..."
-            $_pm run typecheck || exit 1
-        elif jq -e '.scripts["type-check"]' package.json &>/dev/null; then
-            echo "pre-commit: running type-check..."
-            $_pm run type-check || exit 1
-        else
-            echo "pre-commit: running tsc --noEmit..."
-            case "$_pm" in
-                pnpm) pnpm exec tsc --noEmit || exit 1 ;;
-                yarn) yarn exec tsc --noEmit || exit 1 ;;
-                bun)  bun x tsc --noEmit || exit 1 ;;
-                *)    npm exec -- tsc --noEmit || exit 1 ;;
-            esac
-        fi
+    if jq -e '.scripts["typecheck"]' package.json &>/dev/null; then
+        echo "pre-commit: running typecheck..."
+        $_pm run typecheck || exit 1
+    elif jq -e '.scripts["type-check"]' package.json &>/dev/null; then
+        echo "pre-commit: running type-check..."
+        $_pm run type-check || exit 1
+    else
+        echo "pre-commit: running tsc --noEmit..."
+        case "$_pm" in
+            pnpm) pnpm exec tsc --noEmit || exit 1 ;;
+            yarn) yarn exec tsc --noEmit || exit 1 ;;
+            bun)  bun x tsc --noEmit || exit 1 ;;
+            *)    npm exec -- tsc --noEmit || exit 1 ;;
+        esac
     fi
 fi
 
 # Tests
-if [[ -f "package.json" ]] && command -v jq &>/dev/null; then
+if [[ -f "package.json" ]]; then
     if jq -e '.scripts.test' package.json &>/dev/null; then
         echo "pre-commit: running tests..."
         $_pm test || exit 1

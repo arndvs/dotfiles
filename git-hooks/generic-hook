@@ -3,7 +3,8 @@
 # Delegates to local hooks (Husky, .git/hooks) when present.
 # No global fallback — only pre-commit has one.
 #
-# Symlinked as: commit-msg, pre-push, prepare-commit-msg, post-commit
+# Copied as: commit-msg, pre-push, prepare-commit-msg, post-commit
+# Keep those copies in sync with this canonical dispatcher.
 # See pre-commit for the full dispatcher with fallback logic.
 
 set -euo pipefail

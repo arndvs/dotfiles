@@ -97,6 +97,14 @@ assert_allow "allow: tests pass"
 run_hook "$HOOK" "$(make_pretooluse_json 'git add . && git commit -m "test"' "$PASS_DIR")"
 assert_allow "allow: chained git add && git commit (tests pass)"
 
+# --- Git with global options should still be intercepted ---
+
+run_hook "$HOOK" "$(make_pretooluse_json 'git -c user.name=Test commit -m "feat: x"' "$FAIL_DIR")"
+assert_deny "deny: git -c option commit (tests fail)" "tests failed"
+
+run_hook "$HOOK" "$(make_pretooluse_json 'git --no-pager commit -m "feat: x"' "$FAIL_DIR")"
+assert_deny "deny: git --no-pager commit (tests fail)" "tests failed"
+
 # --- Report ---
 
 report

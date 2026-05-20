@@ -22,13 +22,14 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 # Skip if no command
 [[ -z "$COMMAND" ]] && exit 0
 
-# Only intercept git commit commands
-if ! echo "$COMMAND" | grep -qE '(^|;|&&|\|\||\|)[[:space:]]*git[[:space:]]+commit'; then
+# Only intercept git commit commands (allow global git options like -c key=val, --no-pager)
+GIT_OPTS='([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*'
+if ! echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*git${GIT_OPTS}[[:space:]]+commit([[:space:]]|\$)"; then
     exit 0
 fi
 
 # Skip amend commits (typically fixups, not new code)
-if echo "$COMMAND" | grep -qE 'git[[:space:]]+commit.*--amend'; then
+if echo "$COMMAND" | grep -qE "git${GIT_OPTS}[[:space:]]+commit.*--amend"; then
     exit 0
 fi
 
@@ -55,6 +56,11 @@ _pm="npm"
 [[ -f "pnpm-lock.yaml" ]] && _pm="pnpm"
 [[ -f "yarn.lock" ]] && _pm="yarn"
 [[ -f "bun.lockb" ]] && _pm="bun"
+
+# Fail-open: if the detected pm is not installed, allow the commit
+if ! command -v "$_pm" &>/dev/null; then
+    exit 0
+fi
 
 # Run tests — capture output to keep hook JSON clean, dump on failure
 _test_out=$(mktemp)
