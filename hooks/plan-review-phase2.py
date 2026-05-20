@@ -115,28 +115,80 @@ def is_pr_create_command(command):
     return False
 
 
+def _pr_command_segment_tokens(command):
+    """Return tokens for the ``gh pr create|edit`` segment only, or None.
+
+    Reuses the same shlex + merged-punctuation logic as
+    ``is_pr_create_command`` so chained commands never bleed flags.
+    """
+    try:
+        lexer = shlex.shlex(command, posix=True, punctuation_chars="|&;")
+        lexer.whitespace_split = True
+        lexer.commenters = ""
+        raw = list(lexer)
+    except ValueError:
+        return None
+
+    # Merge doubled punctuation (&&, ||) into single tokens
+    merged: list[str] = []
+    i = 0
+    while i < len(raw):
+        tok = raw[i]
+        if tok in ("&", "|") and i + 1 < len(raw) and raw[i + 1] == tok:
+            merged.append(tok + tok)
+            i += 2
+            continue
+        merged.append(tok)
+        i += 1
+
+    separators = {";", "&&", "||", "|"}
+    segment_start = 0
+    j = 0
+    while j <= len(merged):
+        if j == len(merged) or merged[j] in separators:
+            if segment_start < j and _matches_pr_create_at_segment_start(merged, segment_start):
+                return merged[segment_start:j]
+            segment_start = j + 1
+        j += 1
+    return None
+
+
 def parse_head_branch(command):
     """Extract the value of --head / -H / --head=<branch> from a gh command.
 
-    Uses shlex tokenization so values embedded inside --body or --title
-    quotes are never matched. Falls back to regex on shlex parse error.
-    CC-174.
+    Restricts parsing to the ``gh pr create|edit`` segment so chained
+    commands cannot contribute unrelated --head flags.  Uses shlex
+    tokenization so values embedded inside --body or --title quotes are
+    never matched.  Falls back to a boundary-aware regex on shlex parse
+    error (fail-open).  CC-174.
     """
     if not command:
         return None
-    try:
-        tokens = shlex.split(command, comments=False, posix=True)
-    except ValueError:
-        # Fall back to regex on parse error (fail-open)
-        eq_match = re.search(r"--head=(\S+)", command)
-        if eq_match:
-            return eq_match.group(1)
+
+    # Prefer segment-scoped tokenization
+    segment = _pr_command_segment_tokens(command)
+    if segment is not None:
+        for i, tok in enumerate(segment):
+            if tok.startswith("--head="):
+                return tok.split("=", 1)[1] or None
+            if tok in ("--head", "-H") and i + 1 < len(segment):
+                return segment[i + 1]
         return None
-    for i, tok in enumerate(tokens):
-        if tok.startswith("--head="):
-            return tok.split("=", 1)[1] or None
-        if tok in ("--head", "-H") and i + 1 < len(tokens):
-            return tokens[i + 1]
+
+    # shlex failed — fall back to regex scoped to the gh pr create|edit segment
+    match = _PR_CREATE_BOUNDARY_RE.search(command)
+    if not match:
+        return None
+    seg_str = command[match.start():]
+    boundary = re.search(r"\s*(?:;|\|\||&&|\|)", seg_str)
+    if boundary:
+        seg_str = seg_str[:boundary.start()]
+    eq_match = re.search(r"--head=(\S+)", seg_str)
+    if eq_match:
+        return eq_match.group(1)
+    spaced_match = re.search(r"(?:^|\s)(?:--head|-H)\s+(\S+)", seg_str)
+    if spaced_match:
+        return spaced_match.group(1)
     return None
 
 
