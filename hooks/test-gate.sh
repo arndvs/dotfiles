@@ -22,14 +22,15 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 # Skip if no command
 [[ -z "$COMMAND" ]] && exit 0
 
-# Only intercept git commit commands (allow global git options like -c key=val, --no-pager)
+# Only intercept git commit commands (allow env prefixes like EDITOR=vim and global git options like -c key=val, --no-pager)
+ENV_PREFIX='([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]+[[:space:]]+)*'
 GIT_OPTS='([[:space:]]+(-[a-zA-Z]([[:space:]]+[^-[:space:]][^[:space:]]*)?|--[a-z][a-z-]*(=[^[:space:]]+)?))*'
-if ! echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*git${GIT_OPTS}[[:space:]]+commit([[:space:]]|$)"; then
+if ! echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*${ENV_PREFIX}git${GIT_OPTS}[[:space:]]+commit([[:space:]]|$)"; then
     exit 0
 fi
 
 # Skip amend commits (typically fixups, not new code)
-if echo "$COMMAND" | grep -qE "git${GIT_OPTS}[[:space:]]+commit.*--amend"; then
+if echo "$COMMAND" | grep -qE "(^|;|&&|\|\||\|)[[:space:]]*${ENV_PREFIX}git${GIT_OPTS}[[:space:]]+commit.*--amend"; then
     exit 0
 fi
 

@@ -151,7 +151,7 @@ def get_diff_files(cwd, head_ref=None):
 
     diff_target = head_ref if head_ref else "HEAD"
 
-    # Validate head_ref resolves; fall back to HEAD if not.
+    # Validate head_ref resolves; skip with warning if user-specified ref is invalid.
     if head_ref:
         try:
             check = subprocess.run(
@@ -159,11 +159,15 @@ def get_diff_files(cwd, head_ref=None):
                 capture_output=True, text=True, cwd=repo_root, timeout=5
             )
             if check.returncode != 0:
-                diff_target = "HEAD"
-                head_ref = None
+                return set(), (
+                    f"--head ref '{head_ref}' does not resolve to a local commit "
+                    "-- skipping file audit (fork syntax or missing remote?)"
+                )
         except (subprocess.TimeoutExpired, FileNotFoundError):
-            diff_target = "HEAD"
-            head_ref = None
+            return set(), (
+                f"--head ref '{head_ref}' could not be verified "
+                "-- skipping file audit"
+            )
 
     # Merge base
     default_branch = _default_branch(repo_root)
