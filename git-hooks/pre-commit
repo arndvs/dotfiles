@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Global git pre-commit dispatcher.
+# Delegates to local hooks (Husky, .git/hooks) when present,
+# falls back to global feedback loops (typecheck + tests).
+#
+# Installed by bootstrap.sh via: git config --global core.hooksPath ~/dotfiles/git-hooks
+#
+# Precedence:
+#   1. .husky/pre-commit (project uses Husky)
+#   2. .git/hooks/pre-commit (project-local hook)
+#   3. Global fallback (typecheck + tests from package.json)
+
+set -euo pipefail
+
+HOOK_NAME=$(basename "$0")
+
+# ── 1. Delegate to Husky if present ──────────────────────────────────────────
+if [[ -f ".husky/$HOOK_NAME" ]] && [[ -x ".husky/$HOOK_NAME" ]]; then
+    exec ".husky/$HOOK_NAME" "$@"
+fi
+
+# ── 2. Delegate to .git/hooks if present ─────────────────────────────────────
+if [[ -x ".git/hooks/$HOOK_NAME" ]]; then
+    exec ".git/hooks/$HOOK_NAME" "$@"
+fi
+
+# ── 3. Global fallback — run project feedback loops ──────────────────────────
+
+# Detect package manager
+_pm="npm"
+[[ -f "pnpm-lock.yaml" ]] && _pm="pnpm"
+[[ -f "yarn.lock" ]] && _pm="yarn"
+[[ -f "bun.lockb" ]] && _pm="bun"
+
+# Require the selected package manager to exist — warn and fall back/skip if missing
+if ! command -v "$_pm" &>/dev/null; then
+    if [[ "$_pm" != "npm" ]] && command -v npm &>/dev/null; then
+        echo "pre-commit: $_pm not found — falling back to npm for typecheck and tests" >&2
+        _pm="npm"
+    else
+        echo "pre-commit: $_pm not found — skipping typecheck and tests" >&2
+        exit 0
+    fi
+fi
+
+# Require jq for script inspection — warn and skip if missing
+if ! command -v jq &>/dev/null; then
+    echo "pre-commit: jq not found — skipping typecheck and tests (install jq for full safety net)" >&2
+    exit 0
+fi
+
+# TypeScript typecheck
+if [[ -f "tsconfig.json" ]] && [[ -f "package.json" ]]; then
+    if jq -e '.scripts["typecheck"]' package.json &>/dev/null; then
+        echo "pre-commit: running typecheck..."
+        $_pm run typecheck || exit 1
+    elif jq -e '.scripts["type-check"]' package.json &>/dev/null; then
+        echo "pre-commit: running type-check..."
+        $_pm run type-check || exit 1
+    else
+        echo "pre-commit: running tsc --noEmit..."
+        case "$_pm" in
+            pnpm) pnpm exec tsc --noEmit || exit 1 ;;
+            yarn) yarn run tsc --noEmit || exit 1 ;;
+            bun)  bun x tsc --noEmit || exit 1 ;;
+            *)    npm exec -- tsc --noEmit || exit 1 ;;
+        esac
+    fi
+fi
+
+# Tests
+if [[ -f "package.json" ]]; then
+    if jq -e '.scripts.test' package.json &>/dev/null; then
+        echo "pre-commit: running tests..."
+        case "$_pm" in
+            bun)  bun run test || exit 1 ;;
+            *)    $_pm test || exit 1 ;;
+        esac
+    fi
+fi
+
+exit 0

@@ -21,6 +21,7 @@ Bootstrap symlinks `hooks/` → `~/.claude/hooks/` and merges the configuration 
 | `plan-quality-gate.sh` | PreToolUse | Bash | Warns when scaffolding (mkdir, npx create-, etc.) has no plan file; when a plan exists, validates required sections and emits a checklist summary |
 | `plan-review-phase2.py` | PreToolUse | Bash | Phase 2 PR diff comparison — warns when `gh pr create` diff is missing planned files (CC-80/174/175) |
 | `feedback-memory-gate.py` | PostToolUse | Write | Warns when feedback memory files describe bugs without an issue tracker reference |
+| `test-gate.sh` | PreToolUse | Bash | Runs project tests before `git commit`; blocks commit if tests fail |
 | `git-post-push.sh` | PostToolUse | Bash | Info nag when no PR exists after pushing to a feature branch |
 | `stale-branches.sh` | SessionStart | — | Reports merged or stale (>14d) local branches at session start |
 | `format-check.sh` | Stop | — | Detects Biome/Prettier/ESLint and formats modified files (non-blocking) |

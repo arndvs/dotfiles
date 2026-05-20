@@ -11,6 +11,7 @@ cd "$(git rev-parse --show-toplevel 2>/dev/null || echo "$(dirname "$0")/../..")
 SUITES=(
     test/hooks/test-secret-guard.sh
     test/hooks/test-git-workflow-gate.sh
+    test/hooks/test-test-gate.sh
 )
 
 TOTAL_SUITES=0
