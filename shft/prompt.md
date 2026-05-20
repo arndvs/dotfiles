@@ -11,7 +11,7 @@ Pick the next task based on this priority order:
 
 1. Critical bugfixes — bugs can block other work
 2. Development infrastructure — tests, types, dev scripts need to be solid before features
-3. Tracer bullets for new features — small end-to-end slices that validate approach
+3. Tracer bullets for new features — small end-to-end slices that touch all layers (data → logic → UI) rather than building one layer at a time. Validates the approach before full buildout.
 4. Polish and quick wins — small improvements and additions
 5. Refactors — code cleanup and improvements
 
@@ -30,6 +30,10 @@ Before starting implementation, check if any skills in ~/.claude/skills/ apply t
 ## Implementation
 
 Complete the task as described in the issue.
+
+Before creating a new file, read an existing file of the same type to understand the conventions already established in the codebase. Follow those conventions.
+
+If context usage reaches ~40%, stop, commit whatever is complete, and leave a comment on the GitHub issue describing what was done and what remains. Do not push through with degraded context — a clean handoff is better than a corrupted one.
 
 ## Feedback Loops
 

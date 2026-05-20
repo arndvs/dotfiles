@@ -660,6 +660,24 @@ _test "blocks auto-compaction" 2 \
 echo ""
 
 # ─── Summary ─────────────────────────────────────────────────────────────────
+echo "── regression checks ──"
+
+_setup_test_repo
+
+_test "allows git status when later string mentions git push --force" 0 \
+    "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git status && echo \\\"git push --force\\\"\"},\"cwd\":\"$TEST_REPO\"}" \
+    "$HOOKS_DIR/git-workflow-gate.sh"
+
+_teardown_test_repo
+
+_test "blocks env-wrapped cat secrets file" 2 \
+    '{"tool_name":"Bash","tool_input":{"command":"env cat secrets/.env.secrets"}}' \
+    "$HOOKS_DIR/secret-guard.sh" \
+    "secrets file"
+
+echo ""
+
+# ─── Summary ─────────────────────────────────────────────────────────────────
 echo "═══════════════════════════════"
 echo "  Results: $PASS passed, $FAIL failed"
 echo "═══════════════════════════════"

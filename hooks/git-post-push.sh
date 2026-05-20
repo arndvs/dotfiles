@@ -70,7 +70,7 @@ _timeout() {
     if command -v timeout &>/dev/null; then
         timeout "$@"
     else
-        return 1  # skip: no timeout available; don't run unbounded
+        return 1  # Skip network calls when no timeout utility — avoid hangs
     fi
 }
 
