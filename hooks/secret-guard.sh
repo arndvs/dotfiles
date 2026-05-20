@@ -49,7 +49,7 @@ fi
 
 # Block bare env/printenv (dumps all env vars including secrets)
 # Also catches leading env assignments: FOO=bar env, FOO=bar printenv
-# Handles sudo/command/builtin prefixes and env-as-wrapper (env env, env printenv)
+# Handles wrapper prefixes and env-as-wrapper (env env, env printenv)
 # Also catches assignment-only env invocations: env FOO=bar (still dumps env)
 # Catches env with flags that still dump: env -0, env --null, env -v
 # Catches env -u NAME (unsets one var but still dumps the rest)

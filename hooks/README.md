@@ -18,7 +18,9 @@ Bootstrap symlinks `hooks/` → `~/.claude/hooks/` and merges the configuration 
 | `secret-guard.sh` | PreToolUse | Bash | Blocks commands that expose credentials (echo $TOKEN, bare env/printenv, cat secrets/) |
 | `migration-guard.sh` | PreToolUse | Bash | Blocks database migration commands targeting non-test databases |
 | `git-workflow-gate.sh` | PreToolUse | Bash | Enforces git safety: no commit to main, conventional messages, no force-push, no dirty-tree switch, no cd+git chains |
-| `plan-quality-gate.sh` | PreToolUse | Bash | Info warning when scaffolding (mkdir, npx create-, etc.) without a plan file present |
+| `plan-quality-gate.sh` | PreToolUse | Bash | Warns when scaffolding (mkdir, npx create-, etc.) has no plan file; when a plan exists, validates required sections and emits a checklist summary |
+| `plan-review-phase2.py` | PreToolUse | Bash | Phase 2 PR diff comparison — warns when `gh pr create` diff is missing planned files (CC-80/174/175) |
+| `feedback-memory-gate.py` | PostToolUse | Write | Warns when feedback memory files describe bugs without an issue tracker reference |
 | `git-post-push.sh` | PostToolUse | Bash | Info nag when no PR exists after pushing to a feature branch |
 | `stale-branches.sh` | SessionStart | — | Reports merged or stale (>14d) local branches at session start |
 | `format-check.sh` | Stop | — | Detects Biome/Prettier/ESLint and formats modified files (non-blocking) |
@@ -31,6 +33,7 @@ Bootstrap symlinks `hooks/` → `~/.claude/hooks/` and merges the configuration 
 ## Requirements
 
 - **jq** — all fail-closed hooks (secret-guard, migration-guard, git-workflow-gate) **require** jq and deny if missing. Fail-open hooks (stale-branches, plan-quality-gate, git-post-push) skip gracefully if jq is missing.
+- **Python 3** — `plan-review-phase2.py` and `feedback-memory-gate.py` require Python 3.
 - **npx** — format-check and typecheck use npx to run project-local tools.
 
 ## Editor Compatibility
