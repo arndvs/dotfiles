@@ -105,6 +105,12 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     stream_text='select(.type == "assistant").message.content[]? | select(.type == "text").text // empty'
     final_result='select(.type == "result") | .result // empty'
 
+    # When proxying through Copilot, force Sonnet (Opus too slow via proxy)
+    _model_flag=""
+    if [[ -n "${ANTHROPIC_BASE_URL:-}" ]]; then
+        _model_flag="--model claude-sonnet-4-6"
+    fi
+
     if ! GITHUB_TOKEN="$afk_token" \
         ${ANTHROPIC_BASE_URL:+ANTHROPIC_BASE_URL="$ANTHROPIC_BASE_URL"} \
         ${ANTHROPIC_AUTH_TOKEN:+ANTHROPIC_AUTH_TOKEN="$ANTHROPIC_AUTH_TOKEN"} \
@@ -112,6 +118,7 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
         srt claude \
         --print \
         --output-format stream-json \
+        $_model_flag \
         < "$PROMPT_FILE" \
         2>/dev/null \
         | awk '/^[[:space:]]*\{/' \
