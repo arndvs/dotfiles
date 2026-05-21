@@ -67,6 +67,9 @@ if ! "$RUN_WITH_SECRETS" bash "$CTRL_DIR/bin/validate-env.sh" --afk; then
     exit 1
 fi
 
+# Inject proxy env vars if enabled (sets ANTHROPIC_BASE_URL etc.)
+source "$SCRIPT_DIR/_proxy_env.sh" "afk"
+
 for i in $(seq 1 "$MAX_ITERATIONS"); do
     echo "=== shft iteration $i of $MAX_ITERATIONS ==="
     _push_afk_event "info" "AFK iteration $i of $MAX_ITERATIONS started"
@@ -102,7 +105,11 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     stream_text='select(.type == "assistant").message.content[]? | select(.type == "text").text // empty'
     final_result='select(.type == "result") | .result // empty'
 
-    if ! GITHUB_TOKEN="$afk_token" srt claude \
+    if ! GITHUB_TOKEN="$afk_token" \
+        ${ANTHROPIC_BASE_URL:+ANTHROPIC_BASE_URL="$ANTHROPIC_BASE_URL"} \
+        ${ANTHROPIC_AUTH_TOKEN:+ANTHROPIC_AUTH_TOKEN="$ANTHROPIC_AUTH_TOKEN"} \
+        ${CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS:+CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS="$CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"} \
+        srt claude \
         --print \
         --output-format stream-json \
         < "$PROMPT_FILE" \
