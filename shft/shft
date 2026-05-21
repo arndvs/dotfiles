@@ -805,19 +805,35 @@ print(f'  ... ({len(issues)} shown, use shft issues for full list)')
 
                 mkdir -p "$PROXY_STATE_DIR"
 
-                green "Starting Copilot proxy..."
-                echo "  Dir:  $_proxy_dir"
-                echo "  Port: $_port"
-                echo "  Log:  $PROXY_LOG_FILE"
-                echo ""
-
                 # Source the proxy's .env for LITELLM_MASTER_KEY
                 set -a
                 # shellcheck disable=SC1091
                 source "$_proxy_dir/.env"
                 set +a
 
-                UV_NATIVE_TLS=true nohup uv run \
+                # Check if GitHub Copilot OAuth token exists
+                _token_file="$HOME/.config/litellm/github_copilot/api-key.json"
+                if [[ ! -f "$_token_file" ]]; then
+                    yellow "First-run: GitHub Copilot OAuth required"
+                    echo "  The proxy will start in the foreground so you can authenticate."
+                    echo "  After auth completes, press Ctrl+C and run 'shft proxy start' again."
+                    echo ""
+
+                    UV_SYSTEM_CERTS=true uv run \
+                        --with "litellm[proxy]" \
+                        litellm \
+                        --config "$_proxy_dir/litellm_config.yaml" \
+                        --port "$_port"
+                    exit $?
+                fi
+
+                green "Starting Copilot proxy..."
+                echo "  Dir:  $_proxy_dir"
+                echo "  Port: $_port"
+                echo "  Log:  $PROXY_LOG_FILE"
+                echo ""
+
+                UV_SYSTEM_CERTS=true nohup uv run \
                     --with "litellm[proxy]" \
                     litellm \
                     --config "$_proxy_dir/litellm_config.yaml" \
@@ -831,15 +847,11 @@ print(f'  ... ({len(issues)} shown, use shft issues for full list)')
                     green "Proxy running (PID $_pid)"
                     echo "  Health: http://localhost:$_port/health/readiness"
                 else
-                    # Check if process exited (OAuth needed?)
+                    # Check if process exited
                     if ! kill -0 "$_pid" 2>/dev/null; then
                         _proxy_set "pid" ""
-                        yellow "Proxy exited immediately — may need first-run OAuth"
-                        echo ""
-                        echo "  Run in foreground to authenticate:"
-                        echo "    cd $_proxy_dir && make start"
-                        echo ""
-                        echo "  Then retry: shft proxy start"
+                        red "Proxy exited immediately"
+                        echo "  Check logs: tail -20 $PROXY_LOG_FILE"
                         exit 1
                     fi
                     _proxy_set "pid" ""
