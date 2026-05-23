@@ -89,9 +89,11 @@ fi
 # Determine base URL based on mode
 if [[ "$_PROXY_MODE" == "afk" ]]; then
     # AFK runs inside Docker via srt — need host-accessible address
+    # Exception: MSYS/Windows runs claude directly (no Docker) so use localhost
     case "$(uname -s)" in
-        MINGW*|MSYS*|CYGWIN*|Darwin*) _proxy_host="host.docker.internal" ;;
-        *)                            _proxy_host=$(ip route 2>/dev/null | awk '/default/{print $3; exit}'); _proxy_host="${_proxy_host:-172.17.0.1}" ;;
+        MINGW*|MSYS*|CYGWIN*) _proxy_host="localhost" ;;
+        Darwin*)              _proxy_host="host.docker.internal" ;;
+        *)                    _proxy_host=$(ip route 2>/dev/null | awk '/default/{print $3; exit}'); _proxy_host="${_proxy_host:-172.17.0.1}" ;;
     esac
 else
     _proxy_host="localhost"
