@@ -168,12 +168,12 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
         --output-format stream-json \
         < "$PROMPT_FILE" \
         2>"$_afk_stderr_log" \
-        | awk '/^[[:space:]]*\{/' \
+        | awk '/^[[:space:]]*\{/ { print; fflush() }' \
         | { _first=true; while IFS= read -r line; do
               if $_first; then _stop_ticker; _first=false; fi
               printf '%s\n' "$line"
             done; } \
-        | tee >(jq -rj "$stream_live" >&2 || cat >/dev/null) \
+        | tee >(jq --unbuffered -rj "$stream_live" >&2 || cat >/dev/null) \
         > "$raw_output"; then
         _stop_ticker
         echo "ERROR: ${_CLAUDE_CMD[*]} failed on iteration $i" >&2
