@@ -66,3 +66,4 @@ clients/*
 !clients/_template/
 !clients/_template/**
 mechanisms/
+shft/research/

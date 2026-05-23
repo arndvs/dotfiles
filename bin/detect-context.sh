@@ -102,10 +102,12 @@ echo "$contexts"
     _dc_payload=$(printf '{"type":"context","project":"%s","projectPath":"%s","contexts":"%s","ide":"%s","message":"Active contexts: %s","timestamp":"%s","time":"%s"}' \
         "$_dc_proj" "${PWD/$HOME/~}" "$contexts" "$_dc_ide" "$contexts" "$_dc_ts" "$_dc_td")
 
-    if [[ -p "$_dc_pipe" ]]; then
+    if [[ -p "$_dc_pipe" ]] && [[ "$(uname -o 2>/dev/null)" != "Msys" ]]; then
         ( printf '%s\n' "$_dc_payload" > "$_dc_pipe" ) 2>/dev/null &
+        disown 2>/dev/null
     else
         printf '%s\n' "$_dc_payload" >> "$_dc_dotfiles/working/events.jsonl" 2>/dev/null &
+        disown 2>/dev/null
     fi
     unset _dc_dotfiles _dc_pipe _dc_ts _dc_td _dc_proj _dc_ide _dc_payload
 } 2>/dev/null || true

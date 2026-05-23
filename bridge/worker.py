@@ -24,6 +24,7 @@ import httpx
 
 from . import db, github, hud, issue, workspace
 from .config import Config
+from .git_creds import git_credential_env
 
 logger = logging.getLogger("bridge.worker")
 
@@ -237,12 +238,8 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
         "USER": os.environ.get("USER", ""),
         "BRIDGE_WORKSPACE": str(ws_path),
         "GH_TOKEN": token.value,
-        # Git credential injection (ephemeral, same pattern as workspace.py)
-        "GIT_CONFIG_COUNT": "1",
-        "GIT_CONFIG_KEY_0": (
-            f"url.https://x-access-token:{token.value}@github.com/.insteadOf"
-        ),
-        "GIT_CONFIG_VALUE_0": "https://github.com/",
+        # Git credential injection — shared helper (same as workspace.py)
+        **git_credential_env(token),
     }
     # Pass repo context so gh CLI targets the correct base repo (fork-safe)
     env["GH_REPO"] = repo
