@@ -152,6 +152,7 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
         "${_CLAUDE_CMD[@]}" \
         --print \
         --verbose \
+        --dangerously-skip-permissions \
         --output-format stream-json \
         < "$PROMPT_FILE" \
         2>"$_afk_stderr_log" \
