@@ -70,6 +70,14 @@ fi
 # Inject proxy env vars if enabled (sets ANTHROPIC_BASE_URL etc.)
 source "$SCRIPT_DIR/_proxy_env.sh" "afk"
 
+# Use plain claude when srt sandbox can't reach the proxy
+# (WSL2 has no host network access; MSYS/Windows has no Docker Linux sandbox)
+if grep -qi microsoft /proc/version 2>/dev/null || [[ "$(uname -o 2>/dev/null)" == "Msys" ]]; then
+    _CLAUDE_CMD=(claude)
+else
+    _CLAUDE_CMD=(srt claude)
+fi
+
 for i in $(seq 1 "$MAX_ITERATIONS"); do
     echo "=== shft iteration $i of $MAX_ITERATIONS ==="
     _push_afk_event "info" "AFK iteration $i of $MAX_ITERATIONS started"
@@ -100,31 +108,58 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     trap 'rm -f "$raw_output" "$PROMPT_FILE"; rmdir "$LOCKDIR" 2>/dev/null' EXIT
 
     # jq filters for stream-json format
-    # stream_text: streams assistant text to stderr for real-time visibility
+    # stream_live: streams tool calls + assistant text to stderr for real-time visibility
     # final_result: extracts the terminal result block used for sentinel detection
-    stream_text='select(.type == "assistant").message.content[]? | select(.type == "text").text // empty'
+    stream_live='
+      if .type == "system" and .subtype == "init" then
+        "[init] model: \(.model // "unknown") | tools: \(.tools | length)\n"
+      elif .type == "assistant" then
+        (
+          ([.message.content[]? | select(.type == "tool_use") |
+            if .name == "Bash" then "[bash] \(.input.command // "" | split("\n")[0] | .[0:120])\n"
+            elif .name == "Read" then "[read] \(.input.file_path // "")\n"
+            elif .name == "Edit" then "[edit] \(.input.file_path // "")\n"
+            elif .name == "Write" then "[write] \(.input.file_path // "")\n"
+            elif .name == "Glob" then "[glob] \(.input.pattern // "")\n"
+            elif .name == "Grep" then "[grep] \(.input.pattern // "")\n"
+            elif .name == "WebSearch" then "[search] \(.input.query // "")\n"
+            elif .name == "WebFetch" then "[fetch] \(.input.url // "")\n"
+            elif (.name // "" | startswith("mcp_")) then "[mcp] \(.name | ltrimstr("mcp__"))\n"
+            elif .name == "TaskCreate" then "[agent] \(.input.prompt // "" | .[0:80])\n"
+            elif .name == "Skill" then "[skill] \(.input.skill_name // "")\n"
+            else "[\(.name // "tool")]\n"
+            end
+          ] | join(""))
+          +
+          ([.message.content[]? | select(.type == "text") | .text | gsub("\u2014"; "--") | gsub("\u2018|\u2019"; "\u0027") | gsub("\u201c|\u201d"; "\u0022") | gsub("[^\u0000-\u007F]"; "")] | join(""))
+        )
+      elif .type == "result" then
+        "\n-- done (\(.duration_ms // 0)ms, $\(.total_cost_usd // 0 | tostring | .[0:6]))\n"
+      else empty end'
     final_result='select(.type == "result") | .result // empty'
 
-    # When proxying through Copilot, force Sonnet (Opus too slow via proxy)
-    _model_flag=""
-    if [[ -n "${ANTHROPIC_BASE_URL:-}" ]]; then
-        _model_flag="--model claude-sonnet-4-6"
-    fi
+    # ANTHROPIC_MODEL is set by _proxy_env.sh when proxying; --model flag not needed.
+    # Build env array — only pass vars that are actually set.
+    _afk_env=(env "GITHUB_TOKEN=$afk_token")
+    [[ -n "${ANTHROPIC_BASE_URL:-}" ]]                      && _afk_env+=("ANTHROPIC_BASE_URL=$ANTHROPIC_BASE_URL")
+    [[ -n "${ANTHROPIC_AUTH_TOKEN:-}" ]]                     && _afk_env+=("ANTHROPIC_AUTH_TOKEN=$ANTHROPIC_AUTH_TOKEN")
+    [[ -n "${ANTHROPIC_MODEL:-}" ]]                          && _afk_env+=("ANTHROPIC_MODEL=$ANTHROPIC_MODEL")
+    [[ -n "${CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS:-}" ]]   && _afk_env+=("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=$CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
+    [[ -n "${CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:-}" ]] && _afk_env+=("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=$CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
 
-    if ! GITHUB_TOKEN="$afk_token" \
-        ${ANTHROPIC_BASE_URL:+ANTHROPIC_BASE_URL="$ANTHROPIC_BASE_URL"} \
-        ${ANTHROPIC_AUTH_TOKEN:+ANTHROPIC_AUTH_TOKEN="$ANTHROPIC_AUTH_TOKEN"} \
-        ${CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS:+CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS="$CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"} \
-        srt claude \
+    _afk_stderr_log="$WORKING_DIR/afk-iter-${i}-stderr.log"
+    if ! "${_afk_env[@]}" \
+        "${_CLAUDE_CMD[@]}" \
         --print \
+        --verbose \
         --output-format stream-json \
-        $_model_flag \
         < "$PROMPT_FILE" \
-        2>/dev/null \
+        2>"$_afk_stderr_log" \
         | awk '/^[[:space:]]*\{/' \
-        | tee >(jq -rj "$stream_text" >&2 || cat >/dev/null) \
+        | tee >(jq -rj "$stream_live" >&2 || cat >/dev/null) \
         > "$raw_output"; then
-        echo "ERROR: srt failed on iteration $i" >&2
+        echo "ERROR: ${_CLAUDE_CMD[*]} failed on iteration $i" >&2
+        echo "  stderr log: $_afk_stderr_log" >&2
         exit 1
     fi
 
