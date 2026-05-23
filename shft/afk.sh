@@ -114,6 +114,36 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     # Kill ticker on first output or error
     _stop_ticker() { kill "$_ticker_pid" 2>/dev/null; wait "$_ticker_pid" 2>/dev/null; printf "\r\033[K" >&2; }
 
+    # Thinking-gap spinner — animates when jq output pauses > 1s
+    _thinking_filter() {
+        local line _tpid=
+        _start_think() {
+            ( while true; do
+                for c in '⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏'; do
+                    printf '\r  %s thinking...' "$c"
+                    sleep 0.2
+                done
+            done ) &
+            _tpid=$!
+        }
+        _kill_think() {
+            [[ -n "$_tpid" ]] && kill "$_tpid" 2>/dev/null && wait "$_tpid" 2>/dev/null
+            printf '\r\033[K'
+            _tpid=
+        }
+        while true; do
+            if IFS= read -r -t 1 line; then
+                [[ -n "$_tpid" ]] && _kill_think
+                printf '%s\n' "$line"
+            elif (( $? > 128 )); then
+                [[ -z "$_tpid" ]] && _start_think
+            else
+                break
+            fi
+        done
+        [[ -n "$_tpid" ]] && _kill_think
+    }
+
     source "$SCRIPT_DIR/_build_prompt.sh"
     trap 'rm -f "$PROMPT_FILE"; rmdir "$LOCKDIR" 2>/dev/null' EXIT
     raw_output=$(mktemp)
@@ -173,7 +203,7 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
               if $_first; then _stop_ticker; _first=false; fi
               printf '%s\n' "$line"
             done; } \
-        | tee >(jq --unbuffered -rj "$stream_live" >&2 || cat >/dev/null) \
+        | tee >(jq --unbuffered -rj "$stream_live" 2>/dev/null | _thinking_filter >&2; cat >/dev/null) \
         > "$raw_output"; then
         _stop_ticker
         echo "ERROR: ${_CLAUDE_CMD[*]} failed on iteration $i" >&2
