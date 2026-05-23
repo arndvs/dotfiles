@@ -245,8 +245,11 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
     env["GH_REPO"] = repo
 
     try:
+        shft_cmd = [shft_bin, "afk", "1"]
+        if tracking_number:
+            shft_cmd += ["--issue", str(tracking_number)]
         proc = subprocess.Popen(
-            [shft_bin, "afk", "1"],
+            shft_cmd,
             cwd=str(ws_path),
             env=env,
             start_new_session=True,

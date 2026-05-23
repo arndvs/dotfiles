@@ -341,9 +341,18 @@ case "$CMD" in
         # Parse iteration count (first non-flag arg, or default)
         _iterations=5
         _force=false
+        _target_issue=""
+        _next_is_issue=false
         for _arg in "$@"; do
+            if $_next_is_issue; then
+                _target_issue="$_arg"
+                _next_is_issue=false
+                continue
+            fi
             case "$_arg" in
                 --force|-f) _force=true ;;
+                --issue)    _next_is_issue=true ;;
+                --issue=*)  _target_issue="${_arg#--issue=}" ;;
                 [0-9]*)     _iterations="$_arg" ;;
             esac
         done
@@ -375,7 +384,7 @@ case "$CMD" in
         _shft_state_set "max_iterations" "$_iterations"
         _shft_state_set "started_at" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
-        bash "$SHFT_DIR/afk.sh" "$_iterations"
+        SHFT_TARGET_ISSUE="$_target_issue" bash "$SHFT_DIR/afk.sh" "$_iterations"
         ;;
 
     # ── status ─────────────────────────────────────────────────────────────────
