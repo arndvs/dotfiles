@@ -102,6 +102,18 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
 
     echo "token minted for iteration $i (expires_at=$afk_token_expires_at)"
 
+    # Progress ticker — visual heartbeat while waiting for first Claude response
+    _ticker_chars=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+    _tick_i=0
+    while true; do
+        printf "\r  %s thinking..." "${_ticker_chars[$((_tick_i % ${#_ticker_chars[@]}))]}" >&2
+        _tick_i=$((_tick_i + 1))
+        sleep 0.2
+    done &
+    _ticker_pid=$!
+    # Kill ticker on first output or error
+    _stop_ticker() { kill "$_ticker_pid" 2>/dev/null; wait "$_ticker_pid" 2>/dev/null; printf "\r\033[K" >&2; }
+
     source "$SCRIPT_DIR/_build_prompt.sh"
     trap 'rm -f "$PROMPT_FILE"; rmdir "$LOCKDIR" 2>/dev/null' EXIT
     raw_output=$(mktemp)
@@ -157,8 +169,13 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
         < "$PROMPT_FILE" \
         2>"$_afk_stderr_log" \
         | awk '/^[[:space:]]*\{/' \
+        | { _first=true; while IFS= read -r line; do
+              if $_first; then _stop_ticker; _first=false; fi
+              printf '%s\n' "$line"
+            done; } \
         | tee >(jq -rj "$stream_live" >&2 || cat >/dev/null) \
         > "$raw_output"; then
+        _stop_ticker
         echo "ERROR: ${_CLAUDE_CMD[*]} failed on iteration $i" >&2
         echo "  stderr log: $_afk_stderr_log" >&2
         exit 1
