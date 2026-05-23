@@ -50,19 +50,24 @@ fi
 # ── Proxy is enabled — verify daemon is running ──────────────────────────────
 
 _proxy_pid=$(_proxy_env_get "pid")
-if [[ -z "$_proxy_pid" ]] || ! kill -0 "$_proxy_pid" 2>/dev/null; then
-    echo "  ERROR: Proxy enabled but daemon not running." >&2
-    echo "  Start it:  shft proxy start" >&2
-    echo "  Or disable: shft proxy off" >&2
-    exit 1
-fi
-
 _proxy_dir=$(_proxy_env_get "dir")
 _proxy_port=$(_proxy_env_get "port")
 _proxy_port="${_proxy_port:-$_PROXY_DEFAULT_PORT}"
 
+# Verify daemon is running — PID check first, health endpoint fallback (MINGW64 kill -0 can't see Windows PIDs)
+if [[ -z "$_proxy_pid" ]] || ! kill -0 "$_proxy_pid" 2>/dev/null; then
+    if ! curl -sf --max-time 2 "http://localhost:${_proxy_port}/health" >/dev/null 2>&1; then
+        echo "  ERROR: Proxy enabled but daemon not running." >&2
+        echo "  Start it:  shft proxy start" >&2
+        echo "  Or disable: shft proxy off" >&2
+        exit 1
+    fi
+fi
+
 # Health check
-if ! curl -sf --max-time 2 "http://localhost:$_proxy_port/health/readiness" > /dev/null 2>&1; then
+_proxy_check_host=$( (ip route 2>/dev/null || true) | awk '/default/{print $3; exit}'); _proxy_check_host="${_proxy_check_host:-localhost}"
+if ! curl -sf --max-time 2 "http://${_proxy_check_host}:${_proxy_port}/health/readiness" > /dev/null 2>&1 \
+  && ! curl -sf --max-time 2 "http://localhost:${_proxy_port}/health/readiness" > /dev/null 2>&1; then
     echo "  ERROR: Proxy daemon running but health check failed." >&2
     echo "  Restart: shft proxy stop && shft proxy start" >&2
     echo "  Logs:    tail -20 ~/.shft/proxy.log" >&2
@@ -86,7 +91,7 @@ if [[ "$_PROXY_MODE" == "afk" ]]; then
     # AFK runs inside Docker via srt — need host-accessible address
     case "$(uname -s)" in
         MINGW*|MSYS*|CYGWIN*|Darwin*) _proxy_host="host.docker.internal" ;;
-        *)                            _proxy_host="172.17.0.1" ;;
+        *)                            _proxy_host=$(ip route 2>/dev/null | awk '/default/{print $3; exit}'); _proxy_host="${_proxy_host:-172.17.0.1}" ;;
     esac
 else
     _proxy_host="localhost"
@@ -95,7 +100,9 @@ fi
 # Export for claude / srt
 export ANTHROPIC_BASE_URL="http://${_proxy_host}:${_proxy_port}"
 export ANTHROPIC_AUTH_TOKEN="$_proxy_key"
+export ANTHROPIC_MODEL="claude-opus-4-6"
 export CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 
 echo "  Routing: Copilot proxy (${_proxy_host}:${_proxy_port})"
 
