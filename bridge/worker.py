@@ -231,6 +231,9 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
     else:
         path_val = existing_path
     env = {
+        # Git credential injection first — shared helper (same as workspace.py).
+        # Spread before PATH so our computed PATH (with ~/.local/bin) wins.
+        **git_credential_env(token),
         "HOME": os.environ.get("HOME", ""),
         "PATH": path_val,
         "TERM": os.environ.get("TERM", "dumb"),
@@ -238,8 +241,6 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
         "USER": os.environ.get("USER", ""),
         "BRIDGE_WORKSPACE": str(ws_path),
         "GH_TOKEN": token.value,
-        # Git credential injection — shared helper (same as workspace.py)
-        **git_credential_env(token),
     }
     # Pass repo context so gh CLI targets the correct base repo (fork-safe)
     env["GH_REPO"] = repo
