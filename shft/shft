@@ -177,10 +177,15 @@ PYEOF
     fi
 }
 
-# Check if proxy daemon is running (PID-based)
+# Check if proxy daemon is running (PID check first, health endpoint fallback)
 _proxy_running() {
     local pid
     pid=$(_proxy_get "pid")
+    # PID check first (fast, avoids false positives from unrelated services)
+    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+        return 0
+    fi
+    # Fallback to health endpoint (needed on MINGW64 where kill -0 can't see Windows PIDs)
     local port; port=$(_proxy_get "port"); port=${port:-4000}
     local _host; _host=$( (ip route 2>/dev/null || true) | awk '/default/{print $3; exit}'); _host="${_host:-localhost}"
     curl -sf --max-time 2 --connect-timeout 1 "http://${_host}:${port}/health/readiness" >/dev/null 2>&1 || \
@@ -444,8 +449,10 @@ case "$CMD" in
         # Proxy routing
         _proxy_enabled=$(_proxy_get "enabled")
         if [[ "$_proxy_enabled" == "true" ]]; then
+            _status_port=$(_proxy_get "port")
+            _status_port="${_status_port:-$PROXY_DEFAULT_PORT}"
             if _proxy_running; then
-                green "  Routing:   Copilot proxy (port $(_proxy_get "port"))"
+                green "  Routing:   Copilot proxy (port $_status_port)"
             else
                 yellow "  Routing:   Copilot proxy (enabled but daemon not running)"
                 echo "             shft proxy start"
