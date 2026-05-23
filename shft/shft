@@ -183,8 +183,8 @@ _proxy_running() {
     pid=$(_proxy_get "pid")
     local port; port=$(_proxy_get "port"); port=${port:-4000}
     local _host; _host=$( (ip route 2>/dev/null || true) | awk '/default/{print $3; exit}'); _host="${_host:-localhost}"
-    curl -sf "http://${_host}:${port}/health/readiness" >/dev/null 2>&1 || \
-    curl -sf "http://localhost:${port}/health/readiness" >/dev/null 2>&1
+    curl -sf --max-time 2 --connect-timeout 1 "http://${_host}:${port}/health/readiness" >/dev/null 2>&1 || \
+    curl -sf --max-time 2 --connect-timeout 1 "http://localhost:${port}/health/readiness" >/dev/null 2>&1
 }
 
 # Wait for proxy health endpoint
@@ -358,8 +358,11 @@ case "$CMD" in
         done
 
         _require_gh
-        _require_srt
-        _require_docker
+        # srt + Docker only required when not on WSL/MSYS (those use plain claude)
+        if ! grep -qi microsoft /proc/version 2>/dev/null && [[ "$(uname -o 2>/dev/null)" != "Msys" ]]; then
+            _require_srt
+            _require_docker
+        fi
 
         # Validate unless --force
         if [[ "$_force" == false ]]; then
@@ -818,11 +821,9 @@ print(f'  ... ({len(issues)} shown, use shft issues for full list)')
 
                 mkdir -p "$PROXY_STATE_DIR"
 
-                # Source the proxy's .env for LITELLM_MASTER_KEY
-                set -a
-                # shellcheck disable=SC1091
-                source "$_proxy_dir/.env"
-                set +a
+                # Load only the master key (not all vars from .env)
+                _litellm_key=$(_proxy_load_key "$_proxy_dir") || exit 1
+                export LITELLM_MASTER_KEY="$_litellm_key"
 
                 # Check if GitHub Copilot OAuth token exists
                 _token_file="$HOME/.config/litellm/github_copilot/api-key.json"
@@ -877,15 +878,20 @@ print(f'  ... ({len(issues)} shown, use shft issues for full list)')
 
             # ── proxy stop ────────────────────────────────────────────────────
             stop)
-                if ! _proxy_running; then
-                    yellow "Proxy not running"
-                    exit 0
-                fi
-
                 _pid=$(_proxy_get "pid")
-                kill "$_pid" 2>/dev/null
-                _proxy_set "pid" ""
-                green "Proxy stopped (was PID $_pid)"
+                if [[ -n "$_pid" ]] && kill -0 "$_pid" 2>/dev/null; then
+                    kill "$_pid" 2>/dev/null
+                    _proxy_set "pid" ""
+                    green "Proxy stopped (was PID $_pid)"
+                elif _proxy_running; then
+                    yellow "Proxy is healthy but stored PID is stale or missing."
+                    echo "  Find the process manually: lsof -i :$(_proxy_get port) or ss -tlnp"
+                    _proxy_set "pid" ""
+                    exit 1
+                else
+                    _proxy_set "pid" ""
+                    yellow "Proxy not running"
+                fi
                 ;;
 
             # ── proxy status ──────────────────────────────────────────────────
