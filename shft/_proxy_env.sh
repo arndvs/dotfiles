@@ -19,12 +19,16 @@ _PROXY_DEFAULT_PORT=4000
 _proxy_env_get() {
     local field="$1"
     if [[ ! -f "$_PROXY_STATE" ]]; then return; fi
-    local _py_bin=""
-    if command -v python3 &>/dev/null; then _py_bin=python3;
-    elif command -v python &>/dev/null; then _py_bin=python;
-    fi
-    if [[ -n "$_py_bin" ]]; then
-        "$_py_bin" - "$_PROXY_STATE" "$field" <<'PYEOF'
+    # Prefer jq (no shim risk), then python3/python, then grep fallback
+    if command -v jq &>/dev/null; then
+        jq -r --arg f "$field" '.[$f] // empty' "$_PROXY_STATE" 2>/dev/null || true
+    else
+        local _py_bin=""
+        if command -v python3 &>/dev/null && python3 --version &>/dev/null; then _py_bin=python3;
+        elif command -v python &>/dev/null && python --version &>/dev/null; then _py_bin=python;
+        fi
+        if [[ -n "$_py_bin" ]]; then
+            "$_py_bin" - "$_PROXY_STATE" "$field" <<'PYEOF'
 import json, sys
 try:
     d = json.load(open(sys.argv[1]))
@@ -33,8 +37,9 @@ try:
     else: print(v)
 except: pass
 PYEOF
-    else
-        grep -o "\"$field\":[^,}]*" "$_PROXY_STATE" 2>/dev/null | cut -d: -f2 | tr -d ' "' || true
+        else
+            grep -o "\"$field\":[^,}]*" "$_PROXY_STATE" 2>/dev/null | cut -d: -f2 | tr -d ' "' || true
+        fi
     fi
 }
 
@@ -56,7 +61,7 @@ _proxy_port="${_proxy_port:-$_PROXY_DEFAULT_PORT}"
 
 # Verify daemon is running — PID check first, health endpoint fallback (MINGW64 kill -0 can't see Windows PIDs)
 if [[ -z "$_proxy_pid" ]] || ! kill -0 "$_proxy_pid" 2>/dev/null; then
-    if ! curl -sf --max-time 2 "http://localhost:${_proxy_port}/health" >/dev/null 2>&1; then
+    if ! curl -sf --max-time 2 "http://localhost:${_proxy_port}/health/readiness" >/dev/null 2>&1; then
         echo "  ERROR: Proxy enabled but daemon not running." >&2
         echo "  Start it:  shft proxy start" >&2
         echo "  Or disable: shft proxy off" >&2
