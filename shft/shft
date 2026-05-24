@@ -26,6 +26,16 @@ SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || ec
 DOTFILES="${DOTFILES:-$HOME/dotfiles}"
 SHFT_DIR="$DOTFILES/shft"
 
+# ── Self-sync (Windows copy drift guard) ──────────────────────────────────────
+# On Windows, ~/.local/bin/shft is a copy not a symlink. If the source has
+# changed, overwrite the running copy so the next invocation is fresh.
+_SHFT_SOURCE="$SHFT_DIR/shft"
+if [[ -f "$_SHFT_SOURCE" ]] && [[ ! -L "${BASH_SOURCE[0]}" ]] \
+   && ! cmp -s "${BASH_SOURCE[0]}" "$_SHFT_SOURCE"; then
+    cp "$_SHFT_SOURCE" "${BASH_SOURCE[0]}"
+    exec "${BASH_SOURCE[0]}" "$@"   # re-exec with the updated copy
+fi
+
 if [[ ! -f "$DOTFILES/bin/_lib.sh" ]]; then
     echo "  shft: cannot find $DOTFILES/bin/_lib.sh"
     echo "  Run: bash ~/dotfiles/bin/bootstrap.sh"
@@ -373,6 +383,11 @@ case "$CMD" in
         if ! grep -qi microsoft /proc/version 2>/dev/null && [[ "$(uname -o 2>/dev/null)" != "Msys" ]]; then
             _require_srt
             _require_docker
+        else
+            yellow "WARNING: No sandbox available on this platform (WSL/MSYS)."
+            yellow "  Claude will run with --dangerously-skip-permissions and NO containment."
+            yellow "  Deny rules still apply, but there is no defense-in-depth."
+            echo ""
         fi
 
         # Validate unless --force
