@@ -80,6 +80,10 @@ if ! curl -sf --max-time 2 "http://${_proxy_check_host}:${_proxy_port}/health/re
 fi
 
 # Load master key from proxy dir's .env
+if [[ -z "$_proxy_dir" ]]; then
+    echo "  ERROR: Proxy directory not set. Run: shft proxy init <path>" >&2
+    exit 1
+fi
 _proxy_env_file="$_proxy_dir/.env"
 if [[ ! -f "$_proxy_env_file" ]]; then
     echo "  ERROR: Proxy .env not found at $_proxy_env_file" >&2
@@ -116,4 +120,4 @@ echo "  Routing: Copilot proxy (${_proxy_host}:${_proxy_port})"
 # Clean up locals
 unset _PROXY_MODE _PROXY_STATE _PROXY_DEFAULT_PORT
 unset _proxy_enabled _proxy_pid _proxy_dir _proxy_port
-unset _proxy_env_file _proxy_key _proxy_host
+unset _proxy_env_file _proxy_key _proxy_host _proxy_check_host

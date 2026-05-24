@@ -186,7 +186,7 @@ _proxy_running() {
         return 0
     fi
     # Fallback to health endpoint (needed on MINGW64 where kill -0 can't see Windows PIDs)
-    local port; port=$(_proxy_get "port"); port=${port:-4000}
+    local port; port=$(_proxy_get "port"); port=${port:-$PROXY_DEFAULT_PORT}
     local _host; _host=$( (ip route 2>/dev/null || true) | awk '/default/{print $3; exit}'); _host="${_host:-localhost}"
     curl -sf --max-time 2 --connect-timeout 1 "http://${_host}:${port}/health/readiness" >/dev/null 2>&1 || \
     curl -sf --max-time 2 --connect-timeout 1 "http://localhost:${port}/health/readiness" >/dev/null 2>&1
@@ -361,6 +361,12 @@ case "$CMD" in
                 [0-9]*)     _iterations="$_arg" ;;
             esac
         done
+
+        # Validate --issue is numeric
+        if [[ -n "$_target_issue" ]] && ! [[ "$_target_issue" =~ ^[0-9]+$ ]]; then
+            red "Invalid --issue value: $_target_issue (must be a numeric issue ID)"
+            exit 1
+        fi
 
         _require_gh
         # srt + Docker only required when not on WSL/MSYS (those use plain claude)
