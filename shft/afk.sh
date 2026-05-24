@@ -105,7 +105,8 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     # Progress ticker — visual heartbeat while waiting for first Claude response
     _ticker_chars=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
     _tick_i=0
-    while true; do
+    _tick_ppid=$$
+    while kill -0 "$_tick_ppid" 2>/dev/null; do
         printf "\r  %s thinking..." "${_ticker_chars[$((_tick_i % ${#_ticker_chars[@]}))]}" >&2
         _tick_i=$((_tick_i + 1))
         sleep 0.2
@@ -118,7 +119,8 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     _thinking_filter() {
         local line _tpid=
         _start_think() {
-            ( while true; do
+            local _think_ppid=$BASHPID
+            ( while kill -0 "$_think_ppid" 2>/dev/null; do
                 for c in '⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏'; do
                     printf '\r  %s thinking...' "$c"
                     sleep 0.2
@@ -145,9 +147,9 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     }
 
     source "$SCRIPT_DIR/_build_prompt.sh"
-    trap 'rm -f "$PROMPT_FILE"; rmdir "$LOCKDIR" 2>/dev/null' EXIT
+    trap '_stop_ticker; rm -f "$PROMPT_FILE"; rmdir "$LOCKDIR" 2>/dev/null' EXIT
     raw_output=$(mktemp)
-    trap 'rm -f "$raw_output" "$PROMPT_FILE"; rmdir "$LOCKDIR" 2>/dev/null' EXIT
+    trap '_stop_ticker; rm -f "$raw_output" "$PROMPT_FILE"; rmdir "$LOCKDIR" 2>/dev/null' EXIT
 
     # jq filters for stream-json format
     # stream_live: streams tool calls + assistant text to stderr for real-time visibility
