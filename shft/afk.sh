@@ -73,7 +73,7 @@ source "$SCRIPT_DIR/_proxy_env.sh" "afk"
 # ── TypeScript engine delegation ─────────────────────────────────────────────
 if [[ "${SHFT_ENGINE:-bash}" == "ts" ]]; then
     echo "=== shft engine: TypeScript (sandcastle) ==="
-    _push_afk_event "info" "AFK delegating to TypeScript engine ($MAX_ITERATIONS iterations)"
+    _push_afk_event "info" "AFK delegating to TypeScript engine (parallel, max-parallel=${MAX_PARALLEL:-4})"
 
     _engine_env=(env "GITHUB_TOKEN=placeholder")
     [[ -n "${ANTHROPIC_BASE_URL:-}" ]]                      && _engine_env+=("ANTHROPIC_BASE_URL=$ANTHROPIC_BASE_URL")
@@ -82,37 +82,33 @@ if [[ "${SHFT_ENGINE:-bash}" == "ts" ]]; then
     [[ -n "${CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS:-}" ]]   && _engine_env+=("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=$CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
     [[ -n "${CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:-}" ]] && _engine_env+=("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=$CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
 
-    # Token rotation: bash mints a fresh token per iteration, engine consumes it.
-    for i in $(seq 1 "$MAX_ITERATIONS"); do
-        echo "=== shft engine iteration $i of $MAX_ITERATIONS ==="
-        _push_afk_event "info" "Engine iteration $i of $MAX_ITERATIONS started"
+    mint_json=$("$RUN_WITH_SECRETS" "$PYTHON_BIN" "$MINT_SCRIPT") || {
+        echo "ERROR: failed to mint GitHub App token" >&2
+        exit 1
+    }
 
-        mint_json=$("$RUN_WITH_SECRETS" "$PYTHON_BIN" "$MINT_SCRIPT") || {
-            echo "ERROR: failed to mint GitHub App token for iteration $i" >&2
-            exit 1
-        }
+    afk_token=$(printf '%s' "$mint_json" | jq -r '.token // empty')
+    if [[ -z "$afk_token" ]]; then
+        echo "ERROR: token mint returned empty token" >&2
+        exit 1
+    fi
 
-        afk_token=$(printf '%s' "$mint_json" | jq -r '.token // empty')
-        if [[ -z "$afk_token" ]]; then
-            echo "ERROR: token mint returned empty token for iteration $i" >&2
-            exit 1
-        fi
+    _engine_env[1]="GITHUB_TOKEN=$afk_token"
 
-        _engine_env[1]="GITHUB_TOKEN=$afk_token"
+    "${_engine_env[@]}" npx tsx "$SCRIPT_DIR/engine/main.ts" \
+        --repo "$(pwd)" \
+        --workflow parallel \
+        --max-iterations "$MAX_ITERATIONS" \
+        --max-issues "${MAX_ISSUES:-5}" \
+        --max-parallel "${MAX_PARALLEL:-4}" || {
+        echo "ERROR: TypeScript engine failed" >&2
+        _push_afk_event "info" "Engine parallel run failed"
+    }
 
-        "${_engine_env[@]}" npx tsx "$SCRIPT_DIR/engine/main.ts" \
-            --repo "$(pwd)" \
-            --max-iterations 1 || {
-            echo "ERROR: TypeScript engine failed on iteration $i" >&2
-            _push_afk_event "info" "Engine iteration $i failed"
-        }
+    unset afk_token
 
-        unset afk_token
-        _push_afk_event "info" "Engine iteration $i of $MAX_ITERATIONS complete"
-    done
-
-    _push_afk_event "info" "AFK engine complete after $MAX_ITERATIONS iterations"
-    echo "shft engine complete after $MAX_ITERATIONS iterations"
+    _push_afk_event "info" "AFK engine complete (parallel mode)"
+    echo "shft engine complete (parallel mode)"
     exit 0
 fi
 
