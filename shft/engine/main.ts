@@ -4,6 +4,7 @@ import { parseArgs } from "node:util";
 import { run, Output, StructuredOutputError, claudeCode } from "@ai-hero/sandcastle";
 import { noSandbox } from "@ai-hero/sandcastle/sandboxes/no-sandbox";
 import { PlanOutput } from "./schemas/plan-output.js";
+import { runImplementPr } from "./workflows/implement-pr.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -77,6 +78,16 @@ if (workflow === "plan") {
     }
     throw error;
   }
+} else if (workflow === "implement-pr") {
+  if (!values.pr) {
+    throw new Error("--pr is required for implement-pr workflow");
+  }
+  await runImplementPr({
+    prNumber: values.pr,
+    repoDir,
+    model: MODEL,
+    promptsDir: path.resolve(__dirname, "prompts"),
+  });
 } else {
   const result = await run({
     agent: claudeCode(MODEL),
