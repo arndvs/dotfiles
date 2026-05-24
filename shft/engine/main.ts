@@ -6,6 +6,7 @@ import { noSandbox } from "@ai-hero/sandcastle/sandboxes/no-sandbox";
 import { PlanOutput } from "./schemas/plan-output.js";
 import { runImplementPr } from "./workflows/implement-pr.js";
 import { runReview } from "./workflows/review.js";
+import { runToIssuesPrd } from "./workflows/to-issues-prd.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -20,6 +21,7 @@ const { values } = parseArgs({
     branch: { type: "string" },
     pr: { type: "string" },
     "max-issues": { type: "string", default: "5" },
+    "dry-run": { type: "boolean", default: false },
   },
   strict: true,
 });
@@ -98,6 +100,17 @@ if (workflow === "plan") {
     repoDir,
     model: MODEL,
     promptsDir: path.resolve(__dirname, "prompts"),
+  });
+} else if (workflow === "to-issues-prd") {
+  if (!values.issue) {
+    throw new Error("--issue is required for to-issues-prd workflow");
+  }
+  await runToIssuesPrd({
+    issueNumber: values.issue,
+    repoDir,
+    model: MODEL,
+    promptsDir: path.resolve(__dirname, "prompts"),
+    dryRun: values["dry-run"] ?? false,
   });
 } else {
   const result = await run({
