@@ -1,8 +1,9 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { run, claudeCode } from "@ai-hero/sandcastle";
+import { run, Output, StructuredOutputError, claudeCode } from "@ai-hero/sandcastle";
 import { noSandbox } from "@ai-hero/sandcastle/sandboxes/no-sandbox";
+import { PlanOutput } from "./schemas/plan-output.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,6 +17,7 @@ const { values } = parseArgs({
     issue: { type: "string" },
     branch: { type: "string" },
     pr: { type: "string" },
+    "max-issues": { type: "string", default: "5" },
   },
   strict: true,
 });
@@ -31,32 +33,67 @@ if (Number.isNaN(maxIterations) || maxIterations < 1) {
   throw new Error(`--max-iterations must be a positive integer, got: ${values["max-iterations"]}`);
 }
 
-const promptFile = path.resolve(__dirname, "prompts", "implement.md");
+const workflow = values.workflow ?? "implement";
+const promptFile = path.resolve(__dirname, "prompts", `${workflow}.md`);
 
 console.log(`[shft-engine] repo: ${repoDir}`);
-console.log(`[shft-engine] workflow: ${values.workflow}`);
+console.log(`[shft-engine] workflow: ${workflow}`);
 console.log(`[shft-engine] model: ${MODEL}`);
 console.log(`[shft-engine] maxIterations: ${maxIterations}`);
 
 const promptArgs: Record<string, string> = {};
 if (values.issue) promptArgs["ISSUE_NUMBER"] = values.issue;
 if (values.branch) promptArgs["BRANCH"] = values.branch;
+if (values["max-issues"]) promptArgs["MAX_ISSUES"] = values["max-issues"];
 
-const result = await run({
-  agent: claudeCode(MODEL),
-  sandbox: noSandbox(),
-  cwd: repoDir,
-  promptFile,
-  maxIterations,
-  promptArgs,
-  completionSignal: "<promise>COMPLETE</promise>",
-  logging: { type: "stdout" },
-});
+if (workflow === "plan") {
+  try {
+    const result = await run({
+      agent: claudeCode(MODEL),
+      sandbox: noSandbox(),
+      cwd: repoDir,
+      promptFile,
+      maxIterations: 1,
+      promptArgs,
+      output: Output.object({ tag: "output", schema: PlanOutput }),
+      logging: { type: "stdout" },
+    });
 
-console.log(`\n[shft-engine] Iterations: ${result.iterations.length}`);
-console.log(`[shft-engine] Commits: ${result.commits.map((c) => c.sha).join(", ") || "none"}`);
-console.log(`[shft-engine] Branch: ${result.branch}`);
+    console.log(`\n[shft-engine] Plan phase complete`);
+    console.log(`[shft-engine] Issues to work on:`);
+    for (const issue of result.output.issues) {
+      console.log(`  #${issue.number} ${issue.title} → ${issue.branch}`);
+    }
 
-if (result.completionSignal) {
-  console.log(`[shft-engine] Completion signal received`);
+    console.log(`\n[shft-engine] Plan output (JSON):`);
+    console.log(JSON.stringify(result.output, null, 2));
+  } catch (error) {
+    if (error instanceof StructuredOutputError) {
+      console.error(`[shft-engine] Plan phase failed: malformed agent output`);
+      console.error(`[shft-engine] Tag: <${error.tag}>`);
+      console.error(`[shft-engine] Raw matched: ${error.rawMatched ?? "(no match found)"}`);
+      if (error.cause) console.error(`[shft-engine] Cause:`, error.cause);
+      process.exit(1);
+    }
+    throw error;
+  }
+} else {
+  const result = await run({
+    agent: claudeCode(MODEL),
+    sandbox: noSandbox(),
+    cwd: repoDir,
+    promptFile,
+    maxIterations,
+    promptArgs,
+    completionSignal: "<promise>COMPLETE</promise>",
+    logging: { type: "stdout" },
+  });
+
+  console.log(`\n[shft-engine] Iterations: ${result.iterations.length}`);
+  console.log(`[shft-engine] Commits: ${result.commits.map((c) => c.sha).join(", ") || "none"}`);
+  console.log(`[shft-engine] Branch: ${result.branch}`);
+
+  if (result.completionSignal) {
+    console.log(`[shft-engine] Completion signal received`);
+  }
 }
