@@ -78,6 +78,12 @@ if [[ -f "artisan" ]]; then
     contexts="$contexts,laravel"
 fi
 
+# --- cmd (business ops) ---
+CMD_DIR="${CMD_DIR:-$HOME/cmd}"
+if [[ -d "$CMD_DIR" ]] && [[ -f "$CMD_DIR/CLAUDE.md" ]]; then
+    contexts="$contexts,cmd"
+fi
+
 export ACTIVE_CONTEXTS="$contexts"
 echo "$contexts"
 
