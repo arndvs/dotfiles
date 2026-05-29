@@ -1,5 +1,5 @@
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { execSync, execFileSync } from "node:child_process";
 import { run, Output, StructuredOutputError, claudeCode } from "@ai-hero/sandcastle";
 import { noSandbox } from "@ai-hero/sandcastle/sandboxes/no-sandbox";
 import { PrdSlicesOutput } from "../schemas/prd-slices-output.js";
@@ -76,8 +76,9 @@ export async function runToIssuesPrd(opts: { issueNumber: string; repoDir: strin
         ...slice.acceptanceCriteria.map((ac) => `- [ ] ${ac}`),
       ].filter((line) => line !== "" || blockedByLine !== "").join("\n");
 
-      const createdJson = execSync(
-        `gh issue create --title "${slice.title.replace(/"/g, '\\"')}" --body-file -`,
+      const createdJson = execFileSync(
+        "gh",
+        ["issue", "create", "--title", slice.title, "--body-file", "-"],
         {
           input: body,
           encoding: "utf8",
@@ -96,7 +97,7 @@ export async function runToIssuesPrd(opts: { issueNumber: string; repoDir: strin
 
       console.log(`[to-issues-prd] Created #${newNumber}: ${slice.title}`);
 
-      execSync(`gh issue edit ${newNumber} --add-parent ${issueNumber}`, {
+      execFileSync("gh", ["issue", "edit", String(newNumber), "--add-parent", issueNumber], {
         cwd: repoDir,
         stdio: ["ignore", "pipe", "pipe"],
       });
