@@ -55,7 +55,7 @@ export async function runImplementPr(opts: { prNumber: string; repoDir: string; 
 
     const diffOutput = (() => {
       try {
-        return execSync("git diff main...HEAD", { encoding: "utf8", cwd: repoDir, stdio: ["ignore", "pipe", "pipe"] });
+        return execSync(`gh pr diff ${prNumber}`, { encoding: "utf8", cwd: repoDir, stdio: ["ignore", "pipe", "pipe"] });
       } catch {
         return "";
       }
