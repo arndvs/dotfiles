@@ -78,11 +78,15 @@ if [[ -f "artisan" ]]; then
     contexts="$contexts,laravel"
 fi
 
-# --- cmd (business ops) ---
-CMD_DIR="${CMD_DIR:-$HOME/cmd}"
-if [[ -d "$CMD_DIR" ]] && [[ -f "$CMD_DIR/CLAUDE.md" ]]; then
+# --- cmd (business operating system) ---
+# Detects when working inside the cmd repo. Triggers cmd.instructions.md autoload.
+_dc_cmd_dir="${CMD_DIR:-$HOME/cmd}"
+# Expand ~ if present
+_dc_cmd_dir="${_dc_cmd_dir/#\~/$HOME}"
+if [[ -n "$_dc_cmd_dir" ]] && [[ "$PWD" == "$_dc_cmd_dir"* ]] && [[ -f "$_dc_cmd_dir/CLAUDE.md" ]]; then
     contexts="$contexts,cmd"
 fi
+unset _dc_cmd_dir
 
 export ACTIVE_CONTEXTS="$contexts"
 echo "$contexts"
