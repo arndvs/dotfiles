@@ -93,7 +93,7 @@ export async function runImplementPr(opts: { prNumber: string; repoDir: string; 
         [
           "api", "graphql",
           "-F", `nodeId=${threadId}`,
-          "-F", `body=${reply.body}`,
+          "-f", `body=${reply.body}`,
           "-f", "query=mutation($nodeId:ID!,$body:String!){addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$nodeId,body:$body}){comment{id}}}",
         ],
         { cwd: repoDir, stdio: ["ignore", "pipe", "pipe"] },
