@@ -38,7 +38,7 @@ try:
 except: pass
 PYEOF
         else
-            grep -o "\"$field\":[^,}]*" "$_PROXY_STATE" 2>/dev/null | cut -d: -f2 | tr -d ' "' || true
+            grep -o "\"$field\" *: *[^,}]*" "$_PROXY_STATE" 2>/dev/null | sed 's/^[^:]*: *//; s/^ *//; s/ *$//' | tr -d '"\r' || true
         fi
     fi
 }
@@ -89,7 +89,7 @@ if [[ ! -f "$_proxy_env_file" ]]; then
     echo "  ERROR: Proxy .env not found at $_proxy_env_file" >&2
     exit 1
 fi
-_proxy_key=$(grep '^LITELLM_MASTER_KEY=' "$_proxy_env_file" | cut -d= -f2-)
+_proxy_key=$(grep '^LITELLM_MASTER_KEY=' "$_proxy_env_file" | cut -d= -f2- | tr -d '\r' | sed 's/^["'\'']*//; s/["'\'']*$//')
 if [[ -z "$_proxy_key" ]]; then
     echo "  ERROR: LITELLM_MASTER_KEY not found in $_proxy_env_file" >&2
     exit 1
@@ -102,7 +102,14 @@ if [[ "$_PROXY_MODE" == "afk" ]]; then
     case "$(uname -s)" in
         MINGW*|MSYS*|CYGWIN*) _proxy_host="localhost" ;;
         Darwin*)              _proxy_host="host.docker.internal" ;;
-        *)                    _proxy_host=$(ip route 2>/dev/null | awk '/default/{print $3; exit}'); _proxy_host="${_proxy_host:-172.17.0.1}" ;;
+        *)
+            # WSL runs claude directly (no Docker) — use localhost, not gateway
+            if grep -qi microsoft /proc/version 2>/dev/null; then
+                _proxy_host="localhost"
+            else
+                _proxy_host=$(ip route 2>/dev/null | awk '/default/{print $3; exit}'); _proxy_host="${_proxy_host:-172.17.0.1}"
+            fi
+            ;;
     esac
 else
     _proxy_host="localhost"
