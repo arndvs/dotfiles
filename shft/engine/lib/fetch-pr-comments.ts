@@ -93,13 +93,13 @@ query($owner:String!,$repo:String!,$number:Int!) {
   }
 }`;
 
-function sh(cmd: string): string {
-  return execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+function sh(cmd: string, cwd?: string): string {
+  return execSync(cmd, { encoding: "utf8", cwd, stdio: ["ignore", "pipe", "pipe"] });
 }
 
-function safeSh(cmd: string): string {
+function safeSh(cmd: string, cwd?: string): string {
   try {
-    return sh(cmd);
+    return sh(cmd, cwd);
   } catch {
     return "";
   }
@@ -120,23 +120,23 @@ function getOwnerRepo(opts: { cwd: string }): { owner: string; repo: string } {
 }
 
 export function fetchPrComments(opts: { prNumber: string; cwd: string }): PrContext {
-  const prViewJson = sh(`gh pr view ${opts.prNumber} --json title,body,headRefOid,comments`);
+  const prViewJson = sh(`gh pr view ${opts.prNumber} --json title,body,headRefOid,comments`, opts.cwd);
   const prView = PrView.parse(JSON.parse(prViewJson));
 
   const issueMatch = prView.body?.match(/(?:closes|fixes|resolves)\s+#(\d+)/i);
   const issueNumber = issueMatch?.[1] ?? "";
   const issueTitle = issueNumber
-    ? safeSh(`gh issue view ${issueNumber} --json title --jq .title`).trim()
+    ? safeSh(`gh issue view ${issueNumber} --json title --jq .title`, opts.cwd).trim()
     : "";
 
-  const reviewsJson = sh(`gh api repos/{owner}/{repo}/pulls/${opts.prNumber}/reviews`);
+  const reviewsJson = sh(`gh api repos/{owner}/{repo}/pulls/${opts.prNumber}/reviews`, opts.cwd);
   const reviews = ReviewsResponse.parse(JSON.parse(reviewsJson));
 
   const { owner, repo } = getOwnerRepo({ cwd: opts.cwd });
   const threadsJson = execFileSync(
     "gh",
     ["api", "graphql", "-F", `owner=${owner}`, "-F", `repo=${repo}`, "-F", `number=${opts.prNumber}`, "-f", `query=${GRAPHQL_QUERY}`],
-    { encoding: "utf8" },
+    { encoding: "utf8", cwd: opts.cwd },
   );
   const threadsParsed = ThreadsResponse.parse(JSON.parse(threadsJson));
 
