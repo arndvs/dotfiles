@@ -117,7 +117,9 @@
       "Read(*secrets/.env*)",
       "Read(*secrets/.env.secrets*)",
       "Read(*/secrets/.env*)",
-      "Read(*/.env.secrets)"
+      "Read(*/.env.secrets)",
+      "Read(*/.env.secrets*)",
+      "Read(.env.secrets*)"
     ]
   },
   "hooks": {
