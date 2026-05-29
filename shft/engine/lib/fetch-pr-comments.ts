@@ -120,6 +120,9 @@ function getOwnerRepo(opts: { cwd: string }): { owner: string; repo: string } {
 }
 
 export function fetchPrComments(opts: { prNumber: string; cwd: string }): PrContext {
+  if (!/^\d+$/.test(opts.prNumber)) {
+    throw new Error(`Invalid PR number: ${opts.prNumber}`);
+  }
   const prViewJson = sh(`gh pr view ${opts.prNumber} --json title,body,headRefOid,comments`, opts.cwd);
   const prView = PrView.parse(JSON.parse(prViewJson));
 
