@@ -107,6 +107,13 @@ if _detect_client_project; then
     export ACTIVE_PROJECT
     _write_active_output "$ACTIVE_CLIENT" "$ACTIVE_PROJECT"
 
+    # Inject cmd venture context if available
+    _dc_cmd_script="$DOTFILES/bin/detect-cmd.sh"
+    if [[ -f "$_dc_cmd_script" ]]; then
+        source "$_dc_cmd_script" "$ACTIVE_CLIENT" 2>/dev/null || true
+    fi
+    unset _dc_cmd_script
+
     # HUD event — client context change (inline, non-blocking)
     {
         _dc_pipe="${DOTFILES}/working/hud.pipe"
@@ -117,10 +124,12 @@ if _detect_client_project; then
         _dc_ctx="${ACTIVE_CONTEXTS:-general}"
         _dc_payload=$(printf '{"type":"context","project":"%s","projectPath":"%s","contexts":"%s","message":"%s","timestamp":"%s","time":"%s"}' \
             "$(basename "$(pwd)" 2>/dev/null || echo "unknown")" "${PWD/$HOME/~}" "$_dc_ctx" "$_dc_msg" "$_dc_ts" "$_dc_td")
-        if [[ -p "$_dc_pipe" ]]; then
+        if [[ -p "$_dc_pipe" ]] && [[ "$(uname -o 2>/dev/null)" != "Msys" ]]; then
             ( printf '%s\n' "$_dc_payload" > "$_dc_pipe" ) 2>/dev/null &
+            disown 2>/dev/null
         else
             printf '%s\n' "$_dc_payload" >> "${DOTFILES}/working/events.jsonl" 2>/dev/null &
+            disown 2>/dev/null
         fi
         unset _dc_pipe _dc_ts _dc_td _dc_msg _dc_ctx _dc_payload
     } 2>/dev/null || true
