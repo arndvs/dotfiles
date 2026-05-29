@@ -151,7 +151,7 @@ try:
 except: pass
 PYEOF
         else
-            grep -o "\"$field\":[^,}]*" "$PROXY_STATE_FILE" 2>/dev/null | cut -d: -f2 | tr -d ' "' || true
+            grep -o "\"$field\" *: *[^,}]*" "$PROXY_STATE_FILE" 2>/dev/null | sed 's/^[^:]*: *//; s/^ *//; s/ *$//' | tr -d '"\r' || true
         fi
     fi
 }
@@ -223,7 +223,7 @@ _proxy_load_key() {
         red "Proxy .env not found at $env_file"
         return 1
     fi
-    grep '^LITELLM_MASTER_KEY=' "$env_file" | cut -d= -f2-
+    grep '^LITELLM_MASTER_KEY=' "$env_file" | cut -d= -f2- | tr -d '\r' | sed 's/^["'\'']*//; s/["'\'']*$//'
 }
 
 # Require gh CLI
