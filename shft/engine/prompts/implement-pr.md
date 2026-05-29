@@ -10,13 +10,13 @@ Your job is to read the unresolved conversation on this PR, decide what (if anyt
 
 {{ISSUE_TITLE}}
 
-!`gh issue view {{ISSUE_NUMBER}} --comments`
+!`gh issue view {{ISSUE_NUMBER}} --comments 2>/dev/null || echo "(No linked issue)"`
 
 </linked-issue>
 
 <diff-to-main>
 
-!`git diff main..HEAD`
+!`gh pr diff {{PR_NUMBER}}`
 
 </diff-to-main>
 
