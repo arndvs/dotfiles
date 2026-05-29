@@ -107,6 +107,13 @@ if _detect_client_project; then
     export ACTIVE_PROJECT
     _write_active_output "$ACTIVE_CLIENT" "$ACTIVE_PROJECT"
 
+    # Inject cmd venture context if available
+    _dc_cmd_script="$DOTFILES/bin/detect-cmd.sh"
+    if [[ -f "$_dc_cmd_script" ]]; then
+        source "$_dc_cmd_script" "$ACTIVE_CLIENT" 2>/dev/null || true
+    fi
+    unset _dc_cmd_script
+
     # HUD event — client context change (inline, non-blocking)
     {
         _dc_pipe="${DOTFILES}/working/hud.pipe"

@@ -26,6 +26,18 @@ SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || ec
 DOTFILES="${DOTFILES:-$HOME/dotfiles}"
 SHFT_DIR="$DOTFILES/shft"
 
+# ── Self-sync (Windows copy drift guard) ──────────────────────────────────────
+# On Windows/MSYS/MINGW, ~/.local/bin/shft is a copy not a symlink. If the
+# source has changed, overwrite the running copy so the next invocation is fresh.
+_SHFT_SOURCE="$SHFT_DIR/shft"
+if [[ "$(uname -o 2>/dev/null)" == "Msys" || "$(uname -s)" == MINGW* ]] \
+   && [[ -f "$_SHFT_SOURCE" ]] && [[ ! -L "${BASH_SOURCE[0]}" ]] \
+   && ! cmp -s "${BASH_SOURCE[0]}" "$_SHFT_SOURCE"; then
+    if cp "$_SHFT_SOURCE" "${BASH_SOURCE[0]}" 2>/dev/null; then
+        exec "${BASH_SOURCE[0]}" "$@"   # re-exec with the updated copy
+    fi
+fi
+
 if [[ ! -f "$DOTFILES/bin/_lib.sh" ]]; then
     echo "  shft: cannot find $DOTFILES/bin/_lib.sh"
     echo "  Run: bash ~/dotfiles/bin/bootstrap.sh"
@@ -141,7 +153,7 @@ try:
 except: pass
 PYEOF
         else
-            grep -o "\"$field\":[^,}]*" "$PROXY_STATE_FILE" 2>/dev/null | cut -d: -f2 | tr -d ' "' || true
+            grep -o "\"$field\" *: *[^,}]*" "$PROXY_STATE_FILE" 2>/dev/null | sed 's/^[^:]*: *//; s/^ *//; s/ *$//' | tr -d '"\r' || true
         fi
     fi
 }
@@ -213,7 +225,7 @@ _proxy_load_key() {
         red "Proxy .env not found at $env_file"
         return 1
     fi
-    grep '^LITELLM_MASTER_KEY=' "$env_file" | cut -d= -f2-
+    grep '^LITELLM_MASTER_KEY=' "$env_file" | cut -d= -f2- | tr -d '\r' | sed 's/^["'\'']*//; s/["'\'']*$//'
 }
 
 # Require gh CLI
@@ -362,6 +374,12 @@ case "$CMD" in
             esac
         done
 
+        # Fail fast if --issue was provided without a value
+        if $_next_is_issue; then
+            red "--issue requires a value (e.g., --issue 42)"
+            exit 1
+        fi
+
         # Validate --issue is numeric
         if [[ -n "$_target_issue" ]] && ! [[ "$_target_issue" =~ ^[0-9]+$ ]]; then
             red "Invalid --issue value: $_target_issue (must be a numeric issue ID)"
@@ -373,6 +391,11 @@ case "$CMD" in
         if ! grep -qi microsoft /proc/version 2>/dev/null && [[ "$(uname -o 2>/dev/null)" != "Msys" ]]; then
             _require_srt
             _require_docker
+        else
+            yellow "WARNING: No sandbox available on this platform (WSL/MSYS)."
+            yellow "  Claude will run with --dangerously-skip-permissions and NO containment."
+            yellow "  Deny rules still apply, but there is no defense-in-depth."
+            echo ""
         fi
 
         # Validate unless --force
