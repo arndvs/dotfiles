@@ -1,5 +1,5 @@
 import path from "node:path";
-import { execSync, execFileSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { run, Output, StructuredOutputError, claudeCode } from "@ai-hero/sandcastle";
 import { noSandbox } from "@ai-hero/sandcastle/sandboxes/no-sandbox";
 import { PrdSlicesOutput } from "../schemas/prd-slices-output.js";
@@ -9,7 +9,7 @@ export async function runToIssuesPrd(opts: { issueNumber: string; repoDir: strin
 
   console.log(`[to-issues-prd] Reading PRD from issue #${issueNumber}...`);
 
-  const prdJson = execSync(`gh issue view ${issueNumber} --json title,body`, {
+  const prdJson = execFileSync("gh", ["issue", "view", issueNumber, "--json", "title,body"], {
     encoding: "utf8",
     cwd: repoDir,
     stdio: ["ignore", "pipe", "pipe"],
