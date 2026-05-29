@@ -91,13 +91,13 @@ _shft_state() {
     local field="$1"
     if [[ -f "$STATE_FILE" ]]; then
         if [[ -n "$SHFT_PYTHON" ]]; then
-            "$SHFT_PYTHON" -c "
+            "$SHFT_PYTHON" - "$STATE_FILE" "$field" <<'PYEOF'
 import json, sys
 try:
-    d = json.load(open('$STATE_FILE'))
-    print(d.get('$field', ''))
+    d = json.load(open(sys.argv[1]))
+    print(d.get(sys.argv[2], ''))
 except: pass
-" 2>/dev/null
+PYEOF
         else
             grep -o "\"$field\":[^,}]*" "$STATE_FILE" 2>/dev/null | cut -d: -f2 | tr -d ' "' || true
         fi
@@ -421,7 +421,11 @@ case "$CMD" in
         _shft_state_set "max_iterations" "$_iterations"
         _shft_state_set "started_at" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
-        SHFT_TARGET_ISSUE="$_target_issue" bash "$SHFT_DIR/afk.sh" "$_iterations"
+        # Resolve engine: explicit env var > state file > default (bash)
+        _engine="${SHFT_ENGINE:-$(_shft_state "engine")}"
+        _engine="${_engine:-bash}"
+
+        SHFT_ENGINE="$_engine" SHFT_TARGET_ISSUE="$_target_issue" bash "$SHFT_DIR/afk.sh" "$_iterations"
         ;;
 
     # ── status ─────────────────────────────────────────────────────────────────
@@ -489,6 +493,15 @@ case "$CMD" in
             yellow "  ⚠ Extended thinking disabled (Copilot limitation)"
         else
             echo "  Routing:   Anthropic API (direct)"
+        fi
+
+        # Engine mode
+        _engine=$(_shft_state "engine")
+        _engine="${_engine:-bash}"
+        if [[ "$_engine" == "ts" ]]; then
+            green "  Engine:    TypeScript (sandcastle)"
+        else
+            echo "  Engine:    bash (default)"
         fi
 
         echo ""
@@ -1018,6 +1031,44 @@ print(f'  ... ({len(issues)} shown, use shft issues for full list)')
         esac
         ;;
 
+    # ── engine ─────────────────────────────────────────────────────────────────
+    engine)
+        _sub="${1:-status}"
+        shift 2>/dev/null || true
+
+        case "$_sub" in
+            on)
+                _shft_state_set "engine" "ts"
+                green "Engine set to TypeScript (sandcastle)"
+                echo "  shft afk will use the TypeScript engine."
+                echo "  Or pass SHFT_ENGINE=ts explicitly."
+                ;;
+            off)
+                _shft_state_set "engine" "bash"
+                green "Engine set to bash (default)"
+                echo "  shft afk will use the existing bash pipeline."
+                ;;
+            status)
+                _engine=$(_shft_state "engine")
+                _engine="${_engine:-bash}"
+                echo ""
+                echo "  Engine: $_engine"
+                if [[ "$_engine" == "ts" ]]; then
+                    green "  shft afk → TypeScript engine (sandcastle)"
+                else
+                    echo "  shft afk → bash pipeline (default)"
+                fi
+                echo "  Override: SHFT_ENGINE=ts shft afk"
+                echo ""
+                ;;
+            *)
+                red "Unknown engine subcommand: $_sub"
+                echo "  Usage: shft engine [on|off|status]"
+                exit 1
+                ;;
+        esac
+        ;;
+
     # ── help ───────────────────────────────────────────────────────────────────
     help|--help|-h)
         echo ""
@@ -1066,6 +1117,12 @@ print(f'  ... ({len(issues)} shown, use shft issues for full list)')
         echo "  shft proxy on/off      toggle Copilot routing"
         echo "  shft proxy start/stop  manage proxy daemon"
         echo "  shft proxy status      show proxy state and health"
+        echo ""
+        echo "  Engine"
+        echo "  ──────────────────────────────────────────────────────────────"
+        echo "  shft engine            show current engine (bash or ts)"
+        echo "  shft engine on         switch to TypeScript engine (sandcastle)"
+        echo "  shft engine off        switch back to bash pipeline"
         echo ""
         echo "  Other"
         echo "  ──────────────────────────────────────────────────────────────"
