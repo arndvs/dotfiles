@@ -143,7 +143,7 @@ export function fetchPrComments(opts: { prNumber: string; cwd: string }): PrCont
   );
   const threadsParsed = ThreadsResponse.parse(JSON.parse(threadsJson));
 
-  const unresolvedThreads = threadsParsed.data.repository.pullRequest.reviewThreads.nodes.filter((t) => !t.isResolved);
+  const unresolvedThreads = threadsParsed.data.repository.pullRequest.reviewThreads.nodes.filter((t) => !t.isResolved && !t.isOutdated);
 
   const comments: PrComments = {
     issue_comments: prView.comments.map((c) => ({
