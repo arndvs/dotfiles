@@ -75,7 +75,7 @@ if [[ "${SHFT_ENGINE:-bash}" == "ts" ]]; then
     echo "=== shft engine: TypeScript (sandcastle) ==="
     _push_afk_event "info" "AFK delegating to TypeScript engine (parallel, max-parallel=${MAX_PARALLEL:-4})"
 
-    _engine_env=(env "GITHUB_TOKEN=placeholder")
+    _engine_env=(env)
     [[ -n "${ANTHROPIC_BASE_URL:-}" ]]                      && _engine_env+=("ANTHROPIC_BASE_URL=$ANTHROPIC_BASE_URL")
     [[ -n "${ANTHROPIC_AUTH_TOKEN:-}" ]]                     && _engine_env+=("ANTHROPIC_AUTH_TOKEN=$ANTHROPIC_AUTH_TOKEN")
     [[ -n "${ANTHROPIC_MODEL:-}" ]]                          && _engine_env+=("ANTHROPIC_MODEL=$ANTHROPIC_MODEL")
@@ -93,7 +93,7 @@ if [[ "${SHFT_ENGINE:-bash}" == "ts" ]]; then
         exit 1
     fi
 
-    _engine_env[1]="GITHUB_TOKEN=$afk_token"
+    _engine_env+=("GITHUB_TOKEN=$afk_token")
 
     "${_engine_env[@]}" npx tsx "$SCRIPT_DIR/engine/main.ts" \
         --repo "$(pwd)" \
@@ -103,6 +103,7 @@ if [[ "${SHFT_ENGINE:-bash}" == "ts" ]]; then
         --max-parallel "${MAX_PARALLEL:-4}" || {
         echo "ERROR: TypeScript engine failed" >&2
         _push_afk_event "info" "Engine parallel run failed"
+        exit 1
     }
 
     unset afk_token
