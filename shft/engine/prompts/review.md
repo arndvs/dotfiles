@@ -8,7 +8,7 @@ Your job is to perform a thorough code review: find bugs, logic errors, edge cas
 
 <diff>
 
-!`git diff main...HEAD`
+!`gh pr diff {{PR_NUMBER}}`
 
 </diff>
 
