@@ -29,7 +29,7 @@ def _run_emit(hud_script: str, payload_json: str, safe_env: dict) -> None:
             env=safe_env,
         )
     except Exception as e:
-        logger.warning("HUD emit failed (non-fatal): %s", e)
+        logger.debug("HUD emit failed (non-fatal): %s", e)
 
 
 def emit(
