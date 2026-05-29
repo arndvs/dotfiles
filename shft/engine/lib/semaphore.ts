@@ -9,8 +9,9 @@ export class Semaphore {
       this.active++;
       return;
     }
-    const { promise, resolve } = Promise.withResolvers<void>();
-    this.queue.push(resolve);
+    let resolve: () => void;
+    const promise = new Promise<void>((r) => { resolve = r; });
+    this.queue.push(resolve!);
     return promise;
   }
 
