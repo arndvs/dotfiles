@@ -28,8 +28,8 @@ description: "Client-level context — brand, voice, NAP data, stakeholders. Loa
 ## cmd integration
 
 Set `cmd-venture` above to link this client to a cmd venture directory.
-When loading logic is added to `detect-client.sh`, the agent will use this field
-to include `$CMD_DIR/ventures/<cmd-venture>/` for business context (strategy,
+When this client is active, `detect-client.sh` uses this field to include
+`$CMD_DIR/ventures/<cmd-venture>/` for business context (strategy,
 decisions, links) when working on this client's projects.
 
 ## Key context
