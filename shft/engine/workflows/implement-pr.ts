@@ -51,7 +51,11 @@ export async function runImplementPr(opts: { prNumber: string; repoDir: string; 
       process.exit(1);
     }
 
-    const headSha = execSync("git rev-parse HEAD", { encoding: "utf8", cwd: repoDir }).trim();
+    const headSha = execSync(`gh pr view ${prNumber} --json headRefOid --jq .headRefOid`, {
+      encoding: "utf8",
+      cwd: repoDir,
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
 
     const diffOutput = (() => {
       try {
