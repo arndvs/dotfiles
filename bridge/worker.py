@@ -24,6 +24,7 @@ import httpx
 
 from . import db, github, hud, issue, workspace
 from .config import Config
+from .git_creds import git_credential_env
 
 logger = logging.getLogger("bridge.worker")
 
@@ -230,6 +231,9 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
     else:
         path_val = existing_path
     env = {
+        # Git credential injection first — shared helper (same as workspace.py).
+        # Spread before PATH so our computed PATH (with ~/.local/bin) wins.
+        **git_credential_env(token),
         "HOME": os.environ.get("HOME", ""),
         "PATH": path_val,
         "TERM": os.environ.get("TERM", "dumb"),
@@ -237,19 +241,16 @@ def _process_job(cfg: Config, job: db.Job, worker_id: str) -> None:
         "USER": os.environ.get("USER", ""),
         "BRIDGE_WORKSPACE": str(ws_path),
         "GH_TOKEN": token.value,
-        # Git credential injection (ephemeral, same pattern as workspace.py)
-        "GIT_CONFIG_COUNT": "1",
-        "GIT_CONFIG_KEY_0": (
-            f"url.https://x-access-token:{token.value}@github.com/.insteadOf"
-        ),
-        "GIT_CONFIG_VALUE_0": "https://github.com/",
     }
     # Pass repo context so gh CLI targets the correct base repo (fork-safe)
     env["GH_REPO"] = repo
 
     try:
+        shft_cmd = [shft_bin, "afk", "1"]
+        if tracking_number:
+            shft_cmd += ["--issue", str(tracking_number)]
         proc = subprocess.Popen(
-            [shft_bin, "afk", "1"],
+            shft_cmd,
             cwd=str(ws_path),
             env=env,
             start_new_session=True,

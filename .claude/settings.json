@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "theme": "dark",
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(cat:*)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(which:*)",
+      "Bash(file:*)",
+      "Bash(diff:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(awk:*)",
+      "Bash(sed:*)",
+      "Bash(tr:*)",
+      "Bash(cut:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(chmod:*)",
+      "Bash(touch:*)",
+      "Bash(realpath:*)",
+      "Bash(dirname:*)",
+      "Bash(basename:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git diff:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git stash:*)",
+      "Bash(git show:*)",
+      "Bash(git remote:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)",
+      "Bash(gh issue close *)",
+      "Bash(gh issue comment *)",
+      "Bash(gh issue edit *)",
+      "Bash(gh issue list *)",
+      "Bash(gh issue view *)",
+      "Bash(gh issue create *)",
+      "Bash(gh pr *)",
+      "Bash(gh api *)",
+      "Bash(gh repo view *)",
+      "Bash(shellcheck:*)",
+      "Bash(bash -n *)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(pip:*)",
+      "Bash(pip3:*)",
+      "Bash(node:*)",
+      "Bash(npx:*)",
+      "Bash(npm:*)",
+      "Bash(curl:*)",
+      "Bash(jq:*)",
+      "mcp__ide__getDiagnostics",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:docs.anthropic.com)"
+    ],
+    "deny": [
+      "Bash(cat *secrets/*)",
+      "Bash(cat */.env*)",
+      "Bash(cat .env*)",
+      "Bash(cat ~/.env*)",
+      "Bash(less *secrets/*)",
+      "Bash(less */.env*)",
+      "Bash(less .env*)",
+      "Bash(more *secrets/*)",
+      "Bash(more */.env*)",
+      "Bash(more .env*)",
+      "Bash(head *secrets/*)",
+      "Bash(head */.env*)",
+      "Bash(head .env*)",
+      "Bash(tail *secrets/*)",
+      "Bash(tail */.env*)",
+      "Bash(tail .env*)",
+      "Bash(echo *$*KEY*)",
+      "Bash(echo *$*TOKEN*)",
+      "Bash(echo *$*PASSWORD*)",
+      "Bash(echo *$*SECRET*)",
+      "Bash(echo *$*VAULT*)",
+      "Bash(printf *$*KEY*)",
+      "Bash(printf *$*TOKEN*)",
+      "Bash(printf *$*PASSWORD*)",
+      "Bash(printf *$*SECRET*)",
+      "Bash(printf *$*VAULT*)",
+      "Bash(env)",
+      "Bash(env *)",
+      "Bash(printenv)",
+      "Bash(printenv *)",
+      "Bash(set)",
+      "Bash(export -p)",
+      "Bash(declare -x)",
+      "Bash(grep *secrets/*)",
+      "Bash(grep */.env*)",
+      "Bash(grep .env*)",
+      "Bash(awk *secrets/*)",
+      "Bash(sed *secrets/*)",
+      "Bash(source *secrets/.env.secrets*)",
+      "Bash(. *secrets/.env.secrets*)",
+      "Bash(python*os.environ*)",
+      "Bash(python*os.getenv*)",
+      "Bash(node*process.env*)",
+      "Bash(dangerouslyDisableSandbox*)",
+      "Read(*secrets/.env*)",
+      "Read(*secrets/.env.secrets*)",
+      "Read(*/secrets/.env*)",
+      "Read(*/.env.secrets)",
+      "Read(*/.env.secrets*)",
+      "Read(.env.secrets*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/hud-session.sh\""
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/stale-branches.sh\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/secret-guard.sh\""
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/migration-guard.sh\""
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/git-workflow-gate.sh\""
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/plan-quality-gate.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'command -v python3 >/dev/null 2>&1 && python3 \"$HOME/.claude/hooks/plan-review-phase2.py\" || exit 0'"
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/test-gate.sh\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/format-check.sh\""
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/typecheck.sh\""
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/hud-session.sh\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/hud-reads.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/git-post-push.sh\""
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/git-post-commit.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'command -v python3 >/dev/null 2>&1 && python3 \"$HOME/.claude/hooks/feedback-memory-gate.py\" || exit 0'"
+          }
+        ]
+      }
+    ],
+    "InstructionsLoaded": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/hud-reads.sh\""
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/compaction-guard.sh\""
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"$HOME/.claude/statusline-command.sh\""
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true
+  },
+  "sandbox": {
+    "enabled": true,
+    "network": {
+      "allowedDomains": [
+        "api.anthropic.com",
+        "console.anthropic.com",
+        "statsig.anthropic.com",
+        "github.com",
+        "api.github.com",
+        "raw.githubusercontent.com",
+        "registry.npmjs.org",
+        "pypi.org",
+        "files.pythonhosted.org",
+        "proxy.golang.org",
+        "sum.golang.org"
+      ]
+    }
+  }
+}

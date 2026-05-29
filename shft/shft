@@ -26,6 +26,18 @@ SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || ec
 DOTFILES="${DOTFILES:-$HOME/dotfiles}"
 SHFT_DIR="$DOTFILES/shft"
 
+# ── Self-sync (Windows copy drift guard) ──────────────────────────────────────
+# On Windows/MSYS/MINGW, ~/.local/bin/shft is a copy not a symlink. If the
+# source has changed, overwrite the running copy so the next invocation is fresh.
+_SHFT_SOURCE="$SHFT_DIR/shft"
+if [[ "$(uname -o 2>/dev/null)" == "Msys" || "$(uname -s)" == MINGW* ]] \
+   && [[ -f "$_SHFT_SOURCE" ]] && [[ ! -L "${BASH_SOURCE[0]}" ]] \
+   && ! cmp -s "${BASH_SOURCE[0]}" "$_SHFT_SOURCE"; then
+    if cp "$_SHFT_SOURCE" "${BASH_SOURCE[0]}" 2>/dev/null; then
+        exec "${BASH_SOURCE[0]}" "$@"   # re-exec with the updated copy
+    fi
+fi
+
 if [[ ! -f "$DOTFILES/bin/_lib.sh" ]]; then
     echo "  shft: cannot find $DOTFILES/bin/_lib.sh"
     echo "  Run: bash ~/dotfiles/bin/bootstrap.sh"
@@ -60,6 +72,12 @@ WORKING_DIR="$DOTFILES/working"
 LOG_FILE="$WORKING_DIR/shft.log"
 STATE_FILE="$WORKING_DIR/shft-state.json"
 PLAN_FILE="$WORKING_DIR/plan.md"
+
+# Proxy state (global — shared across all projects)
+PROXY_STATE_DIR="$HOME/.shft"
+PROXY_STATE_FILE="$PROXY_STATE_DIR/proxy.json"
+PROXY_LOG_FILE="$PROXY_STATE_DIR/proxy.log"
+PROXY_DEFAULT_PORT=4000
 
 # ── Helper functions ──────────────────────────────────────────────────────────
 
@@ -118,6 +136,98 @@ PYEOF
     fi
 }
 
+# ── Proxy state helpers ───────────────────────────────────────────────────────
+
+# Read a field from global proxy state
+_proxy_get() {
+    local field="$1"
+    if [[ -f "$PROXY_STATE_FILE" ]]; then
+        if [[ -n "$SHFT_PYTHON" ]]; then
+            "$SHFT_PYTHON" - "$PROXY_STATE_FILE" "$field" <<'PYEOF'
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+    v = d.get(sys.argv[2], '')
+    if isinstance(v, bool): print(str(v).lower())
+    else: print(v)
+except: pass
+PYEOF
+        else
+            grep -o "\"$field\" *: *[^,}]*" "$PROXY_STATE_FILE" 2>/dev/null | sed 's/^[^:]*: *//; s/^ *//; s/ *$//' | tr -d '"\r' || true
+        fi
+    fi
+}
+
+# Write a field to global proxy state
+_proxy_set() {
+    local field="$1" value="$2"
+    mkdir -p "$PROXY_STATE_DIR"
+    if [[ -n "$SHFT_PYTHON" ]]; then
+        "$SHFT_PYTHON" - "$PROXY_STATE_FILE" "$field" "$value" <<'PYEOF'
+import json, os, sys
+path, field, value = sys.argv[1], sys.argv[2], sys.argv[3]
+try:
+    d = json.load(open(path)) if os.path.exists(path) else {}
+except Exception:
+    d = {}
+# Parse booleans and numbers
+if value.lower() in ('true', 'false'):
+    value = value.lower() == 'true'
+elif value.isdigit():
+    value = int(value)
+d[field] = value
+json.dump(d, open(path, 'w'), indent=2)
+PYEOF
+        true
+    elif command -v jq &>/dev/null && [[ -f "$PROXY_STATE_FILE" ]]; then
+        jq --arg f "$field" --arg v "$value" '.[$f] = $v' "$PROXY_STATE_FILE" > "${PROXY_STATE_FILE}.tmp" \
+            && mv "${PROXY_STATE_FILE}.tmp" "$PROXY_STATE_FILE"
+    elif command -v jq &>/dev/null; then
+        jq -n --arg f "$field" --arg v "$value" '{($f): $v}' > "$PROXY_STATE_FILE"
+    else
+        printf '{"%s": "%s"}\n' "$field" "$value" > "$PROXY_STATE_FILE"
+    fi
+}
+
+# Check if proxy daemon is running (PID check first, health endpoint fallback)
+_proxy_running() {
+    local pid
+    pid=$(_proxy_get "pid")
+    # PID check first (fast, avoids false positives from unrelated services)
+    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+        return 0
+    fi
+    # Fallback to health endpoint (needed on MINGW64 where kill -0 can't see Windows PIDs)
+    local port; port=$(_proxy_get "port"); port=${port:-$PROXY_DEFAULT_PORT}
+    local _host; _host=$( (ip route 2>/dev/null || true) | awk '/default/{print $3; exit}'); _host="${_host:-localhost}"
+    curl -sf --max-time 2 --connect-timeout 1 "http://${_host}:${port}/health/readiness" >/dev/null 2>&1 || \
+    curl -sf --max-time 2 --connect-timeout 1 "http://localhost:${port}/health/readiness" >/dev/null 2>&1
+}
+
+# Wait for proxy health endpoint
+_proxy_wait_healthy() {
+    local port="${1:-$PROXY_DEFAULT_PORT}" attempts=0
+    while [[ $attempts -lt 30 ]]; do
+        if curl -sf --max-time 1 "http://localhost:$port/health/readiness" > /dev/null 2>&1; then
+            return 0
+        fi
+        sleep 0.5
+        attempts=$(( attempts + 1 ))
+    done
+    return 1
+}
+
+# Load LITELLM_MASTER_KEY from proxy dir's .env (without exporting other vars)
+_proxy_load_key() {
+    local proxy_dir="$1"
+    local env_file="$proxy_dir/.env"
+    if [[ ! -f "$env_file" ]]; then
+        red "Proxy .env not found at $env_file"
+        return 1
+    fi
+    grep '^LITELLM_MASTER_KEY=' "$env_file" | cut -d= -f2- | tr -d '\r' | sed 's/^["'\'']*//; s/["'\'']*$//'
+}
+
 # Require gh CLI
 _require_gh() {
     if ! command -v gh &>/dev/null; then
@@ -160,6 +270,28 @@ _require_docker() {
 _validate_afk() {
     green "Validating AFK environment..."
     echo ""
+
+    # Check proxy health if enabled
+    _proxy_enabled=$(_proxy_get "enabled")
+    if [[ "$_proxy_enabled" == "true" ]]; then
+        if _proxy_running; then
+            _port=$(_proxy_get "port")
+            _port="${_port:-$PROXY_DEFAULT_PORT}"
+            _h=$( (ip route 2>/dev/null || true) | awk '/default/{print $3; exit}'); _h="${_h:-localhost}"
+            if curl -sf --max-time 2 "http://${_h}:${_port}/health/readiness" > /dev/null 2>&1 || curl -sf --max-time 2 "http://localhost:${_port}/health/readiness" > /dev/null 2>&1; then
+                green "Copilot proxy: healthy (port $_port)"
+            else
+                yellow "Copilot proxy: PID exists but health check failed"
+                yellow "  Restart: shft proxy stop && shft proxy start"
+            fi
+        else
+            yellow "Copilot proxy enabled but daemon not running"
+            yellow "  Start it: shft proxy start"
+            yellow "  Or disable: shft proxy off"
+        fi
+        echo ""
+    fi
+
     if [[ -f "$DOTFILES/bin/validate-env.sh" ]]; then
         bash "$DOTFILES/bin/run-with-secrets.sh" \
             bash "$DOTFILES/bin/validate-env.sh" --afk || {
@@ -226,16 +358,45 @@ case "$CMD" in
         # Parse iteration count (first non-flag arg, or default)
         _iterations=5
         _force=false
+        _target_issue=""
+        _next_is_issue=false
         for _arg in "$@"; do
+            if $_next_is_issue; then
+                _target_issue="$_arg"
+                _next_is_issue=false
+                continue
+            fi
             case "$_arg" in
                 --force|-f) _force=true ;;
+                --issue)    _next_is_issue=true ;;
+                --issue=*)  _target_issue="${_arg#--issue=}" ;;
                 [0-9]*)     _iterations="$_arg" ;;
             esac
         done
 
+        # Fail fast if --issue was provided without a value
+        if $_next_is_issue; then
+            red "--issue requires a value (e.g., --issue 42)"
+            exit 1
+        fi
+
+        # Validate --issue is numeric
+        if [[ -n "$_target_issue" ]] && ! [[ "$_target_issue" =~ ^[0-9]+$ ]]; then
+            red "Invalid --issue value: $_target_issue (must be a numeric issue ID)"
+            exit 1
+        fi
+
         _require_gh
-        _require_srt
-        _require_docker
+        # srt + Docker only required when not on WSL/MSYS (those use plain claude)
+        if ! grep -qi microsoft /proc/version 2>/dev/null && [[ "$(uname -o 2>/dev/null)" != "Msys" ]]; then
+            _require_srt
+            _require_docker
+        else
+            yellow "WARNING: No sandbox available on this platform (WSL/MSYS)."
+            yellow "  Claude will run with --dangerously-skip-permissions and NO containment."
+            yellow "  Deny rules still apply, but there is no defense-in-depth."
+            echo ""
+        fi
 
         # Validate unless --force
         if [[ "$_force" == false ]]; then
@@ -260,7 +421,7 @@ case "$CMD" in
         _shft_state_set "max_iterations" "$_iterations"
         _shft_state_set "started_at" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
-        bash "$SHFT_DIR/afk.sh" "$_iterations"
+        SHFT_TARGET_ISSUE="$_target_issue" bash "$SHFT_DIR/afk.sh" "$_iterations"
         ;;
 
     # ── status ─────────────────────────────────────────────────────────────────
@@ -312,6 +473,22 @@ case "$CMD" in
             _done=$(grep -c '^\- \[x\]' "$PLAN_FILE" 2>/dev/null || echo 0)
             echo "  Plan:      $_done/$_total items complete"
             echo "             (shft plan to view)"
+        fi
+
+        # Proxy routing
+        _proxy_enabled=$(_proxy_get "enabled")
+        if [[ "$_proxy_enabled" == "true" ]]; then
+            _status_port=$(_proxy_get "port")
+            _status_port="${_status_port:-$PROXY_DEFAULT_PORT}"
+            if _proxy_running; then
+                green "  Routing:   Copilot proxy (port $_status_port)"
+            else
+                yellow "  Routing:   Copilot proxy (enabled but daemon not running)"
+                echo "             shft proxy start"
+            fi
+            yellow "  ⚠ Extended thinking disabled (Copilot limitation)"
+        else
+            echo "  Routing:   Anthropic API (direct)"
         fi
 
         echo ""
@@ -586,6 +763,261 @@ print(f'  ... ({len(issues)} shown, use shft issues for full list)')
         echo ""
         ;;
 
+    # ── proxy ───────────────────────────────────────────────────────────────────
+    proxy)
+        _sub="${1:-help}"
+        shift 2>/dev/null || true
+
+        case "$_sub" in
+
+            # ── proxy init ─────────────────────────────────────────────────────
+            init)
+                _path="${1:-}"
+                if [[ -z "$_path" ]]; then
+                    red "Usage: shft proxy init <path-to-claude-code-copilot>"
+                    exit 1
+                fi
+
+                # Expand ~ and resolve
+                _path="${_path/#\~/$HOME}"
+                _path="$(cd "$_path" 2>/dev/null && pwd)" || {
+                    red "Directory not found: $_path"
+                    exit 1
+                }
+
+                if [[ ! -f "$_path/litellm_config.yaml" ]]; then
+                    red "Not a claude-code-copilot directory: missing litellm_config.yaml"
+                    exit 1
+                fi
+                if [[ ! -f "$_path/.env" ]]; then
+                    red "Missing .env — run 'make setup' in $_path first"
+                    exit 1
+                fi
+
+                _proxy_set "dir" "$_path"
+                _proxy_set "port" "$PROXY_DEFAULT_PORT"
+                green "Proxy initialized: $_path"
+                echo "  Config: $_path/litellm_config.yaml"
+                echo "  Port:   $PROXY_DEFAULT_PORT"
+                echo ""
+                echo "  Next: shft proxy on"
+                ;;
+
+            # ── proxy on ──────────────────────────────────────────────────────
+            on)
+                if [[ -z "$(_proxy_get "dir")" ]]; then
+                    red "No proxy configured. Run: shft proxy init <path>"
+                    exit 1
+                fi
+                _proxy_set "enabled" "true"
+                green "Proxy enabled"
+                echo "  Routing: Claude → Copilot proxy"
+                echo "  Start daemon: shft proxy start"
+                ;;
+
+            # ── proxy off ─────────────────────────────────────────────────────
+            off)
+                _proxy_set "enabled" "false"
+                green "Proxy disabled"
+                echo "  Routing: Claude → Anthropic API (direct)"
+                ;;
+
+            # ── proxy start ───────────────────────────────────────────────────
+            start)
+                _proxy_dir=$(_proxy_get "dir")
+                if [[ -z "$_proxy_dir" ]]; then
+                    red "No proxy configured. Run: shft proxy init <path>"
+                    exit 1
+                fi
+
+                if _proxy_running; then
+                    _pid=$(_proxy_get "pid")
+                    green "Proxy already running (PID $_pid)"
+                    exit 0
+                fi
+
+                # Clear stale PID
+                _proxy_set "pid" ""
+
+                _port=$(_proxy_get "port")
+                _port="${_port:-$PROXY_DEFAULT_PORT}"
+
+                # Check if port is already in use
+                if curl -sf --max-time 1 "http://localhost:$_port/health/readiness" > /dev/null 2>&1; then
+                    yellow "Something is already listening on port $_port"
+                    echo "  If it's the proxy, run: shft proxy status"
+                    exit 1
+                fi
+
+                # Verify uv is available
+                if ! command -v uv &>/dev/null; then
+                    red "uv not found. Install: https://docs.astral.sh/uv/"
+                    exit 1
+                fi
+
+                mkdir -p "$PROXY_STATE_DIR"
+
+                # Load only the master key (not all vars from .env)
+                _litellm_key=$(_proxy_load_key "$_proxy_dir") || exit 1
+                export LITELLM_MASTER_KEY="$_litellm_key"
+
+                # Check if GitHub Copilot OAuth token exists
+                _token_file="$HOME/.config/litellm/github_copilot/api-key.json"
+                if [[ ! -f "$_token_file" ]]; then
+                    yellow "First-run: GitHub Copilot OAuth required"
+                    echo "  The proxy will start in the foreground so you can authenticate."
+                    echo "  After auth completes, press Ctrl+C and run 'shft proxy start' again."
+                    echo ""
+
+                    UV_SYSTEM_CERTS=true uv run \
+                        --with "litellm[proxy]" \
+                        litellm \
+                        --config "$_proxy_dir/litellm_config.yaml" \
+                        --port "$_port"
+                    exit $?
+                fi
+
+                green "Starting Copilot proxy..."
+                echo "  Dir:  $_proxy_dir"
+                echo "  Port: $_port"
+                echo "  Log:  $PROXY_LOG_FILE"
+                echo ""
+
+                UV_SYSTEM_CERTS=true nohup uv run \
+                    --with "litellm[proxy]" \
+                    litellm \
+                    --config "$_proxy_dir/litellm_config.yaml" \
+                    --port "$_port" \
+                    >> "$PROXY_LOG_FILE" 2>&1 &
+
+                _pid=$!
+                _proxy_set "pid" "$_pid"
+
+                if _proxy_wait_healthy "$_port"; then
+                    green "Proxy running (PID $_pid)"
+                    echo "  Health: http://localhost:$_port/health/readiness"
+                else
+                    # Check if process exited
+                    if ! kill -0 "$_pid" 2>/dev/null; then
+                        _proxy_set "pid" ""
+                        red "Proxy exited immediately"
+                        echo "  Check logs: tail -20 $PROXY_LOG_FILE"
+                        exit 1
+                    fi
+                    _proxy_set "pid" ""
+                    kill "$_pid" 2>/dev/null || true
+                    red "Proxy started but health check failed"
+                    echo "  Check logs: tail -20 $PROXY_LOG_FILE"
+                    exit 1
+                fi
+                ;;
+
+            # ── proxy stop ────────────────────────────────────────────────────
+            stop)
+                _pid=$(_proxy_get "pid")
+                if [[ -n "$_pid" ]] && kill -0 "$_pid" 2>/dev/null; then
+                    kill "$_pid" 2>/dev/null
+                    _proxy_set "pid" ""
+                    green "Proxy stopped (was PID $_pid)"
+                elif _proxy_running; then
+                    yellow "Proxy is healthy but stored PID is stale or missing."
+                    echo "  Find the process manually: lsof -i :$(_proxy_get port) or ss -tlnp"
+                    _proxy_set "pid" ""
+                    exit 1
+                else
+                    _proxy_set "pid" ""
+                    yellow "Proxy not running"
+                fi
+                ;;
+
+            # ── proxy status ──────────────────────────────────────────────────
+            status)
+                echo ""
+                echo "  shft proxy status"
+                echo "  ─────────────────────────────────────────────────────────"
+                echo ""
+
+                _proxy_dir=$(_proxy_get "dir")
+                _enabled=$(_proxy_get "enabled")
+                _port=$(_proxy_get "port")
+                _port="${_port:-$PROXY_DEFAULT_PORT}"
+
+                if [[ -z "$_proxy_dir" ]]; then
+                    yellow "  Not configured"
+                    echo "  Run: shft proxy init <path-to-claude-code-copilot>"
+                    echo ""
+                    exit 0
+                fi
+
+                echo "  Dir:       $_proxy_dir"
+                echo "  Port:      $_port"
+
+                if [[ "$_enabled" == "true" ]]; then
+                    green "  Enabled:   yes"
+                    echo "  Routing:   Claude → Copilot proxy"
+                else
+                    echo "  Enabled:   no"
+                    echo "  Routing:   Claude → Anthropic API (direct)"
+                fi
+
+                echo ""
+
+                if _proxy_running; then
+                    _pid=$(_proxy_get "pid")
+                    green "  Daemon:    running (PID $_pid)"
+                    _h=$( (ip route 2>/dev/null || true) | awk '/default/{print $3; exit}'); _h="${_h:-localhost}"
+                    if curl -sf --max-time 2 "http://${_h}:${_port}/health/readiness" > /dev/null 2>&1 || curl -sf --max-time 2 "http://localhost:${_port}/health/readiness" > /dev/null 2>&1; then
+                        green "  Health:    healthy"
+                    else
+                        red "  Health:    unhealthy (PID exists but health check failed)"
+                    fi
+                else
+                    echo "  Daemon:    not running"
+                    if [[ "$_enabled" == "true" ]]; then
+                        echo "  Start:     shft proxy start"
+                    fi
+                fi
+
+                echo "  Log:       $PROXY_LOG_FILE"
+
+                if [[ "$_enabled" == "true" ]]; then
+                    echo ""
+                    yellow "  ⚠ Extended thinking disabled when using Copilot proxy"
+                fi
+
+                echo ""
+                ;;
+
+            # ── proxy help ────────────────────────────────────────────────────
+            help|--help|-h|"")
+                echo ""
+                echo "  shft proxy — Copilot proxy management"
+                echo ""
+                echo "  Setup"
+                echo "  ──────────────────────────────────────────────────────────────"
+                echo "  shft proxy init <path>  set path to claude-code-copilot repo"
+                echo "  shft proxy on           enable proxy routing"
+                echo "  shft proxy off          disable proxy routing (use Anthropic)"
+                echo ""
+                echo "  Daemon"
+                echo "  ──────────────────────────────────────────────────────────────"
+                echo "  shft proxy start        start the proxy daemon"
+                echo "  shft proxy stop         stop the proxy daemon"
+                echo "  shft proxy status       show proxy state and health"
+                echo ""
+                echo "  When enabled, shft run and shft afk route through the proxy."
+                echo "  Running 'claude' directly is not affected."
+                echo ""
+                ;;
+
+            *)
+                red "Unknown proxy subcommand: $_sub"
+                echo "  Run 'shft proxy' for usage."
+                exit 1
+                ;;
+        esac
+        ;;
+
     # ── help ───────────────────────────────────────────────────────────────────
     help|--help|-h)
         echo ""
@@ -626,6 +1058,14 @@ print(f'  ... ({len(issues)} shown, use shft issues for full list)')
         echo "  shft validate          run AFK pre-flight checks"
         echo "  shft mint              test-mint a GitHub App token"
         echo "  shft prompt            show shft/prompt.md"
+        echo ""
+        echo "  Proxy (Copilot routing)"
+        echo "  ──────────────────────────────────────────────────────────────"
+        echo "  shft proxy             proxy subcommand help"
+        echo "  shft proxy init <path> set path to claude-code-copilot repo"
+        echo "  shft proxy on/off      toggle Copilot routing"
+        echo "  shft proxy start/stop  manage proxy daemon"
+        echo "  shft proxy status      show proxy state and health"
         echo ""
         echo "  Other"
         echo "  ──────────────────────────────────────────────────────────────"

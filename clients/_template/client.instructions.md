@@ -1,7 +1,7 @@
 ---
 name: client-name
 description: "Client-level context — brand, voice, NAP data, stakeholders. Loaded for all projects belonging to this client."
-cmd-venture: ""
+# cmd-venture: venture-slug
 ---
 
 # [Client Name]

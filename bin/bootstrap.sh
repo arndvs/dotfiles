@@ -312,30 +312,13 @@ for f in "$DOTFILES/hooks/"*.sh; do
 done
 green "  Hook scripts found: $_hooks"
 
-# Merge hook configuration into ~/.claude/settings.json
-if [[ -f "$DOTFILES/hooks/settings-hooks.json" ]]; then
-    if [[ -f "$CLAUDE_DIR/settings.json" ]]; then
-        if command -v jq &>/dev/null; then
-            # Always merge — settings-hooks.json is source of truth for hooks
-            jq -s '.[0] * .[1]' "$CLAUDE_DIR/settings.json" "$DOTFILES/hooks/settings-hooks.json" > "$CLAUDE_DIR/settings.json.tmp"
-            mv "$CLAUDE_DIR/settings.json.tmp" "$CLAUDE_DIR/settings.json"
-            green "  Merged hook config into ~/.claude/settings.json"
-
-            # Ensure dangerouslyDisableSandbox is in permissions.deny
-            _deny_pattern="Bash(dangerouslyDisableSandbox*)"
-            if ! jq -e --arg p "$_deny_pattern" '(.permissions.deny // []) | index($p)' "$CLAUDE_DIR/settings.json" >/dev/null 2>&1; then
-                jq --arg p "$_deny_pattern" '.permissions.deny = ((.permissions.deny // []) + [$p])' "$CLAUDE_DIR/settings.json" > "$CLAUDE_DIR/settings.json.tmp"
-                mv "$CLAUDE_DIR/settings.json.tmp" "$CLAUDE_DIR/settings.json"
-                green "  Added dangerouslyDisableSandbox guard to permissions.deny"
-            fi
-        else
-            yellow "  jq not found — cannot merge hooks into settings.json"
-            yellow "  Install jq and re-run, or manually merge hooks/settings-hooks.json"
-        fi
-    else
-        cp "$DOTFILES/hooks/settings-hooks.json" "$CLAUDE_DIR/settings.json"
-        green "  Created ~/.claude/settings.json with hook configuration"
-    fi
+# Deploy settings.json from dotfiles (source of truth)
+if [[ -f "$DOTFILES/.claude/settings.json" ]]; then
+    cp "$DOTFILES/.claude/settings.json" "$CLAUDE_DIR/settings.json"
+    green "  Deployed ~/.claude/settings.json from dotfiles"
+else
+    red "  Missing $DOTFILES/.claude/settings.json — cannot deploy settings"
+    _fail=1
 fi
 
 # ── 7.5. Gemini CLI safety defaults ──────────────────────────────────────────
