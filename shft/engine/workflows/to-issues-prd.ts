@@ -65,7 +65,7 @@ export async function runToIssuesPrd(opts: { issueNumber: string; repoDir: strin
         "",
         `**Type:** ${slice.type}`,
         `**Parent PRD:** #${issueNumber}`,
-        blockedByLine,
+        ...(blockedByLine ? [blockedByLine] : []),
         "",
         "## Description",
         "",
@@ -74,7 +74,7 @@ export async function runToIssuesPrd(opts: { issueNumber: string; repoDir: strin
         "## Acceptance Criteria",
         "",
         ...slice.acceptanceCriteria.map((ac) => `- [ ] ${ac}`),
-      ].filter((line) => line !== "" || blockedByLine !== "").join("\n");
+      ].join("\n");
 
       const createdJson = execFileSync(
         "gh",
