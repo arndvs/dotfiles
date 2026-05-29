@@ -1,5 +1,5 @@
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { execSync, execFileSync } from "node:child_process";
 import { run, Output, StructuredOutputError, claudeCode } from "@ai-hero/sandcastle";
 import { noSandbox } from "@ai-hero/sandcastle/sandboxes/no-sandbox";
 import { ImplementPrOutput } from "../schemas/implement-pr-output.js";
@@ -76,6 +76,7 @@ export async function runImplementPr(opts: { prNumber: string; repoDir: string; 
     });
 
     const validReplyIds = new Set(prContext.comments.review_threads.map((c) => c.commentId));
+    const threadIdByCommentId = new Map(prContext.comments.review_threads.map((c) => [c.commentId, c.threadId]));
     const validThreadReplies = result.output.threadReplies.filter((r) => {
       if (!validReplyIds.has(r.commentId)) {
         console.warn(`[implement-pr] Dropping reply for commentId=${r.commentId} — not in fetched threads`);
@@ -85,9 +86,16 @@ export async function runImplementPr(opts: { prNumber: string; repoDir: string; 
     });
 
     for (const reply of validThreadReplies) {
-      console.log(`[implement-pr] Posting reply to ${reply.commentId}...`);
-      execSync(
-        `gh api graphql -F nodeId="${reply.commentId}" -F body="${reply.body.replace(/"/g, '\\"')}" -f query='mutation($nodeId:ID!,$body:String!){addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$nodeId,body:$body}){comment{id}}}'`,
+      const threadId = threadIdByCommentId.get(reply.commentId)!;
+      console.log(`[implement-pr] Posting reply to thread ${threadId}...`);
+      execFileSync(
+        "gh",
+        [
+          "api", "graphql",
+          "-F", `nodeId=${threadId}`,
+          "-F", `body=${reply.body}`,
+          "-f", "query=mutation($nodeId:ID!,$body:String!){addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$nodeId,body:$body}){comment{id}}}",
+        ],
         { cwd: repoDir, stdio: ["ignore", "pipe", "pipe"] },
       );
     }
