@@ -72,7 +72,7 @@ def main():
         allow()
 
     tool_input = hook_input.get("tool_input", {})
-    file_path = tool_input.get("file_path", "")
+    file_path = tool_input.get("file_path", "").replace("\\", "/")
 
     # Fast path: not a feedback memory file
     if not FEEDBACK_PATH_PATTERN.search(file_path):
