@@ -133,5 +133,5 @@ Schema field aliasing via Zod `.transform()` handles LLM output variations (e.g.
 
 - AFK mode uses **short-lived GitHub App tokens** minted per iteration via `bin/mint_github_app_token.py`
 - **Lock directory** (`/tmp/shft-afk.lock`) prevents concurrent AFK loops
-- `--dangerously-skip-permissions` is used only in AFK mode with Docker sandbox or when explicitly enabled
+- AFK invokes Claude with `--dangerously-skip-permissions`; on Linux/macOS it typically runs inside the Docker-backed `srt` sandbox, but on WSL/MSYS it runs unsandboxed with an explicit warning (deny rules still apply)
 - The TypeScript engine currently uses `noSandbox()` on all platforms; Docker-backed sandboxing is not yet wired in
