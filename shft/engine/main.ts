@@ -46,8 +46,14 @@ if (Number.isNaN(maxParallel) || maxParallel < 1) {
 }
 
 const workflow = values.workflow ?? "implement";
+if (!/^[a-z0-9-]+$/i.test(workflow)) {
+  throw new Error(`Invalid --workflow: ${workflow}`);
+}
 const promptsDir = path.resolve(__dirname, "prompts");
 const promptFile = path.resolve(promptsDir, `${workflow}.md`);
+if (!promptFile.startsWith(promptsDir + path.sep)) {
+  throw new Error(`Invalid --workflow (path escapes prompts dir): ${workflow}`);
+}
 
 console.log(`[shft-engine] repo: ${repoDir}`);
 console.log(`[shft-engine] workflow: ${workflow}`);
