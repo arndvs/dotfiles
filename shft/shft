@@ -388,10 +388,12 @@ case "$CMD" in
 
         _require_gh
         # srt + Docker only required when not on WSL/MSYS (those use plain claude)
+        _has_sandbox=true
         if ! grep -qi microsoft /proc/version 2>/dev/null && [[ "$(uname -o 2>/dev/null)" != "Msys" ]]; then
             _require_srt
             _require_docker
         else
+            _has_sandbox=false
             yellow "WARNING: No sandbox available on this platform (WSL/MSYS)."
             yellow "  Claude will run with --dangerously-skip-permissions and NO containment."
             yellow "  Deny rules still apply, but there is no defense-in-depth."
@@ -408,7 +410,11 @@ case "$CMD" in
 
         green "shft afk — AFK mode ($_iterations iterations max)"
         echo ""
-        echo "  Claude runs in a Docker sandbox."
+        if [[ "$_has_sandbox" == true ]]; then
+            echo "  Claude runs in a Docker sandbox."
+        else
+            yellow "  Claude runs WITHOUT a sandbox (no containment)."
+        fi
         echo "  Picks issues, implements, commits, closes, repeats."
         echo "  Exits when backlog is empty or $_iterations iterations reached."
         echo ""
