@@ -43,7 +43,7 @@ export const ImplementPrOutput = z.object({
             ctx.addIssue({ code: "custom", message: "inline comment missing 'body' (or 'comment')" });
             return z.NEVER;
           }
-          return { path, line, side: c.side, body };
+          return { path, line, side: "RIGHT" as const, body };
         }),
     )
     .default([]),
