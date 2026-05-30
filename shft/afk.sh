@@ -155,7 +155,7 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     done &
     _ticker_pid=$!
     # Kill ticker on first output or error
-    _stop_ticker() { kill "$_ticker_pid" 2>/dev/null; wait "$_ticker_pid" 2>/dev/null; printf "\r\033[K" >&2; }
+    _stop_ticker() { kill "$_ticker_pid" 2>/dev/null || true; wait "$_ticker_pid" 2>/dev/null; printf "\r\033[K" >&2; }
 
     # Thinking-gap spinner — animates when jq output pauses > 1s
     _thinking_filter() {
