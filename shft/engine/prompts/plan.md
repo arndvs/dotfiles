@@ -43,8 +43,8 @@ After analysis, emit your plan as a JSON object inside `<output>` tags. The JSON
 
 Emit the `<output>` tag as the very last thing you write.
 
-<output>
-{
-  "issues": [{"number": 0, "title": "example", "branch": "feat/0-example"}]
-}
-</output>
+Example shape (do not copy verbatim; generate real issues from the list):
+
+```json
+{ "issues": [{ "number": 123, "title": "Issue title", "branch": "feat/123-short-description" }] }
+```
