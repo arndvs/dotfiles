@@ -65,7 +65,7 @@ if [[ -z "$_proxy_pid" ]] || ! kill -0 "$_proxy_pid" 2>/dev/null; then
         echo "  ERROR: Proxy enabled but daemon not running." >&2
         echo "  Start it:  shft proxy start" >&2
         echo "  Or disable: shft proxy off" >&2
-        exit 1
+        return 1 2>/dev/null || exit 1
     fi
 fi
 
@@ -76,23 +76,23 @@ if ! curl -sf --max-time 2 "http://${_proxy_check_host}:${_proxy_port}/health/re
     echo "  ERROR: Proxy daemon running but health check failed." >&2
     echo "  Restart: shft proxy stop && shft proxy start" >&2
     echo "  Logs:    tail -20 ~/.shft/proxy.log" >&2
-    exit 1
+    return 1 2>/dev/null || exit 1
 fi
 
 # Load master key from proxy dir's .env
 if [[ -z "$_proxy_dir" ]]; then
     echo "  ERROR: Proxy directory not set. Run: shft proxy init <path>" >&2
-    exit 1
+    return 1 2>/dev/null || exit 1
 fi
 _proxy_env_file="$_proxy_dir/.env"
 if [[ ! -f "$_proxy_env_file" ]]; then
     echo "  ERROR: Proxy .env not found at $_proxy_env_file" >&2
-    exit 1
+    return 1 2>/dev/null || exit 1
 fi
 _proxy_key=$(grep '^LITELLM_MASTER_KEY=' "$_proxy_env_file" | cut -d= -f2- | tr -d '\r' | sed 's/^["'\'']*//; s/["'\'']*$//')
 if [[ -z "$_proxy_key" ]]; then
     echo "  ERROR: LITELLM_MASTER_KEY not found in $_proxy_env_file" >&2
-    exit 1
+    return 1 2>/dev/null || exit 1
 fi
 
 # Determine base URL based on mode
