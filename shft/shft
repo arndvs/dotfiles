@@ -929,7 +929,7 @@ print(f'  ... ({len(issues)} shown, use shft issues for full list)')
             stop)
                 _pid=$(_proxy_get "pid")
                 if [[ -n "$_pid" ]] && kill -0 "$_pid" 2>/dev/null; then
-                    kill "$_pid" 2>/dev/null
+                    kill "$_pid" 2>/dev/null || true
                     _proxy_set "pid" ""
                     green "Proxy stopped (was PID $_pid)"
                 elif _proxy_running; then
