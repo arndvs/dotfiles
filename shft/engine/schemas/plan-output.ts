@@ -7,7 +7,7 @@ export const PlanOutput = z.object({
       title: z.string(),
       branch: z.string(),
     }),
-  ).min(1),
+  ),
 });
 
 export type PlanOutput = z.infer<typeof PlanOutput>;
