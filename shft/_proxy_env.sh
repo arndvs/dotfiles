@@ -89,7 +89,7 @@ if [[ ! -f "$_proxy_env_file" ]]; then
     echo "  ERROR: Proxy .env not found at $_proxy_env_file" >&2
     return 1 2>/dev/null || exit 1
 fi
-_proxy_key=$(grep '^LITELLM_MASTER_KEY=' "$_proxy_env_file" | cut -d= -f2- | tr -d '\r' | sed 's/^["'\'']*//; s/["'\'']*$//')
+_proxy_key=$(grep '^LITELLM_MASTER_KEY=' "$_proxy_env_file" | head -1 | cut -d= -f2- | tr -d '\r' | sed 's/^["'\'']*//; s/["'\'']*$//')
 if [[ -z "$_proxy_key" ]]; then
     echo "  ERROR: LITELLM_MASTER_KEY not found in $_proxy_env_file" >&2
     return 1 2>/dev/null || exit 1
