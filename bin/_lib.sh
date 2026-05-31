@@ -31,7 +31,7 @@ detect_os() {
 # Requires VENV_DIR to be set. Returns 1 if no Python found.
 find_python() {
     PYTHON=""
-    if [[ -f "$VENV_DIR/Scripts/python.exe" ]]; then
+    if [[ -f "$VENV_DIR/Scripts/python.exe" ]] && [[ "$OSTYPE" != linux* ]]; then
         PYTHON="$VENV_DIR/Scripts/python.exe"
     elif [[ -f "$VENV_DIR/bin/python" ]]; then
         PYTHON="$VENV_DIR/bin/python"
@@ -52,7 +52,7 @@ find_python() {
 # Requires VENV_DIR to be set.
 find_venv_python() {
     _venv_python=""
-    if [[ -f "$VENV_DIR/Scripts/python.exe" ]]; then
+    if [[ -f "$VENV_DIR/Scripts/python.exe" ]] && [[ "$OSTYPE" != linux* ]]; then
         _venv_python="$VENV_DIR/Scripts/python.exe"
     elif [[ -f "$VENV_DIR/bin/python" ]]; then
         _venv_python="$VENV_DIR/bin/python"

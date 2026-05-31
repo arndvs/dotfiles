@@ -129,6 +129,12 @@ _skip "shft plan edit"          "opens \$EDITOR"
 _skip "shft plan clear"         "destructive (deletes plan)"
 _skip "shft mint"               "requires GitHub App credentials"
 
+# Proxy subcommands
+_test "shft proxy"              shft proxy
+_test "shft proxy status"       shft proxy status
+_skip "shft proxy start"        "starts daemon"
+_skip "shft proxy stop"         "stops daemon"
+
 # ── Summary ──
 echo
 echo "════════════════════════════════════════════════"

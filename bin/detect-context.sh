@@ -78,6 +78,16 @@ if [[ -f "artisan" ]]; then
     contexts="$contexts,laravel"
 fi
 
+# --- cmd (business operating system) ---
+# Detects when working inside the cmd repo. Triggers cmd.instructions.md autoload.
+_dc_cmd_dir="${CMD_DIR:-$HOME/cmd}"
+# Expand ~ if present
+_dc_cmd_dir="${_dc_cmd_dir/#\~/$HOME}"
+if [[ -n "$_dc_cmd_dir" ]] && [[ "$PWD" == "$_dc_cmd_dir"* ]] && [[ -f "$_dc_cmd_dir/CLAUDE.md" ]]; then
+    contexts="$contexts,cmd"
+fi
+unset _dc_cmd_dir
+
 export ACTIVE_CONTEXTS="$contexts"
 echo "$contexts"
 
@@ -102,10 +112,12 @@ echo "$contexts"
     _dc_payload=$(printf '{"type":"context","project":"%s","projectPath":"%s","contexts":"%s","ide":"%s","message":"Active contexts: %s","timestamp":"%s","time":"%s"}' \
         "$_dc_proj" "${PWD/$HOME/~}" "$contexts" "$_dc_ide" "$contexts" "$_dc_ts" "$_dc_td")
 
-    if [[ -p "$_dc_pipe" ]]; then
+    if [[ -p "$_dc_pipe" ]] && [[ "$(uname -o 2>/dev/null)" != "Msys" ]]; then
         ( printf '%s\n' "$_dc_payload" > "$_dc_pipe" ) 2>/dev/null &
+        disown 2>/dev/null
     else
         printf '%s\n' "$_dc_payload" >> "$_dc_dotfiles/working/events.jsonl" 2>/dev/null &
+        disown 2>/dev/null
     fi
     unset _dc_dotfiles _dc_pipe _dc_ts _dc_td _dc_proj _dc_ide _dc_payload
 } 2>/dev/null || true

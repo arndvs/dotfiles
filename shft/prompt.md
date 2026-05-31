@@ -17,7 +17,9 @@ Pick the next task based on this priority order:
 
 Before starting work on an issue, assign it to yourself using `gh issue edit <number> --add-assignee @me`. Skip issues already assigned to someone else.
 
-If there are no more tasks to complete, output <promise>NO MORE TASKS</promise>.
+**After completing your task**, check the issue list above again. If there are still open issues you haven't completed (even if blocked), do NOT emit the sentinel — just finish your work and let the loop re-invoke you with a fresh issue list.
+
+Only output <promise>NO MORE TASKS</promise> if the issue list above is completely empty or every remaining issue is assigned to someone else. This is rare — when in doubt, do NOT emit this sentinel.
 
 ## Exploration
 

@@ -22,6 +22,16 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")")" && pwd)"
 DOTFILES="${DOTFILES:-$HOME/dotfiles}"
 
+# ── Self-sync (Windows copy drift guard) ──────────────────────────────────────
+# On Windows, ~/.local/bin/ctrl is a copy not a symlink. If the source has
+# changed, overwrite the running copy so the next invocation is fresh.
+_CTRL_SOURCE="$DOTFILES/bin/ctrl"
+if [[ -f "$_CTRL_SOURCE" ]] && [[ ! -L "${BASH_SOURCE[0]}" ]] \
+   && ! cmp -s "${BASH_SOURCE[0]}" "$_CTRL_SOURCE"; then
+    cp "$_CTRL_SOURCE" "${BASH_SOURCE[0]}"
+    exec "${BASH_SOURCE[0]}" "$@"   # re-exec with the updated copy
+fi
+
 # Verify we can find _lib.sh — if not, the install is broken
 if [[ ! -f "$DOTFILES/bin/_lib.sh" ]]; then
     echo "  ctrl: cannot find $DOTFILES/bin/_lib.sh"
