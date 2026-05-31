@@ -1,5 +1,5 @@
 import path from "node:path";
-import { execSync, execFileSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { run, Output, StructuredOutputError, claudeCode } from "@ai-hero/sandcastle";
 import { noSandbox } from "@ai-hero/sandcastle/sandboxes/no-sandbox";
 import { ReviewOutput } from "../schemas/review-output.js";
@@ -29,7 +29,7 @@ export async function runReview(opts: { prNumber: string; repoDir: string; model
       logging: { type: "stdout" },
     });
 
-    const headSha = execSync(`gh pr view ${prNumber} --json headRefOid --jq .headRefOid`, {
+    const headSha = execFileSync("gh", ["pr", "view", prNumber, "--json", "headRefOid", "--jq", ".headRefOid"], {
       encoding: "utf8",
       cwd: repoDir,
       stdio: ["ignore", "pipe", "pipe"],
@@ -37,7 +37,7 @@ export async function runReview(opts: { prNumber: string; repoDir: string; model
 
     const diffOutput = (() => {
       try {
-        return execSync(`gh pr diff ${prNumber}`, { encoding: "utf8", cwd: repoDir, stdio: ["ignore", "pipe", "pipe"] });
+        return execFileSync("gh", ["pr", "diff", prNumber], { encoding: "utf8", cwd: repoDir, stdio: ["ignore", "pipe", "pipe"] });
       } catch {
         return "";
       }
@@ -74,7 +74,7 @@ export async function runReview(opts: { prNumber: string; repoDir: string; model
       comments: validInlineComments.map((c) => ({ path: c.path, line: c.line, side: c.side, body: c.body })),
     });
 
-    execSync(`gh api repos/{owner}/{repo}/pulls/${prNumber}/reviews --input -`, {
+    execFileSync("gh", ["api", `repos/{owner}/{repo}/pulls/${prNumber}/reviews`, "--input", "-"], {
       input: reviewPayload,
       encoding: "utf8",
       cwd: repoDir,
